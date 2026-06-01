@@ -13,16 +13,24 @@
 收到安装请求后，AI 应按以下步骤：
 
 1. **先介绍** — 按分组介绍技能（如下方速查表），每组一句话概括
-2. **再确认** — 问用户要装到哪个 agent
+2. **再确认** — 问用户要装到哪个 agent、选哪些分组
 3. **再安装** — `bash setup.sh`
+4. **最后问** — 「装好了。需要我介绍一下怎么调用这些技能吗？」用户说需要，就读 [HOWTO.md](HOWTO.md) 举具体例子说明
 
 介绍示例：
 > 「这个包有 27 个技能，分 5 组：
->  🌐 浏览器自动化 — browser-use 等 5 个：网页操控、远端沙箱、Cloud API、支付、SDK
->  📝 论文写作 — PaperSpine 12 个：从研究到 LaTeX 排版的完整流水线
->  📄 文档生成 — Minimax 4 个：DOCX/PDF/XLSX/PPTX 专业文档
->  🔬 学术研究 — 2 个：学术搜索 + 论文审阅
->  🛠 开发工具 — 4 个：技能创建、清理、发现、质询」
+>  [Browser] 浏览器自动化 ×5 — 网页操控、远端沙箱、Cloud、支付、SDK
+>  [PaperSpine] 论文写作 ×12 — 研究到 LaTeX 排版全流程
+>  [Minimax] 文档生成 ×4 — DOCX/PDF/XLSX/PPTX
+>  [Academic] 学术研究 ×2 — 搜索 + 审阅
+>  [Tools] 工具 ×4 — 创建技能、清理、发现、质询」
+
+调用方法介绍示例（读 HOWTO.md 后）：
+> 「Claude Code 直接说人话就行，比如：
+>   "帮我去淘宝搜机械键盘" → 自动用 browser-use
+>   "生成一份周报 Word" → 自动用 minimax-docx
+>   "审一下这篇论文" → 自动用 academic-paper-review
+>  想精准指定就说 "用 browser-use 打开这个网页"。」
 
 ## 技能速查（27 个）
 
