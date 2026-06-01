@@ -3,73 +3,64 @@ set -e
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILLS_FLAT="$REPO_DIR/skills"
-SKILLS_HERMES="$REPO_DIR/skills-hermes"
 
 echo "╔══════════════════════════════╗"
 echo "║  Inno's Skills Pack 安装器   ║"
 echo "╚══════════════════════════════╝"
 echo ""
 
-# ── 检测 agent ──
+# ── Hermes 分类映射（直接从 skills/ 构建，不依赖 skills-hermes/ symlink） ──
+# 格式: "分类目录:技能1,技能2,..."
+HERMES_MAP=(
+    "browser-use:browser-use,remote-browser,cloud,x402"
+    "paperspine:paper-spine,paper-spine-audit,paper-spine-build,paper-spine-citation,paper-spine-humanize,paper-spine-intake,paper-spine-latex,paper-spine-research,paper-spine-rewrite,paper-spine-translate,paper-spine-ui,paper-spine-update"
+)
+# 单技能分类 → 技能名即分类名
+HERMES_SOLO="academic-search cleanup find-skills grill-me open-source skill-creator"
+
+# ── 检测已安装的 agent ──
 AGENTS=()
-[ -d "$HOME/.claude" ] && AGENTS+=("claude")
-[ -d "$HOME/.codex" ] && AGENTS+=("codex")
-[ -d "$HOME/.hermes" ] && AGENTS+=("hermes")
+[ -d "$HOME/.claude" ] && AGENTS+=("claude:$HOME/.claude/skills")
+[ -d "$HOME/.codex" ]  && AGENTS+=("codex:$HOME/.codex/skills")
+[ -d "$HOME/.hermes" ] && AGENTS+=("hermes:$HOME/.hermes/skills")
 
 if [ ${#AGENTS[@]} -eq 0 ]; then
-    echo "未检测到任何已安装的 agent（Claude Code / Codex / Hermes）"
-    echo "你可以手动指定安装目录："
-    echo "  bash setup.sh /path/to/agent/skills"
+    echo "未检测到任何 agent（Claude Code / Codex / Hermes）"
+    echo "用法: bash setup.sh /path/to/skills"
     exit 0
 fi
 
-echo "检测到: ${AGENTS[*]}"
-echo ""
-
 # ── 选择安装目标 ──
-if [ -n "$1" ]; then
-    # 直接指定了路径
-    TARGET_DIR="$1"
-    echo "安装到: $TARGET_DIR"
-else
-    echo "选择安装目标："
-    for i in "${!AGENTS[@]}"; do
-        agent="${AGENTS[$i]}"
-        case $agent in
-            claude)   dir="$HOME/.claude/skills" ;;
-            codex)    dir="$HOME/.codex/skills" ;;
-            hermes)   dir="$HOME/.hermes/skills" ;;
-        esac
-        echo "  $((i+1))) $agent  →  $dir"
-    done
-    echo "  0) 自定义路径"
-    read -p "输入序号: " choice
+echo "检测到 ${#AGENTS[@]} 个 agent："
+for i in "${!AGENTS[@]}"; do
+    agent="${AGENTS[$i]%%:*}"
+    dir="${AGENTS[$i]#*:}"
+    echo "  $((i+1))) $agent  →  $dir"
+done
+echo "  a) 全部安装"
+echo "  0) 自定义路径"
+echo ""
+read -p "选择: " choice
 
-    if [ "$choice" = "0" ]; then
-        read -p "输入目标 skills 目录: " TARGET_DIR
-        case "$TARGET_DIR" in
-            *hermes*) AGENT="hermes" ;;
-            *claude*) AGENT="claude" ;;
-            *codex*)  AGENT="codex" ;;
-            *)        AGENT="hermes" ;;  # 默认按 hermes 结构
-        esac
-    else
+TARGETS=()
+case "$choice" in
+    a)
+        TARGETS=("${AGENTS[@]}")
+        ;;
+    0)
+        read -p "输入目标 skills 目录: " custom_dir
+        read -p "agent 类型 (hermes/claude/codex): " custom_agent
+        TARGETS=("$custom_agent:$custom_dir")
+        ;;
+    *)
         idx=$((choice - 1))
-        agent="${AGENTS[$idx]}"
-        case $agent in
-            claude) TARGET_DIR="$HOME/.claude/skills"; AGENT="claude" ;;
-            codex)  TARGET_DIR="$HOME/.codex/skills"; AGENT="codex" ;;
-            hermes) TARGET_DIR="$HOME/.hermes/skills"; AGENT="hermes" ;;
-        esac
-    fi
-fi
-
-mkdir -p "$TARGET_DIR"
+        TARGETS=("${AGENTS[$idx]}")
+        ;;
+esac
 
 # ── 辅助函数 ──
 link_skill() {
-    local src="$1"
-    local dst="$2"
+    local src="$1" dst="$2"
     if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
         return 1  # 已存在且正确 → 跳过
     fi
@@ -79,54 +70,78 @@ link_skill() {
 }
 
 # ── 安装 ──
-echo ""
-new=0
-skip=0
+for target in "${TARGETS[@]}"; do
+    agent="${target%%:*}"
+    dir="${target#*:}"
+    echo ""
+    echo "── [$agent] → $dir ──"
+    mkdir -p "$dir"
+    new=0; skip=0
 
-if [ "$AGENT" = "hermes" ]; then
-    echo "[Hermes] → $TARGET_DIR"
-    for item in "$SKILLS_HERMES"/*; do
-        [ ! -e "$item" ] && continue
-        name=$(basename "$item")
-        if [ -d "$item" ] && [ ! -L "$item" ]; then
-            # 多技能分类目录
-            mkdir -p "$TARGET_DIR/$name"
-            for sub in "$item"/*; do
-                subname=$(basename "$sub")
-                src="$(realpath "$sub")"
-                if link_skill "$src" "$TARGET_DIR/$name/$subname"; then
-                    echo "  + $name/$subname"
+    case $agent in
+        hermes)
+            # 多技能分类
+            for entry in "${HERMES_MAP[@]}"; do
+                cat="${entry%%:*}"
+                skills="${entry#*:}"
+                mkdir -p "$dir/$cat"
+                IFS=',' read -ra names <<< "$skills"
+                for name in "${names[@]}"; do
+                    src="$SKILLS_FLAT/$name"
+                    [ -d "$src" ] || { echo "  ! $name 不在 repo 中，跳过"; continue; }
+                    if link_skill "$src" "$dir/$cat/$name"; then
+                        echo "  + $cat/$name"
+                        new=$((new + 1))
+                    else
+                        skip=$((skip + 1))
+                    fi
+                done
+            done
+            # 单技能分类
+            for name in $HERMES_SOLO; do
+                src="$SKILLS_FLAT/$name"
+                [ -d "$src" ] || { echo "  ! $name 不在 repo 中，跳过"; continue; }
+                if link_skill "$src" "$dir/$name"; then
+                    echo "  + $name"
                     new=$((new + 1))
                 else
                     skip=$((skip + 1))
                 fi
             done
-        elif [ -L "$item" ]; then
-            # 单技能分类 symlink
-            src="$(realpath "$item")"
-            if link_skill "$src" "$TARGET_DIR/$name"; then
-                echo "  + $name"
-                new=$((new + 1))
-            else
-                skip=$((skip + 1))
-            fi
-        fi
-    done
-else
-    echo "[$AGENT] → $TARGET_DIR"
-    for skill in "$SKILLS_FLAT"/*/; do
-        [ ! -d "$skill" ] && continue
-        name=$(basename "$skill")
-        src="$(realpath "$skill")"
-        if link_skill "$src" "$TARGET_DIR/$name"; then
-            echo "  + $name"
-            new=$((new + 1))
-        else
-            skip=$((skip + 1))
-        fi
-    done
-fi
+            ;;
+        claude|codex)
+            for skill in "$SKILLS_FLAT"/*/; do
+                [ ! -d "$skill" ] && continue
+                name=$(basename "$skill")
+                if link_skill "$skill" "$dir/$name"; then
+                    echo "  + $name"
+                    new=$((new + 1))
+                else
+                    skip=$((skip + 1))
+                fi
+            done
+            ;;
+        *)
+            # 自定义路径：按 hermes 结构
+            for entry in "${HERMES_MAP[@]}"; do
+                cat="${entry%%:*}"; skills="${entry#*:}"
+                mkdir -p "$dir/$cat"
+                IFS=',' read -ra names <<< "$skills"
+                for name in "${names[@]}"; do
+                    src="$SKILLS_FLAT/$name"
+                    [ -d "$src" ] || continue
+                    link_skill "$src" "$dir/$cat/$name" && echo "  + $cat/$name" && new=$((new+1)) || skip=$((skip+1))
+                done
+            done
+            for name in $HERMES_SOLO; do
+                src="$SKILLS_FLAT/$name"
+                [ -d "$src" ] || continue
+                link_skill "$src" "$dir/$name" && echo "  + $name" && new=$((new+1)) || skip=$((skip+1))
+            done
+            ;;
+    esac
+    echo "  → 新增 $new，跳过 $skip"
+done
 
 echo ""
-echo "✓ 新增 $new 个，跳过 $skip 个（已存在）"
-echo "下次更新: cd $REPO_DIR && git pull"
+echo "✓ 完成。更新: cd $REPO_DIR && git pull && bash setup.sh"
