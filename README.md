@@ -2,14 +2,18 @@
 
 个人 AI Coding Agent 技能包，支持 **Claude Code**、**Codex**、**Hermes**。
 
+> **Claude Code 用户建议优先从官方源安装**（`npx skills add -g <name>`），版本更新更及时。
+> 此包主要用于：Hermes / Codex 安装、团队统一技能集、离线环境。
+
 ## 技能清单（22 个）
 
-| 分类 | 技能 |
-|------|------|
-| Browser | browser-use, remote-browser, cloud, x402, open-source |
-| PaperSpine | paper-spine + 11 个子模块 |
-| Research | academic-search |
-| Dev | cleanup, find-skills, grill-me, skill-creator |
+| 分类 | 技能 | 来源 |
+|------|------|------|
+| Browser | browser-use, remote-browser, cloud, x402, open-source | [browser-use/browser-use](https://github.com/browser-use/browser-use) |
+| PaperSpine | paper-spine + 11 个子模块 | [WUBING2023/PaperSpine](https://github.com/WUBING2023/PaperSpine) |
+| Research | academic-search | [ustc-ai4science/academic-search](https://github.com/ustc-ai4science/academic-search) |
+| Tools | skill-creator | [clawhub.ai](https://clawhub.ai) |
+| — | cleanup, find-skills, grill-me | — |
 
 ## 快速安装
 
@@ -25,20 +29,30 @@ bash setup.sh
 - 已有技能自动跳过，只装新增的
 - 以后 `git pull && bash setup.sh` 即可同步增删
 
+### Claude Code 推荐方式
+
+```bash
+# browser-use 系列
+npx skills add -g browser-use
+
+# academic-search
+npx skills add -g academic-search
+
+# paper-spine（需手动从 GitHub 安装）
+git clone https://github.com/WUBING2023/PaperSpine.git /tmp/paperspine
+# 然后将需要的子模块 symlink 到 ~/.claude/skills/
+```
+
 ## 目录结构
 
 ```
 skills-repo/
 ├── skills/              ← 扁平结构（Claude Code / Codex）
-│   ├── browser-use/SKILL.md
-│   └── ...
-│
 ├── skills-hermes/       ← 分类结构（Hermes，symlink → skills/）
-│   ├── browser-use/     ← 聚合 4 个技能
-│   ├── paperspine/      ← 聚合 12 个技能
-│   ├── cleanup → ../skills/cleanup
+│   ├── browser-use/     ← 5 个技能
+│   ├── paperspine/      ← 12 个技能
+│   ├── academic-search → ../skills/academic-search
 │   └── ...
-│
 └── setup.sh
 ```
 
