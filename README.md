@@ -35,7 +35,7 @@ skills-repo/
 
 ```bash
 # 1. 克隆
-git clone https://github.com/innominate/skills-repo.git ~/inno-skills
+git clone https://github.com/Innoksadk223/skills-repo.git ~/inno-skills
 cd ~/inno-skills
 
 # 2. 一键安装（自动检测你装了哪些 agent）
