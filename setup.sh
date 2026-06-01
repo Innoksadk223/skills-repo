@@ -200,4 +200,5 @@ for target in "${TARGETS[@]}"; do
 done
 
 echo ""
-echo "✓ 完成。更新: cd $REPO_DIR && git pull && bash setup.sh  # 覆盖已有技能"
+echo "✓ 完成。萌新指南: cat GUIDE.md"
+echo "更新: cd $REPO_DIR && git pull && bash setup.sh"

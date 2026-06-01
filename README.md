@@ -2,6 +2,8 @@
 
 个人 AI Coding Agent 技能包，支持 **Claude Code**、**Codex**、**Hermes**。
 
+> 新手先看 [GUIDE.md](GUIDE.md) — 不用懂技术，会说人话就行。
+>
 > **Claude Code 用户建议优先从官方源安装**（`npx skills add -g <name>`），版本更新更及时。
 > 此包主要用于：Hermes / Codex 安装、团队统一技能集、离线环境。
 
