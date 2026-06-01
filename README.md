@@ -9,11 +9,29 @@
 
 收到安装请求后，AI 应按以下步骤：
 
-1. **先介绍** — 展示下方技能速查表，让用户知道装了什么
-2. **再确认** — 问用户要装到哪个 agent（检测到的 + 支持多选/全选）
-3. **再安装** — `bash setup.sh`，复制文件到目标目录
+1. **先介绍** — 按分组介绍技能（如下方速查表），每组一句话概括
+2. **再确认** — 问用户要装到哪个 agent
+3. **再安装** — `bash setup.sh`
+
+介绍示例：
+> 「这个包有 27 个技能，分 5 组：
+>  🌐 浏览器自动化 — browser-use 等 5 个：网页操控、远端沙箱、Cloud API、支付、SDK
+>  📝 论文写作 — PaperSpine 12 个：从研究到 LaTeX 排版的完整流水线
+>  📄 文档生成 — Minimax 4 个：DOCX/PDF/XLSX/PPTX 专业文档
+>  🔬 学术研究 — 2 个：学术搜索 + 论文审阅
+>  🛠 开发工具 — 4 个：技能创建、清理、发现、质询」
 
 ## 技能速查（27 个）
+
+| 分组 | 技能 | 一句话 |
+|------|------|--------|
+| 🌐 浏览器 | browser-use / remote-browser / cloud / x402 / open-source (5) | 网页自动化、远端沙箱、Cloud API、支付、SDK |
+| 📝 PaperSpine | paper-spine + 11 子模块 (12) | 学术论文全流程：研究→引用→改写→LaTeX→翻译→审校 |
+| 📄 Minimax | minimax-docx / minimax-pdf / minimax-xlsx / pptx-generator (4) | DOCX/PDF/XLSX/PPTX 专业文档生成 |
+| 🔬 学术 | academic-search / academic-paper-review (2) | 学术搜索与引用分析 + 论文审阅 |
+| 🛠 工具 | skill-creator / cleanup / find-skills / grill-me (4) | 技能创建、清理、发现、质询 |
+
+### 详细
 
 | 技能 | 用途 | 来源 |
 |------|------|------|
