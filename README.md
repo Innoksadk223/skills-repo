@@ -6,10 +6,10 @@
 
 | 分类 | 技能 |
 |------|------|
-| Browser | browser-use, remote-browser, cloud, x402 |
+| Browser | browser-use, remote-browser, cloud, x402, open-source |
 | PaperSpine | paper-spine + 11 个子模块 |
 | Research | academic-search |
-| Dev | cleanup, find-skills, grill-me, open-source, skill-creator |
+| Dev | cleanup, find-skills, grill-me, skill-creator |
 
 ## 快速安装
 
@@ -58,7 +58,7 @@ done
 ```bash
 # 多技能分类（直接从 skills/ 构建）
 mkdir -p ~/.hermes/skills/browser-use
-for name in browser-use remote-browser cloud x402; do
+for name in browser-use remote-browser cloud x402 open-source; do
     [ -L ~/.hermes/skills/browser-use/"$name" ] || \
         ln -s "$(pwd)/skills/$name" ~/.hermes/skills/browser-use/"$name"
 done
@@ -73,7 +73,7 @@ for name in paper-spine paper-spine-audit paper-spine-build paper-spine-citation
 done
 
 # 单技能分类
-for name in academic-search cleanup find-skills grill-me open-source skill-creator; do
+for name in academic-search cleanup find-skills grill-me skill-creator; do
     [ -L ~/.hermes/skills/"$name" ] || \
         ln -s "$(pwd)/skills/$name" ~/.hermes/skills/"$name"
 done

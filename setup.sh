@@ -12,11 +12,11 @@ echo ""
 # ── Hermes 分类映射（直接从 skills/ 构建，不依赖 skills-hermes/ symlink） ──
 # 格式: "分类目录:技能1,技能2,..."
 HERMES_MAP=(
-    "browser-use:browser-use,remote-browser,cloud,x402"
+    "browser-use:browser-use,remote-browser,cloud,x402,open-source"
     "paperspine:paper-spine,paper-spine-audit,paper-spine-build,paper-spine-citation,paper-spine-humanize,paper-spine-intake,paper-spine-latex,paper-spine-research,paper-spine-rewrite,paper-spine-translate,paper-spine-ui,paper-spine-update"
 )
 # 单技能分类 → 技能名即分类名
-HERMES_SOLO="academic-search cleanup find-skills grill-me open-source skill-creator"
+HERMES_SOLO="academic-search cleanup find-skills grill-me skill-creator"
 
 # ── 检测已安装的 agent ──
 AGENTS=()
