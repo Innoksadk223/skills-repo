@@ -26,9 +26,10 @@ bash setup.sh
 
 `setup.sh` 会：
 - 自动检测你装了哪些 agent（支持多选 / 全选）
-- Hermes 直接从 skills/ 构建分类目录（不依赖中间 symlink）
+- 直接将技能文件复制到 agent 目录（非 symlink，独立可迁移）
+- Hermes 从 skills/ 构建分类目录
 - 已有技能自动跳过，只装新增的
-- 以后 `git pull && bash setup.sh` 即可同步增删
+- 更新: `git pull && bash setup.sh`（覆盖已有技能）
 
 ### Claude Code 推荐方式
 

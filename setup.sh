@@ -60,13 +60,13 @@ case "$choice" in
 esac
 
 # ── 辅助函数 ──
-link_skill() {
+copy_skill() {
     local src="$1" dst="$2"
-    if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
-        return 1  # 已存在且正确 → 跳过
+    if [ -f "$dst/SKILL.md" ]; then
+        return 1  # 已存在 → 跳过（如需覆盖，先 rm -rf）
     fi
-    rm -f "$dst"
-    ln -s "$src" "$dst"
+    rm -rf "$dst"
+    cp -R "$src" "$dst"
     return 0  # 新建
 }
 
@@ -90,7 +90,7 @@ for target in "${TARGETS[@]}"; do
                 for name in "${names[@]}"; do
                     src="$SKILLS_FLAT/$name"
                     [ -d "$src" ] || { echo "  ! $name 不在 repo 中，跳过"; continue; }
-                    if link_skill "$src" "$dir/$cat/$name"; then
+                    if copy_skill "$src" "$dir/$cat/$name"; then
                         echo "  + $cat/$name"
                         new=$((new + 1))
                     else
@@ -102,7 +102,7 @@ for target in "${TARGETS[@]}"; do
             for name in $HERMES_SOLO; do
                 src="$SKILLS_FLAT/$name"
                 [ -d "$src" ] || { echo "  ! $name 不在 repo 中，跳过"; continue; }
-                if link_skill "$src" "$dir/$name"; then
+                if copy_skill "$src" "$dir/$name"; then
                     echo "  + $name"
                     new=$((new + 1))
                 else
@@ -114,7 +114,7 @@ for target in "${TARGETS[@]}"; do
             for skill in "$SKILLS_FLAT"/*/; do
                 [ ! -d "$skill" ] && continue
                 name=$(basename "$skill")
-                if link_skill "$skill" "$dir/$name"; then
+                if copy_skill "$skill" "$dir/$name"; then
                     echo "  + $name"
                     new=$((new + 1))
                 else
@@ -131,13 +131,13 @@ for target in "${TARGETS[@]}"; do
                 for name in "${names[@]}"; do
                     src="$SKILLS_FLAT/$name"
                     [ -d "$src" ] || continue
-                    link_skill "$src" "$dir/$cat/$name" && echo "  + $cat/$name" && new=$((new+1)) || skip=$((skip+1))
+                    copy_skill "$src" "$dir/$cat/$name" && echo "  + $cat/$name" && new=$((new+1)) || skip=$((skip+1))
                 done
             done
             for name in $HERMES_SOLO; do
                 src="$SKILLS_FLAT/$name"
                 [ -d "$src" ] || continue
-                link_skill "$src" "$dir/$name" && echo "  + $name" && new=$((new+1)) || skip=$((skip+1))
+                copy_skill "$src" "$dir/$name" && echo "  + $name" && new=$((new+1)) || skip=$((skip+1))
             done
             ;;
     esac
@@ -145,4 +145,4 @@ for target in "${TARGETS[@]}"; do
 done
 
 echo ""
-echo "✓ 完成。更新: cd $REPO_DIR && git pull && bash setup.sh"
+echo "✓ 完成。更新: cd $REPO_DIR && git pull && bash setup.sh  # 覆盖已有技能"
