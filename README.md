@@ -20,10 +20,10 @@ bash setup.sh
 ```
 
 `setup.sh` 会：
-- 自动检测你装了哪个 agent
-- 让你选择安装目标
+- 自动检测你装了哪些 agent（支持多选 / 全选）
+- Hermes 直接从 skills/ 构建分类目录（不依赖中间 symlink）
 - 已有技能自动跳过，只装新增的
-- 以后 `git pull` 即可同步增删
+- 以后 `git pull && bash setup.sh` 即可同步增删
 
 ## 目录结构
 
@@ -56,18 +56,25 @@ done
 ### Hermes
 
 ```bash
-for item in skills-hermes/*; do
-    name=$(basename "$item")
-    if [ -d "$item" ] && [ ! -L "$item" ]; then
-        mkdir -p ~/.hermes/skills/"$name"
-        for sub in "$item"/*; do
-            subname=$(basename "$sub")
-            [ -L ~/.hermes/skills/"$name"/"$subname" ] || \
-                ln -s "$(realpath "$sub")" ~/.hermes/skills/"$name"/"$subname"
-        done
-    else
-        [ -L ~/.hermes/skills/"$name" ] || \
-            ln -s "$(realpath "$item")" ~/.hermes/skills/"$name"
-    fi
+# 多技能分类（直接从 skills/ 构建）
+mkdir -p ~/.hermes/skills/browser-use
+for name in browser-use remote-browser cloud x402; do
+    [ -L ~/.hermes/skills/browser-use/"$name" ] || \
+        ln -s "$(pwd)/skills/$name" ~/.hermes/skills/browser-use/"$name"
+done
+
+mkdir -p ~/.hermes/skills/paperspine
+for name in paper-spine paper-spine-audit paper-spine-build paper-spine-citation \
+            paper-spine-humanize paper-spine-intake paper-spine-latex \
+            paper-spine-research paper-spine-rewrite paper-spine-translate \
+            paper-spine-ui paper-spine-update; do
+    [ -L ~/.hermes/skills/paperspine/"$name" ] || \
+        ln -s "$(pwd)/skills/$name" ~/.hermes/skills/paperspine/"$name"
+done
+
+# 单技能分类
+for name in academic-search cleanup find-skills grill-me open-source skill-creator; do
+    [ -L ~/.hermes/skills/"$name" ] || \
+        ln -s "$(pwd)/skills/$name" ~/.hermes/skills/"$name"
 done
 ```
