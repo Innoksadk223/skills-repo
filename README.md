@@ -5,12 +5,13 @@
 > **Claude Code 用户建议优先从官方源安装**（`npx skills add -g <name>`），版本更新更及时。
 > 此包主要用于：Hermes / Codex 安装、团队统一技能集、离线环境。
 
-## 技能清单（23 个）
+## 技能清单（27 个）
 
 | 分类 | 技能 | 来源 |
 |------|------|------|
 | Browser | browser-use, remote-browser, cloud, x402, open-source | [browser-use/browser-use](https://github.com/browser-use/browser-use) |
 | PaperSpine | paper-spine + 11 个子模块 | [WUBING2023/PaperSpine](https://github.com/WUBING2023/PaperSpine) |
+| Minimax | minimax-docx, minimax-pdf, minimax-xlsx, pptx-generator | Minimax 官方 |
 | Research | academic-search, academic-paper-review | [ustc-ai4science](https://github.com/ustc-ai4science/academic-search) · [bytedance/deer-flow](https://github.com/bytedance/deer-flow/tree/main/skills/public/academic-paper-review) |
 | Tools | skill-creator | [clawhub.ai](https://clawhub.ai) |
 | — | cleanup, find-skills, grill-me | — |
@@ -67,6 +68,10 @@ npx skills add -g academic-search
 | paper-spine-translate | 中英学术翻译 |
 | paper-spine-ui | PaperSpine 终端配置界面 |
 | paper-spine-update | PaperSpine 版本检查与更新 |
+| minimax-docx | 专业 DOCX 文档创建与编辑 |
+| minimax-pdf | 高质量 PDF 生成与设计 |
+| minimax-xlsx | Excel 表格创建、分析与验证 |
+| pptx-generator | PowerPoint 演示文稿生成与编辑 |
 | academic-search | 学术搜索、引用分析、OA PDF 判定 |
 | academic-paper-review | 论文审阅、方法论评估、同行评审 |
 | skill-creator | 创建新的 AI 技能 |
