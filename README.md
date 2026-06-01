@@ -83,7 +83,6 @@ bash setup.sh
 
 ```bash
 npx skills add -g browser-use    # browser-use 全系列
-npx skills add -g academic-search
 # paper-spine 需手动: git clone https://github.com/WUBING2023/PaperSpine.git
 ```
 
