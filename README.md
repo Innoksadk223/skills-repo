@@ -73,6 +73,7 @@ bash setup.sh
 
 `setup.sh` 会：
 - 自动检测你装了哪些 agent（支持多选 / 全选）
+- **可选分组安装** — 默认全装，也可只选 browser / paperspine / minimax 等
 - 直接将技能文件复制到 agent 目录（非 symlink，独立可迁移）
 - Hermes 自动构建分类目录（browser-use/, paperspine/, minimax/）
 - 已有技能自动跳过

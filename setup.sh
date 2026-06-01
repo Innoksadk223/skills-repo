@@ -59,7 +59,57 @@ case "$choice" in
         ;;
 esac
 
+# ── 选择分组 ──
+GROUP_KEYS=(browser paperspine minimax academic tools)
+GROUP_DESC=(
+    "[Browser] browser automation: browser-use, remote-browser, cloud, x402, open-source (5)"
+    "[PaperSpine] paper writing pipeline: research, rewrite, LaTeX, translate, etc. (12)"
+    "[Minimax] document generation: DOCX, PDF, XLSX, PPTX (4)"
+    "[Academic] academic search + paper review (2)"
+    "[Tools] skill-creator, cleanup, find-skills, grill-me (4)"
+)
+
+echo ""
+echo "Select groups (space-separated, a=all, Enter=all):"
+for i in "${!GROUP_KEYS[@]}"; do
+    echo "  $((i+1))) ${GROUP_DESC[$i]}"
+done
+echo "  a) All (default)"
+echo ""
+read -p "Choice: " group_choice
+
+SELECTED_GROUPS=()
+if [ -z "$group_choice" ] || [ "$group_choice" = "a" ]; then
+    SELECTED_GROUPS=("${GROUP_KEYS[@]}")
+else
+    for g in $group_choice; do
+        idx=$((g - 1))
+        [ -n "${GROUP_KEYS[$idx]}" ] && SELECTED_GROUPS+=("${GROUP_KEYS[$idx]}")
+    done
+fi
+
 # ── 辅助函数 ──
+# 判断技能属于哪个分组
+skill_group() {
+    case "$1" in
+        browser-use|remote-browser|cloud|x402|open-source) echo "browser" ;;
+        paper-spine|paper-spine-*)                         echo "paperspine" ;;
+        minimax-*|pptx-generator)                          echo "minimax" ;;
+        academic-search|academic-paper-review)             echo "academic" ;;
+        cleanup|find-skills|grill-me|skill-creator)        echo "tools" ;;
+        *)                                                 echo "" ;;
+    esac
+}
+
+# 检查分组是否被选中
+selected() {
+    local g=$(skill_group "$1")
+    [ -z "$g" ] && return 0  # 未归类默认安装
+    for sg in "${SELECTED_GROUPS[@]}"; do
+        [ "$sg" = "$g" ] && return 0
+    done
+    return 1
+}
 copy_skill() {
     local src="$1" dst="$2"
     if [ -f "$dst/SKILL.md" ]; then
@@ -88,6 +138,7 @@ for target in "${TARGETS[@]}"; do
                 mkdir -p "$dir/$cat"
                 IFS=',' read -ra names <<< "$skills"
                 for name in "${names[@]}"; do
+                    selected "$name" || continue
                     src="$SKILLS_FLAT/$name"
                     [ -d "$src" ] || { echo "  ! $name 不在 repo 中，跳过"; continue; }
                     if copy_skill "$src" "$dir/$cat/$name"; then
@@ -100,6 +151,7 @@ for target in "${TARGETS[@]}"; do
             done
             # 单技能分类
             for name in $HERMES_SOLO; do
+                selected "$name" || continue
                 src="$SKILLS_FLAT/$name"
                 [ -d "$src" ] || { echo "  ! $name 不在 repo 中，跳过"; continue; }
                 if copy_skill "$src" "$dir/$name"; then
@@ -114,6 +166,7 @@ for target in "${TARGETS[@]}"; do
             for skill in "$SKILLS_FLAT"/*/; do
                 [ ! -d "$skill" ] && continue
                 name=$(basename "$skill")
+                selected "$name" || continue
                 if copy_skill "$skill" "$dir/$name"; then
                     echo "  + $name"
                     new=$((new + 1))
@@ -129,12 +182,14 @@ for target in "${TARGETS[@]}"; do
                 mkdir -p "$dir/$cat"
                 IFS=',' read -ra names <<< "$skills"
                 for name in "${names[@]}"; do
+                    selected "$name" || continue
                     src="$SKILLS_FLAT/$name"
                     [ -d "$src" ] || continue
                     copy_skill "$src" "$dir/$cat/$name" && echo "  + $cat/$name" && new=$((new+1)) || skip=$((skip+1))
                 done
             done
             for name in $HERMES_SOLO; do
+                selected "$name" || continue
                 src="$SKILLS_FLAT/$name"
                 [ -d "$src" ] || continue
                 copy_skill "$src" "$dir/$name" && echo "  + $name" && new=$((new+1)) || skip=$((skip+1))
