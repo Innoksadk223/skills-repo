@@ -5,13 +5,13 @@
 > **Claude Code 用户建议优先从官方源安装**（`npx skills add -g <name>`），版本更新更及时。
 > 此包主要用于：Hermes / Codex 安装、团队统一技能集、离线环境。
 
-## 技能清单（22 个）
+## 技能清单（23 个）
 
 | 分类 | 技能 | 来源 |
 |------|------|------|
 | Browser | browser-use, remote-browser, cloud, x402, open-source | [browser-use/browser-use](https://github.com/browser-use/browser-use) |
 | PaperSpine | paper-spine + 11 个子模块 | [WUBING2023/PaperSpine](https://github.com/WUBING2023/PaperSpine) |
-| Research | academic-search | [ustc-ai4science/academic-search](https://github.com/ustc-ai4science/academic-search) |
+| Research | academic-search, academic-paper-review | [ustc-ai4science/academic-search](https://github.com/ustc-ai4science/academic-search) · [bytedance/deer-flow](https://github.com/bytedance/deer-flow/tree/main/skills/public/academic-paper-review) |
 | Tools | skill-creator | [clawhub.ai](https://clawhub.ai) |
 | — | cleanup, find-skills, grill-me | — |
 
@@ -87,7 +87,7 @@ for name in paper-spine paper-spine-audit paper-spine-build paper-spine-citation
 done
 
 # 单技能分类
-for name in academic-search cleanup find-skills grill-me skill-creator; do
+for name in academic-search academic-paper-review cleanup find-skills grill-me skill-creator; do
     [ -L ~/.hermes/skills/"$name" ] || \
         ln -s "$(pwd)/skills/$name" ~/.hermes/skills/"$name"
 done

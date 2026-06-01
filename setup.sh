@@ -16,7 +16,7 @@ HERMES_MAP=(
     "paperspine:paper-spine,paper-spine-audit,paper-spine-build,paper-spine-citation,paper-spine-humanize,paper-spine-intake,paper-spine-latex,paper-spine-research,paper-spine-rewrite,paper-spine-translate,paper-spine-ui,paper-spine-update"
 )
 # 单技能分类 → 技能名即分类名
-HERMES_SOLO="academic-search cleanup find-skills grill-me skill-creator"
+HERMES_SOLO="academic-search academic-paper-review cleanup find-skills grill-me skill-creator"
 
 # ── 检测已安装的 agent ──
 AGENTS=()
