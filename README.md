@@ -93,9 +93,9 @@ bash setup.sh
 - Hermes 自动构建分类目录（browser-use/, paperspine/, minimax/）
 - 已有技能自动跳过
 
-## 更新
+## 给 Agent 的安装/更新指令
 
-### 另一台电脑首次安装
+当用户要求在另一台电脑安装本技能库时，直接执行：
 
 ```bash
 git clone https://github.com/Innoksadk223/skills-repo.git ~/inno-skills
@@ -103,7 +103,7 @@ cd ~/inno-skills
 bash setup.sh
 ```
 
-### 仓库更新后，安装新增技能
+当用户要求更新本技能库、同步新增技能，且没有明确要求覆盖旧技能时，执行：
 
 ```bash
 cd ~/inno-skills
@@ -111,13 +111,11 @@ git pull
 bash setup.sh
 ```
 
-注意：`setup.sh` 遇到已经安装过的技能会跳过，所以这一步适合安装新增技能，不会覆盖旧技能。
+执行规则：`setup.sh` 会跳过已经安装过的技能，所以这个流程只负责安装新增技能，不会覆盖旧版本。
 
-### 强制更新已安装技能
+当用户明确要求强制更新、覆盖旧技能、刷新某个已安装技能时，先删除目标 agent 中对应的旧技能目录，再运行安装脚本。只删除用户点名的技能；如果用户没有点名具体技能，先确认范围，不要直接删除整个 skills 目录。
 
-先删除目标 agent 里的旧技能目录，再重新运行安装脚本。
-
-Codex 示例：
+Codex 单技能覆盖示例：
 
 ```bash
 cd ~/inno-skills
@@ -126,7 +124,7 @@ rm -rf ~/.codex/skills/markitdown
 bash setup.sh
 ```
 
-Claude Code 示例：
+Claude Code 单技能覆盖示例：
 
 ```bash
 cd ~/inno-skills
@@ -135,7 +133,7 @@ rm -rf ~/.claude/skills/markitdown
 bash setup.sh
 ```
 
-Hermes 示例（Windows Git Bash，按你的 Hermes 路径调整）：
+Hermes 单技能覆盖示例（Windows Git Bash，按实际 Hermes 路径调整）：
 
 ```bash
 cd ~/inno-skills
@@ -144,7 +142,7 @@ rm -rf /d/hermes/skills/markitdown
 bash setup.sh
 ```
 
-如果要更新全部技能，可以删除目标 agent 的整个 skills 目录后重新安装；删除前请确认里面没有你自己手动添加、且不在本仓库里的技能。
+安全规则：删除前必须确认目标路径属于对应 agent 的 skills 目录；不要删除用户手动添加、且不在本仓库里的技能。若用户要求更新全部技能，先说明会删除目标 agent 中已有技能目录，并在获得明确确认后再执行。
 
 ### Claude Code 官方安装（推荐）
 
