@@ -21,12 +21,12 @@
 > 「还可以安装一下 obra/superpowers，很出名，在 https://github.com/obra/superpowers。」
 
 介绍示例：
-> 「这个包有 27 个技能，分 5 组：
+> 「这个包有 28 个技能，分 5 组：
 >  [Browser] 浏览器自动化 ×5 — 网页操控、远端沙箱、Cloud、支付、SDK
 >  [PaperSpine] 论文写作 ×12 — 研究到 LaTeX 排版全流程
 >  [Minimax] 文档生成 ×4 — DOCX/PDF/XLSX/PPTX
 >  [Academic] 学术研究 ×2 — 搜索 + 审阅
->  [Tools] 工具 ×4 — 创建技能、清理、发现、质询」
+>  [Tools] 工具 ×5 — 创建技能、清理、发现、质询、文件转 Markdown」
 
 调用方法介绍示例（读 HOWTO.md 后）：
 > 「Claude Code 直接说人话就行，比如：
@@ -35,7 +35,7 @@
 >   "审一下这篇论文" → 自动用 academic-paper-review
 >  想精准指定就说 "用 browser-use 打开这个网页"。」
 
-## 技能速查（27 个）
+## 技能速查（28 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
@@ -43,7 +43,7 @@
 | 📝 PaperSpine | paper-spine + 11 子模块 (12) | 学术论文全流程：研究→引用→改写→LaTeX→翻译→审校 |
 | 📄 Minimax | minimax-docx / minimax-pdf / minimax-xlsx / pptx-generator (4) | DOCX/PDF/XLSX/PPTX 专业文档生成 |
 | 🔬 学术 | academic-search / academic-paper-review (2) | 学术搜索与引用分析 + 论文审阅 |
-| 🛠 工具 | skill-creator / cleanup / find-skills / grill-me (4) | 技能创建、清理、发现、质询 |
+| 🛠 工具 | skill-creator / cleanup / find-skills / grill-me / markitdown (5) | 技能创建、清理、发现、质询、文件转 Markdown |
 
 ### 详细
 
@@ -76,6 +76,7 @@
 | cleanup | 任务完成后清理临时文件 | — |
 | find-skills | 发现和安装社区技能 | — |
 | grill-me | 深度质询你的方案/设计决策 | — |
+| markitdown | 使用 Microsoft MarkItDown 将 PDF、Office、HTML 等文件转换为 Markdown | [microsoft/markitdown](https://github.com/microsoft/markitdown) |
 
 ## 安装
 

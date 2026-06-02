@@ -17,7 +17,7 @@ HERMES_MAP=(
     "minimax:minimax-docx,minimax-pdf,minimax-xlsx,pptx-generator"
 )
 # 单技能分类 → 技能名即分类名
-HERMES_SOLO="academic-search academic-paper-review cleanup find-skills grill-me skill-creator"
+HERMES_SOLO="academic-search academic-paper-review cleanup find-skills grill-me markitdown skill-creator"
 
 # ── 检测已安装的 agent ──
 AGENTS=()
@@ -66,7 +66,7 @@ GROUP_DESC=(
     "[PaperSpine] paper writing pipeline: research, rewrite, LaTeX, translate, etc. (12)"
     "[Minimax] document generation: DOCX, PDF, XLSX, PPTX (4)"
     "[Academic] academic search + paper review (2)"
-    "[Tools] skill-creator, cleanup, find-skills, grill-me (4)"
+    "[Tools] skill-creator, cleanup, find-skills, grill-me, markitdown (5)"
 )
 
 echo ""
@@ -96,7 +96,7 @@ skill_group() {
         paper-spine|paper-spine-*)                         echo "paperspine" ;;
         minimax-*|pptx-generator)                          echo "minimax" ;;
         academic-search|academic-paper-review)             echo "academic" ;;
-        cleanup|find-skills|grill-me|skill-creator)        echo "tools" ;;
+        cleanup|find-skills|grill-me|markitdown|skill-creator) echo "tools" ;;
         *)                                                 echo "" ;;
     esac
 }
