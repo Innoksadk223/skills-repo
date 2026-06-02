@@ -92,7 +92,59 @@ bash setup.sh
 - 直接将技能文件复制到 agent 目录（非 symlink，独立可迁移）
 - Hermes 自动构建分类目录（browser-use/, paperspine/, minimax/）
 - 已有技能自动跳过
-- 更新: `git pull && bash setup.sh`（覆盖已有技能）
+
+## 更新
+
+### 另一台电脑首次安装
+
+```bash
+git clone https://github.com/Innoksadk223/skills-repo.git ~/inno-skills
+cd ~/inno-skills
+bash setup.sh
+```
+
+### 仓库更新后，安装新增技能
+
+```bash
+cd ~/inno-skills
+git pull
+bash setup.sh
+```
+
+注意：`setup.sh` 遇到已经安装过的技能会跳过，所以这一步适合安装新增技能，不会覆盖旧技能。
+
+### 强制更新已安装技能
+
+先删除目标 agent 里的旧技能目录，再重新运行安装脚本。
+
+Codex 示例：
+
+```bash
+cd ~/inno-skills
+git pull
+rm -rf ~/.codex/skills/markitdown
+bash setup.sh
+```
+
+Claude Code 示例：
+
+```bash
+cd ~/inno-skills
+git pull
+rm -rf ~/.claude/skills/markitdown
+bash setup.sh
+```
+
+Hermes 示例（Windows Git Bash，按你的 Hermes 路径调整）：
+
+```bash
+cd ~/inno-skills
+git pull
+rm -rf /d/hermes/skills/markitdown
+bash setup.sh
+```
+
+如果要更新全部技能，可以删除目标 agent 的整个 skills 目录后重新安装；删除前请确认里面没有你自己手动添加、且不在本仓库里的技能。
 
 ### Claude Code 官方安装（推荐）
 
