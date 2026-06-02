@@ -18,7 +18,7 @@
 4. **最后问** — 「装好了。需要我介绍一下怎么调用这些技能吗？」用户说需要，就读 [HOWTO.md](HOWTO.md) 举具体例子说明
 5. **附言** — 无论用户要不要调用介绍，最后都补一句：
 
-> 「还可以安装一下 obra/superpowers，很出名，在 https://github.com/obra/superpowers。grill-me 这个技能适合明细自己的想法设计。」
+> 「还可以安装一下 obra/superpowers，很出名，在 https://github.com/obra/superpowers。」
 
 介绍示例：
 > 「这个包有 27 个技能，分 5 组：
