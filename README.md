@@ -95,7 +95,7 @@ bash setup.sh
 - **可选分组安装** — 默认全装，也可只选 browser / paperspine / minimax 等
 - 直接将技能文件复制到 agent 目录（非 symlink，独立可迁移）
 - Hermes 自动构建分类目录（browser-use/, paperspine/, minimax/）
-- 已有技能自动跳过
+- 已有技能自动比较更新（`diff -rq`），不一致则覆盖
 
 ## 给 Agent 的安装/更新指令
 
@@ -107,7 +107,7 @@ cd ~/inno-skills
 bash setup.sh
 ```
 
-当用户要求更新本技能库、同步新增技能，且没有明确要求覆盖旧技能时，执行：
+当用户要求更新本技能库时，执行：
 
 ```bash
 cd ~/inno-skills
@@ -115,38 +115,10 @@ git pull
 bash setup.sh
 ```
 
-执行规则：`setup.sh` 会跳过已经安装过的技能，所以这个流程只负责安装新增技能，不会覆盖旧版本。
-
-当用户明确要求强制更新、覆盖旧技能、刷新某个已安装技能时，先删除目标 agent 中对应的旧技能目录，再运行安装脚本。只删除用户点名的技能；如果用户没有点名具体技能，先确认范围，不要直接删除整个 skills 目录。
-
-Codex 单技能覆盖示例：
-
-```bash
-cd ~/inno-skills
-git pull
-rm -rf ~/.codex/skills/markitdown
-bash setup.sh
-```
-
-Claude Code 单技能覆盖示例：
-
-```bash
-cd ~/inno-skills
-git pull
-rm -rf ~/.claude/skills/markitdown
-bash setup.sh
-```
-
-Hermes 单技能覆盖示例（Windows Git Bash，按实际 Hermes 路径调整）：
-
-```bash
-cd ~/inno-skills
-git pull
-rm -rf /d/hermes/skills/markitdown
-bash setup.sh
-```
-
-安全规则：删除前必须确认目标路径属于对应 agent 的 skills 目录；不要删除用户手动添加、且不在本仓库里的技能。若用户要求更新全部技能，先说明会删除目标 agent 中已有技能目录，并在获得明确确认后再执行。
+执行规则：
+- 已有技能 → 自动 `diff` 比较，不一致则覆盖更新，无需手动干预
+- 新增技能 → 列出清单询问用户是否安装
+- 不在本仓库的技能 → 不删除、不覆盖
 
 ### Claude Code 官方安装（推荐）
 
