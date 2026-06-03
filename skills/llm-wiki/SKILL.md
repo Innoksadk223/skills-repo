@@ -163,8 +163,8 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
    a growing wiki and a pile of duplicates.
 
 ④ **Write or update wiki pages:**
-   - **New entities/concepts:** Create pages only if they meet the Page Thresholds
-     in SCHEMA.md (2+ source mentions, or central to one source).
+   - **New entities/concepts:** Create full pages for any entity/concept mentioned
+     in the source that is notable within the domain (see SCHEMA.md Page Thresholds).
      **Use Chinese page titles** with 中英对照 when the English term is standard:
      `[[注意力机制（Attention Mechanism）]]`、`[[安德烈·卡帕西（Andrej Karpathy）]]`、
      `[[Transformer 架构]]`（well-known English term as-is + Chinese suffix）、
@@ -414,8 +414,7 @@ vault in Obsidian on your laptop/phone — changes appear within seconds.
   Skipping this causes duplicates and missed cross-references.
 - **Always update index.md and log.md** — skipping this makes the wiki degrade. These are the
   navigational backbone.
-- **Don't create pages for passing mentions** — follow the Page Thresholds in SCHEMA.md. A name
-  appearing once in a footnote doesn't warrant an entity page.
+- **Don't create pages for things outside the domain** — follow the Page Thresholds in SCHEMA.md. A footnote about a car brand in an AI wiki doesn't warrant a page. But within-domain concepts mentioned in one source are fair game.
 - **Don't create pages without cross-references** — isolated pages are invisible. Every page must
   link to at least 2 other pages.
 - **Frontmatter is required** — it enables search, filtering, and staleness detection.

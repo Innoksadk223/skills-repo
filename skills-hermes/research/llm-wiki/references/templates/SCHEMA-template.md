@@ -65,11 +65,11 @@ Rule: every tag on a page must appear in this taxonomy. If a new tag is needed,
 add it here first, then use it. This prevents tag sprawl.
 
 ## Page Thresholds
-- **Create a full page** when an entity/concept appears in 2+ sources OR is central to one source
+- **Create a full page** when an entity/concept is mentioned in a source and is notable within the domain. Don't require multiple sources — if it matters to the domain, one source is enough.
 - **Create a stub page** when an entity/concept is [[wikilinked]] by another page but doesn't yet have its own page. Stubs prevent dead links in Obsidian's graph view. See Stub Pages below for format.
 - **Add to existing page** when a source mentions something already covered
 - **DON'T create a page** for things entirely outside the domain
-- **Upgrade stub → full page** when a stub accumulates info from 2+ sources — remove the stub marker, add detail
+- **Upgrade stub → full page** when enough material accumulates to write a meaningful entry — remove the stub marker, fill in detail, update `confidence`
 - **Split a page** when it exceeds ~200 lines — break into sub-topics with cross-links
 - **Archive a page** when its content is fully superseded — move to `_archive/`, remove from index
 
