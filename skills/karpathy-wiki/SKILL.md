@@ -354,7 +354,13 @@ For best results:
 - Set Obsidian's attachment folder to `raw/assets/`
 - Enable "Wikilinks" in Obsidian settings (usually on by default)
 - **Exclude `raw/` from graph view:** Settings → Files & Links → Excluded files → add `raw/`. Also in Graph view → Filter → Excluded folders → add `raw/`. This keeps the knowledge graph clean — only wiki pages appear as nodes, not raw source files.
-- **Graph color grouping by `type`:** Graph view → Groups → create groups based on `type` field. Suggested colors: `entity` → blue (#4a9eff), `concept` → green (#4caf50), `comparison` → orange (#ff9800), `query` → grey (#9e9e9e). Stubs (pages with `confidence: low`) → dashed border or low opacity.
+- **Graph color groups (path-based):** Open Graph view → Settings (gear icon) → Groups → create one group per page type. Use path queries since pages are already organized by directory:
+  - Group 1: `path:entities/` → 🔵 blue (`#4a9eff`)
+  - Group 2: `path:concepts/` → 🟢 green (`#4caf50`)
+  - Group 3: `path:comparisons/` → 🟠 orange (`#ff9800`)
+  - Group 4: `path:queries/` → ⚪ grey (`#9e9e9e`)
+  - Group 5 (optional): `tag:#待补充` → dashed border / low opacity (stub pages)
+  Path-based grouping is more reliable than frontmatter field matching in Obsidian's graph engine.
 - Install Dataview plugin for queries like `TABLE tags FROM "实体" WHERE contains(tags, "公司")`
 
 If using the Obsidian skill alongside this one, set `OBSIDIAN_VAULT_PATH` to the
