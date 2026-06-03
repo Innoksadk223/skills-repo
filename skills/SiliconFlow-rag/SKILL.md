@@ -10,7 +10,7 @@ description: Build and query a local RAG index for social-science paper Markdown
 
 Use this skill for the retrieval step of a social-science paper knowledge system. It indexes Markdown files from `wiki/raw/`, stores embeddings locally in `检索索引/`, and returns evidence snippets to answer from.
 
-This skill does not convert source documents and does not build the wiki. Use `markitdown` to produce Markdown in `wiki/raw/`, then use `llm-wiki` for wiki generation.
+This skill does not convert source documents and does not build the wiki. Use `markitdown` to produce Markdown in `wiki/raw/`, then use `karpathy-wiki` for wiki generation.
 
 When used through `social-science-km`, run this skill from the project root `<source-folder>（知识库）/`. In that root, `wiki/raw/` is the Markdown corpus and `检索索引/` is the local index. Do not index the original source folder directly.
 

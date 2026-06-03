@@ -42,7 +42,7 @@
 | 🌐 浏览器 | browser-use / remote-browser / cloud / x402 / open-source (5) | 网页自动化、远端沙箱、Cloud API、支付、SDK |
 | 📝 PaperSpine | paper-spine + 11 子模块 (12) | 学术论文全流程：研究→引用→改写→LaTeX→翻译→审校 |
 | 📄 Minimax | minimax-docx / minimax-pdf / minimax-xlsx / pptx-generator (4) | DOCX/PDF/XLSX/PPTX 专业文档生成 |
-| 🔬 学术 | llm-wiki / academic-search / academic-paper-review / SiliconFlow-rag / social-science-km (5) | Karpathy 式知识库、学术搜索、论文审阅、社科知识库与 RAG 检索 |
+| 🔬 学术 | karpathy-wiki / academic-search / academic-paper-review / SiliconFlow-rag / social-science-km (5) | Karpathy 式知识库、学术搜索、论文审阅、社科知识库与 RAG 检索 |
 | 🛠 工具 | skill-creator / skill-architecture / cleanup / find-skills / grill-me / markitdown (6) | 技能创建、模块化架构、清理、发现、质询、文件转 Markdown |
 
 ### 详细
@@ -70,7 +70,7 @@
 | minimax-pdf | 高质量 PDF 生成与设计 | ↑ |
 | minimax-xlsx | Excel 表格创建、分析与验证 | ↑ |
 | pptx-generator | PowerPoint 演示文稿生成与编辑 | ↑ |
-| llm-wiki | Karpathy LLM Wiki：持久化相互链接 Markdown 知识库（中文 + 中英对照） | **Hermes 内置自改版** |
+| karpathy-wiki | Karpathy Wiki：持久化相互链接 Markdown 知识库（中文 + 中英对照） | **Hermes 内置自改版** |
 | academic-search | 学术搜索、引用分析、OA PDF 判定 | [ustc-ai4science](https://github.com/ustc-ai4science/academic-search) |
 | academic-paper-review | 论文审阅、方法论评估、同行评审 | [bytedance/deer-flow](https://github.com/bytedance/deer-flow) |
 | SiliconFlow-rag | 为 raw Markdown 建立本地 RAG 索引，支持硅基流动嵌入与可选重排 | 本仓库 |

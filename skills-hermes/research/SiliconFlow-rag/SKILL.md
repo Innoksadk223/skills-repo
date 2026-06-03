@@ -10,7 +10,7 @@ description: Build and query a local RAG index for social-science paper Markdown
 
 Use this skill for the retrieval step of a social-science paper knowledge system. It indexes Markdown files from `wiki/raw/`, stores embeddings locally in `检索索引/`, and returns evidence snippets to answer from.
 
-This skill does not convert source documents and does not build the wiki. Use `markitdown` to produce Markdown in `wiki/raw/`, then use `llm-wiki` for wiki generation.
+This skill does not convert source documents and does not build the wiki. Use `markitdown` to produce Markdown in `wiki/raw/`, then use `karpathy-wiki` for wiki generation.
 
 When used through `social-science-km`, run this skill from the project root `<source-folder>（知识库）/`. In that root, `wiki/raw/` is the Markdown corpus and `检索索引/` is the local index. Do not index the original source folder directly.
 
@@ -29,7 +29,7 @@ When used through `social-science-km`, run this skill from the project root `<so
 3. Build or refresh the local index:
 
 ```bash
-python skills-hermes/research/SiliconFlow-rag/scripts/build_index.py --md-dir wiki/raw --index-dir 检索索引
+python skills/SiliconFlow-rag/scripts/build_index.py --md-dir wiki/raw --index-dir 检索索引
 ```
 
 Optional: keep RAG parameters in a local JSON config, then pass it with `--config`. Command-line flags override config values.
@@ -55,7 +55,7 @@ Optional: keep RAG parameters in a local JSON config, then pass it with `--confi
 ```
 
 ```bash
-python skills-hermes/research/SiliconFlow-rag/scripts/build_index.py --config rag_config.json
+python skills/SiliconFlow-rag/scripts/build_index.py --config rag_config.json
 ```
 
 **Incremental indexing (recommended after initial full build):**
@@ -63,7 +63,7 @@ python skills-hermes/research/SiliconFlow-rag/scripts/build_index.py --config ra
 When you add or modify a few files, use `--incremental` to only re-index changed content — avoids re-embedding everything and saves API cost:
 
 ```bash
-python skills-hermes/research/SiliconFlow-rag/scripts/build_index.py --md-dir wiki/raw --index-dir 检索索引 --incremental
+python skills/SiliconFlow-rag/scripts/build_index.py --md-dir wiki/raw --index-dir 检索索引 --incremental
 ```
 
 How it works:
@@ -77,23 +77,23 @@ How it works:
 4. Query the index and use the returned evidence to answer the user:
 
 ```bash
-python skills-hermes/research/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --question "用户的问题"
+python skills/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --question "用户的问题"
 ```
 
 ```bash
-python skills-hermes/research/SiliconFlow-rag/scripts/query_index.py --config rag_config.json --question "用户的问题"
+python skills/SiliconFlow-rag/scripts/query_index.py --config rag_config.json --question "用户的问题"
 ```
 
 5. Enable reranking only when the user explicitly asks for better ordering, precise ranking, rerank mode, or similar wording:
 
 ```bash
-python skills-hermes/research/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --question "用户的问题" --rerank
+python skills/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --question "用户的问题" --rerank
 ```
 
 6. Context expansion (optional): include adjacent chunks from the same source file to provide surrounding context for each result:
 
 ```bash
-python skills-hermes/research/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --question "用户的问题" --expand-context
+python skills/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --question "用户的问题" --expand-context
 ```
 
 Use `--context-window N` to control how many chunks on each side (default: 1). Context chunks are labeled `[context for chunk X]` in the output and do not show similarity/rerank scores.
@@ -101,7 +101,7 @@ Use `--context-window N` to control how many chunks on each side (default: 1). C
 7. Index statistics: inspect index health and composition without querying:
 
 ```bash
-python skills-hermes/research/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --stats
+python skills/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --stats
 ```
 
 Outputs file count, chunk count, embedding model, build time, format version, per-file chunk distribution, and hash tracking status.
@@ -142,7 +142,7 @@ Outputs file count, chunk count, embedding model, build time, format version, pe
 Run the self-test without a real API key:
 
 ```bash
-python skills-hermes/research/SiliconFlow-rag/scripts/self_test.py
+python skills/SiliconFlow-rag/scripts/self_test.py
 ```
 
 The self-test uses mock embeddings and validates chunking, index writing, and query output formatting.

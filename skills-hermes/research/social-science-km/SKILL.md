@@ -1,6 +1,6 @@
 ---
 name: social-science-km
-description: Coordinate a social-science paper knowledge-management workflow. Use when users want to turn source PDFs or documents into a MarkItDown-processed `raw/` folder, compile them into a `wiki/` knowledge base with llm-wiki, and build/query a local RAG index with SiliconFlow-rag.
+description: Coordinate a social-science paper knowledge-management workflow. Use when users want to turn source PDFs or documents into a MarkItDown-processed `raw/` folder, compile them into a `wiki/` knowledge base with karpathy-wiki, and build/query a local RAG index with SiliconFlow-rag.
 ---
 
 # Social Science Knowledge Management
@@ -8,7 +8,7 @@ description: Coordinate a social-science paper knowledge-management workflow. Us
 Use this skill as the coordinator for a three-step social-science paper knowledge system:
 
 1. Convert source documents to Markdown with `markitdown`, writing the processed Markdown into the knowledge-base wiki's `raw/` directory.
-2. Compile that `raw/` into a persistent `wiki/` knowledge base with `llm-wiki`.
+2. Compile that `raw/` into a persistent `wiki/` knowledge base with `karpathy-wiki`.
 3. Build and query a local RAG index from that `raw/` with `SiliconFlow-rag`.
 
 Do not create a separate `资料md/` layer. In this workflow, `wiki/raw/` is the single bottom-layer text store.
@@ -22,21 +22,21 @@ Use this fixed directory contract:
 ```
 <source-folder>/                      ← 原始文档。只读，永不修改或删除
 <source-folder>（知识库）/
-├── wiki/                             ← $WIKI_PATH（llm-wiki 项目根）
-│   ├── SCHEMA.md                     ← llm-wiki 初始化生成的结构与规范
+├── wiki/                             ← $WIKI_PATH（karpathy-wiki 项目根）
+│   ├── SCHEMA.md                     ← karpathy-wiki 初始化生成的结构与规范
 │   ├── index.md                      ← 知识库内容目录
 │   ├── log.md                        ← 操作日志
 │   ├── raw/                          ← markitdown 输出的 Markdown 语料
 │   │   ├── <topic>/                  ← 按原始主题/目录组织
 │   │   └── _主题索引.md              ← Step 1 生成的语料清单
-│   ├── entities/                     ← llm-wiki 编译的实体页
-│   ├── concepts/                     ← llm-wiki 编译的概念页
-│   ├── comparisons/                  ← llm-wiki 编译的比较页
-│   └── queries/                      ← llm-wiki 存档的查询结果
+│   ├── entities/                     ← karpathy-wiki 编译的实体页
+│   ├── concepts/                     ← karpathy-wiki 编译的概念页
+│   ├── comparisons/                  ← karpathy-wiki 编译的比较页
+│   └── queries/                      ← karpathy-wiki 存档的查询结果
 └── 检索索引/                         ← RAG 本地索引（由 SiliconFlow-rag 维护）
 ```
 
-Treat `<source-folder>（知识库）/` as the project root when running commands. Set `WIKI_PATH` to `<知识库>/wiki/` so that `llm-wiki` operates on the correct wiki directory. `SiliconFlow-rag` indexes `wiki/raw/` (relative to the project root) and stores embeddings in `检索索引/`.
+Treat `<source-folder>（知识库）/` as the project root when running commands. Set `WIKI_PATH` to `<知识库>/wiki/` so that `karpathy-wiki` operates on the correct wiki directory. `SiliconFlow-rag` indexes `wiki/raw/` (relative to the project root) and stores embeddings in `检索索引/`.
 
 Do not place `raw/`, `wiki/`, or `检索索引/` beside the source folder's parent directory, and do not put the knowledge-base folder inside the source folder. Keeping source and knowledge-base folders as siblings prevents converted Markdown, wiki files, and index files from being scanned again as source material.
 
@@ -62,23 +62,23 @@ Validation:
 
 ## Step 2: Build Wiki
 
-Use `llm-wiki`. Set `WIKI_PATH` to `<知识库>/wiki/` before running it. Its source layer is `wiki/raw/`, which in this workflow already contains MarkItDown-processed Markdown.
+Use `karpathy-wiki`. Set `WIKI_PATH` to `<知识库>/wiki/` before running it. Its source layer is `wiki/raw/`, which in this workflow already contains MarkItDown-processed Markdown.
 
 Procedure:
 
-1. Read the installed `llm-wiki/SKILL.md` if not already loaded in the conversation.
+1. Read the installed `karpathy-wiki/SKILL.md` if not already loaded in the conversation.
 2. Export `WIKI_PATH=<知识库>/wiki/` (or tell the agent to set this environment variable).
 3. Initialize only missing `wiki/` structures according to that skill:
    - `wiki/SCHEMA.md`
    - `wiki/index.md`
    - `wiki/log.md`
-4. Compile raw content into `wiki/entities/`, `wiki/concepts/`, and `wiki/comparisons/` per llm-wiki's workflow.
+4. Compile raw content into `wiki/entities/`, `wiki/concepts/`, and `wiki/comparisons/` per karpathy-wiki's workflow.
 5. Update `wiki/index.md` and append to `wiki/log.md` after ingest.
 6. Preserve factual disagreements with source attribution instead of smoothing them away.
 
 ### Bulk Ingest Pattern (50+ files, multi-domain)
 
-When the raw corpus is large and spans multiple disciplines, the llm-wiki parallel workflow is essential. Split source files by domain/field into 2–3 groups, spin one `delegate_task` subagent per group, and have each return **structured extraction only** (no file writes). The parent then synthesizes and creates pages.
+When the raw corpus is large and spans multiple disciplines, the karpathy-wiki parallel workflow is essential. Split source files by domain/field into 2–3 groups, spin one `delegate_task` subagent per group, and have each return **structured extraction only** (no file writes). The parent then synthesizes and creates pages.
 
 **Grouping strategy**: split by source directory domain — e.g. classical texts, secondary scholarship, empirical psychology. Keep groups under ~30 files each.
 
@@ -90,7 +90,7 @@ When the raw corpus is large and spans multiple disciplines, the llm-wiki parall
 
 **Parent synthesis**: collect all subagent summaries, identify cross-group connections that no single subagent could see, then create wiki pages (concepts first, then entities, then comparisons). Update index.md and log.md in one pass at the end.
 
-**Pitfall**: subagent file-mutation hazard (llm-wiki skill warns about this). Subagents share the parent filesystem — never let them write wiki pages or update navigation. They return structured data; the parent writes.
+**Pitfall**: subagent file-mutation hazard (karpathy-wiki skill warns about this). Subagents share the parent filesystem — never let them write wiki pages or update navigation. They return structured data; the parent writes.
 
 Validation:
 
@@ -109,7 +109,7 @@ Before the first real RAG build or query, make sure `SILICONFLOW_API_KEY` is con
 Build the index after `wiki/raw/` is populated, running from the project root (`<知识库>/`):
 
 ```bash
-python skills-hermes/research/SiliconFlow-rag/scripts/build_index.py --md-dir wiki/raw --index-dir 检索索引
+python skills/SiliconFlow-rag/scripts/build_index.py --md-dir wiki/raw --index-dir 检索索引
 ```
 
 ### Proactive Index Refresh (mandatory)
@@ -153,10 +153,10 @@ MANIFEST = INDEX_DIR / "manifest.json"
 
 def find_build_script() -> Path:
     candidates = [
-        SCRIPT_DIR / "skills-hermes" / "research" / "SiliconFlow-rag" / "scripts" / "build_index.py",
         SCRIPT_DIR / "skills" / "SiliconFlow-rag" / "scripts" / "build_index.py",
-        Path.home() / ".hermes" / "skills" / "research" / "SiliconFlow-rag" / "scripts" / "build_index.py",
+        SCRIPT_DIR / "skills-hermes" / "research" / "SiliconFlow-rag" / "scripts" / "build_index.py",
         Path.home() / ".codex" / "skills" / "SiliconFlow-rag" / "scripts" / "build_index.py",
+        Path.home() / ".hermes" / "skills" / "research" / "SiliconFlow-rag" / "scripts" / "build_index.py",
         Path("D:/hermes/skills/research/SiliconFlow-rag/scripts/build_index.py"),
     ]
     for candidate in candidates:
@@ -247,13 +247,13 @@ if __name__ == "__main__":
 Query without rerank by default:
 
 ```bash
-python skills-hermes/research/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --question "用户的问题"
+python skills/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --question "用户的问题"
 ```
 
 Use rerank only when the user explicitly asks for better ordering, precise ranking, rerank mode, or use of the rerank model:
 
 ```bash
-python skills-hermes/research/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --question "用户的问题" --rerank
+python skills/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --question "用户的问题" --rerank
 ```
 
 ### Unified Query (km_query.py)
