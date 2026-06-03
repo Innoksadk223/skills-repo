@@ -91,19 +91,19 @@ Before the first real RAG build or query, make sure `SILICONFLOW_API_KEY` is con
 Build or refresh the index after `wiki/raw/` changes, running from the project root (`<知识库>/`):
 
 ```bash
-python skills/SiliconFlow-rag/scripts/build_index.py --md-dir wiki/raw --index-dir 检索索引
+python skills-hermes/research/SiliconFlow-rag/scripts/build_index.py --md-dir wiki/raw --index-dir 检索索引
 ```
 
 Query without rerank by default:
 
 ```bash
-python skills/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --question "用户的问题"
+python skills-hermes/research/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --question "用户的问题"
 ```
 
 Use rerank only when the user explicitly asks for better ordering, precise ranking, rerank mode, or use of the rerank model:
 
 ```bash
-python skills/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --question "用户的问题" --rerank
+python skills-hermes/research/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --question "用户的问题" --rerank
 ```
 
 Validation:
