@@ -65,9 +65,11 @@ Rule: every tag on a page must appear in this taxonomy. If a new tag is needed,
 add it here first, then use it. This prevents tag sprawl.
 
 ## Page Thresholds
-- **Create a page** when an entity/concept appears in 2+ sources OR is central to one source
+- **Create a full page** when an entity/concept appears in 2+ sources OR is central to one source
+- **Create a stub page** when an entity/concept is [[wikilinked]] by another page but doesn't yet have its own page. Stubs prevent dead links in Obsidian's graph view. See Stub Pages below for format.
 - **Add to existing page** when a source mentions something already covered
-- **DON'T create a page** for passing mentions, minor details, or things outside the domain
+- **DON'T create a page** for things entirely outside the domain
+- **Upgrade stub → full page** when a stub accumulates info from 2+ sources — remove the stub marker, add detail
 - **Split a page** when it exceeds ~200 lines — break into sub-topics with cross-links
 - **Archive a page** when its content is fully superseded — move to `_archive/`, remove from index
 
@@ -84,6 +86,36 @@ One page per concept or topic. Include:
 - Current state of knowledge
 - Open questions or debates
 - Related concepts ([[wikilinks]])
+
+## Stub Pages
+For concepts/entities that are [[wikilinked]] but lack enough source material for a full page.
+Stubs ensure Obsidian's graph view has no dead links. Format:
+
+```markdown
+---
+title: 概念名
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+type: concept
+tags: [待补充]
+sources: []
+confidence: low
+---
+
+# 概念名
+
+> 📝 待完善。此页面被其他页面引用，尚无详细内容。
+
+## 简述
+[从引用页面中提取的一句话定义，如果可用]
+
+## 被引用
+- [[页面A]] — 在此上下文中提及
+```
+
+Stubs must still be added to `index.md` under the correct section.
+When a stub later accumulates enough material (2+ sources), upgrade it to a full page:
+remove the 📝 marker, fill in full content, update `confidence`.
 
 ## Comparison Pages
 Side-by-side analyses. Include:

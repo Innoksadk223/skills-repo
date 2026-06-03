@@ -179,9 +179,16 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
    - **Confidence:** For opinion-heavy, fast-moving, or single-source claims, set
      `confidence: medium` or `low` in frontmatter. Don't mark `high` unless the
      claim is well-supported across multiple sources.
+   - **Stub pages for dead links:** After all pages are written, scan every
+     `[[wikilink]]` in the new/updated pages. For each wikilink that points to
+     a page that doesn't exist yet, create a minimal stub page (see SCHEMA.md →
+     Stub Pages for format). This ensures Obsidian's graph view has no dead
+     links — every concept you can click on has at least a placeholder.
+     Use Chinese page names. Add stubs to the appropriate directory
+     (`concepts/` or `entities/` based on what the linked term is).
 
 ⑤ **Update navigation:**
-   - Add new pages to `index.md` under the correct section, sorted by pinyin (拼音首字母) for Chinese titles
+   - Add new pages (full and stub) to `index.md` under the correct section, sorted by pinyin (拼音首字母) for Chinese titles
    - Update the "总页数" count and "最后更新" date in index header
    - Append to `log.md`: `## [YYYY-MM-DD] ingest | 来源标题`
    - List every file created or updated in the log entry
@@ -246,6 +253,8 @@ wiki = "<WIKI_PATH>"
    changed. Not a hard error, but worth reporting.
 
 ⑨ **Page size:** Flag pages over 200 lines — candidates for splitting.
+
+- **Stub upgrades:** For each stub page (those with `confidence: low` and the 📝 marker), check how many other pages now [[wikilink]] to it. If a stub is referenced by 2+ full pages, flag it as a candidate for upgrade to a full page.
 
 ⑩ **Tag audit:** List all tags in use, flag any not in the SCHEMA.md taxonomy.
 
