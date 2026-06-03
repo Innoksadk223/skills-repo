@@ -107,10 +107,12 @@ cd ~/inno-skills
 bash setup.sh
 ```
 
-当用户要求更新本技能库时，执行：
+当用户要求更新本技能库时：
 
+1. 先找安装路径：检查 `~/.{agent}/skills/.skills-repo-path` 获取 repo 位置
+2. 然后执行：
 ```bash
-cd ~/inno-skills
+cd $(cat ~/.claude/skills/.skills-repo-path)
 git pull
 bash setup.sh
 ```

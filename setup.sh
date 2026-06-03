@@ -296,6 +296,8 @@ for target in "${TARGETS[@]}"; do
             ;;
     esac
     echo "  → 新增 $new，更新 $upd，跳过 $skip"
+    # 记录安装路径，供后续更新时定位
+    echo "$REPO_DIR" > "$dir/.skills-repo-path"
 done
 
 echo ""
