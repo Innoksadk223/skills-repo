@@ -35,7 +35,7 @@
 >   "审一下这篇论文" → 自动用 academic-paper-review
 >  想精准指定就说 "用 browser-use 打开这个网页"。」
 
-## 技能速查（31 个）
+## 技能速查（32 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
@@ -43,7 +43,7 @@
 | 📝 PaperSpine | paper-spine + 11 子模块 (12) | 学术论文全流程：研究→引用→改写→LaTeX→翻译→审校 |
 | 📄 Minimax | minimax-docx / minimax-pdf / minimax-xlsx / pptx-generator (4) | DOCX/PDF/XLSX/PPTX 专业文档生成 |
 | 🔬 学术 | llm-wiki / academic-search / academic-paper-review / SiliconFlow-rag / social-science-km (5) | Karpathy 式知识库、学术搜索、论文审阅、社科知识库与 RAG 检索 |
-| 🛠 工具 | skill-creator / cleanup / find-skills / grill-me / markitdown (5) | 技能创建、清理、发现、质询、文件转 Markdown |
+| 🛠 工具 | skill-creator / skill-architecture / cleanup / find-skills / grill-me / markitdown (6) | 技能创建、模块化架构、清理、发现、质询、文件转 Markdown |
 
 ### 详细
 
@@ -76,6 +76,7 @@
 | SiliconFlow-rag | 为 raw Markdown 建立本地 RAG 索引，支持硅基流动嵌入与可选重排 | 本仓库 |
 | social-science-km | 协调源文件转 Markdown、Karpathy wiki 和社科 RAG 检索三步流程 | 本仓库 |
 | skill-creator | 创建新的 AI 技能 | [clawhub.ai](https://clawhub.ai) |
+| skill-architecture | 模块化技能架构设计：松耦合、高内聚、断点续传 | 本仓库 |
 | cleanup | 任务完成后清理临时文件 | — |
 | find-skills | 发现和安装社区技能 | — |
 | grill-me | 深度质询你的方案/设计决策 | — |
