@@ -59,19 +59,20 @@ Example for AI/ML:
 - 模型架构：`模型`、`架构（architecture）`、`基准（benchmark）`、`训练`
 - 人物/组织：`人物`、`公司`、`实验室`、`开源`
 - 技术：`优化`、`微调（fine-tuning）`、`推理（inference）`、`对齐（alignment）`、`数据`
-- 元信息：`对比`、`时间线`、`争议`、`预测`
+- 元信息：`辨析`、`时间线`、`争议`、`预测`
 
 Rule: every tag on a page must appear in this taxonomy. If a new tag is needed,
 add it here first, then use it. This prevents tag sprawl.
 
 ## Page Thresholds
-- **Create a full page** when an entity/concept is mentioned in a source and is notable within the domain. Don't require multiple sources — if it matters to the domain, one source is enough.
+- **Create a full page** when an entity/concept is mentioned in a source and is directly related to the domain (see Domain field above). One source is enough — don't gate on source count.
 - **Create a stub page** when an entity/concept is [[wikilinked]] by another page but doesn't yet have its own page. Stubs prevent dead links in Obsidian's graph view. See Stub Pages below for format.
 - **Add to existing page** when a source mentions something already covered
 - **DON'T create a page** for things entirely outside the domain
 - **Upgrade stub → full page** when enough material accumulates to write a meaningful entry — remove the stub marker, fill in detail, update `confidence`
 - **Split a page** when it exceeds ~200 lines — break into sub-topics with cross-links
 - **Archive a page** when its content is fully superseded — move to `_archive/`, remove from index
+- **Archive a stub** when all pages that [[wikilink]] to it have been archived — an orphan stub with no active referrers is dead weight
 
 ## Entity Pages
 One page per notable entity. Include:
@@ -118,12 +119,13 @@ Stubs must still be added to `index.md` under the correct section.
 When a stub later accumulates enough material, upgrade it to a full page:
 remove the 📝 marker, fill in full content, update `confidence`.
 
-## Comparison Pages
-Side-by-side analyses. Include:
-- What is being compared and why
-- Dimensions of comparison (table format preferred)
-- Verdict or synthesis
-- Sources
+## 辨析页（Comparison）
+Side-by-side analysis, distinction, or clarification between concepts/entities. Include:
+- **比较/区分什么、为什么** — 两个概念哪里像、哪里不同
+- **易混点** — 一句话说清本质区别（社科高频：相关 vs 因果、平等 vs 公平）
+- **对比维度** — 表格格式（适用时）
+- **结论或综合**
+- **来源**
 
 ## Update Policy
 When new information conflicts with existing content:

@@ -52,7 +52,7 @@ wiki/
 │   └── assets/         # Images, diagrams referenced by sources
 ├── entities/           # Layer 2: Entity pages (people, orgs, products, models)
 ├── concepts/           # Layer 2: Concept/topic pages
-├── comparisons/        # Layer 2: Side-by-side analyses
+├── comparisons/        # Layer 2: 辨析页（comparison/distinction）
 └── queries/            # Layer 2: Filed query results worth keeping
 ```
 
@@ -210,7 +210,7 @@ When the user asks a question about the wiki's domain:
 ③ **Read the relevant pages** using `read_file`.
 ④ **Synthesize an answer** from the compiled knowledge. Cite the wiki pages
    you drew from: "根据 [[页面A]] 和 [[页面B]]……"
-⑤ **File valuable answers back** — if the answer is a substantial comparison,
+⑤ **File valuable answers back** — if the answer is a substantial 辨析 (comparison/distinction),
    deep dive, or novel synthesis, create a page in `queries/` or `comparisons/`.
    Don't file trivial lookups — only answers that would be painful to re-derive.
 ⑥ **Update log.md** with the query and whether it was filed.
@@ -257,6 +257,7 @@ wiki = "<WIKI_PATH>"
 ⑨ **Page size:** Flag pages over 200 lines — candidates for splitting.
 
 - **Stub upgrades:** For each stub page (those with `confidence: low` and the 📝 marker), check how many other pages now [[wikilink]] to it. If a stub is referenced by 2+ full pages, flag it as a candidate for upgrade to a full page.
+- **Stub cleanup:** For each stub, check if ALL pages that [[wikilink]] to it are now archived. If yes, archive the stub too — an orphan stub with no active referrers is dead weight.
 
 ⑩ **Tag audit:** List all tags in use, flag any not in the SCHEMA.md taxonomy.
 
@@ -310,7 +311,7 @@ parallelize the analysis phase to save time:
    groups — a person/idea may appear in files from different groups, and only
    the parent session can connect those dots.
 5. **Create/update wiki pages in the parent session only.** The parent uses
-   the combined intelligence to write entity, concept, and comparison pages
+   the combined intelligence to write entity, concept, and 辨析 pages
    with cross-group cross-references that no single subagent could produce.
 6. Update `index.md` and `log.md` exclusively in the parent session.
 
@@ -349,6 +350,7 @@ For best results:
 - Set Obsidian's attachment folder to `raw/assets/`
 - Enable "Wikilinks" in Obsidian settings (usually on by default)
 - **Exclude `raw/` from graph view:** Settings → Files & Links → Excluded files → add `raw/`. Also in Graph view → Filter → Excluded folders → add `raw/`. This keeps the knowledge graph clean — only wiki pages appear as nodes, not raw source files.
+- **Graph color grouping by `type`:** Graph view → Groups → create groups based on `type` field. Suggested colors: `entity` → blue (#4a9eff), `concept` → green (#4caf50), `comparison` → orange (#ff9800), `query` → grey (#9e9e9e). Stubs (pages with `confidence: low`) → dashed border or low opacity.
 - Install Dataview plugin for queries like `TABLE tags FROM "实体" WHERE contains(tags, "公司")`
 
 If using the Obsidian skill alongside this one, set `OBSIDIAN_VAULT_PATH` to the

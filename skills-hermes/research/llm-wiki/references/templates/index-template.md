@@ -9,6 +9,6 @@
 
 ## 概念（Concepts）
 
-## 对比（Comparisons）
+## 辨析（Comparisons）
 
 ## 查询存档（Queries）
