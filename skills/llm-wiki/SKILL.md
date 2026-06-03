@@ -186,6 +186,8 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
      links — every concept you can click on has at least a placeholder.
      Use Chinese page names. Add stubs to the appropriate directory
      (`concepts/` or `entities/` based on what the linked term is).
+     Stubs never reference `raw/` sources — their `sources:` field stays empty
+     and content is derived from the wiki pages that link to them.
 
 ⑤ **Update navigation:**
    - Add new pages (full and stub) to `index.md` under the correct section, sorted by pinyin (拼音首字母) for Chinese titles
@@ -346,6 +348,7 @@ The wiki directory works as an Obsidian vault out of the box:
 For best results:
 - Set Obsidian's attachment folder to `raw/assets/`
 - Enable "Wikilinks" in Obsidian settings (usually on by default)
+- **Exclude `raw/` from graph view:** Settings → Files & Links → Excluded files → add `raw/`. Also in Graph view → Filter → Excluded folders → add `raw/`. This keeps the knowledge graph clean — only wiki pages appear as nodes, not raw source files.
 - Install Dataview plugin for queries like `TABLE tags FROM "实体" WHERE contains(tags, "公司")`
 
 If using the Obsidian skill alongside this one, set `OBSIDIAN_VAULT_PATH` to the

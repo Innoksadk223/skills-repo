@@ -107,14 +107,15 @@ confidence: low
 > 📝 待完善。此页面被其他页面引用，尚无详细内容。
 
 ## 简述
-[从引用页面中提取的一句话定义，如果可用]
+[从引用此概念的 wiki 页面中提取的一句话定义，如果可用。不引用 raw/ 源文件。]
 
 ## 被引用
 - [[页面A]] — 在此上下文中提及
 ```
 
 Stubs must still be added to `index.md` under the correct section.
-When a stub later accumulates enough material (2+ sources), upgrade it to a full page:
+**Stubs never reference raw/ sources.** Their `sources:` field stays empty.
+When a stub later accumulates enough material, upgrade it to a full page:
 remove the 📝 marker, fill in full content, update `confidence`.
 
 ## Comparison Pages
