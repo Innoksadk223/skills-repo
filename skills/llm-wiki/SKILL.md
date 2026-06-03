@@ -1,7 +1,7 @@
 ---
 name: llm-wiki
-description: "Karpathy's LLM Wiki: build/query interlinked markdown KB."
-version: 2.1.0
+description: "Build and maintain a persistent, compounding knowledge base as interlinked markdown files (Karpathy's LLM Wiki pattern). Wiki content is written in Chinese with 中英对照 for English terms. Use when the user asks to create/start a wiki, ingest/add/process a source into their wiki, query their wiki, lint/audit/health-check their wiki, or references their wiki/knowledge base/notes in a research context."
+version: 2.2.0
 author: Hermes Agent
 source: hermes-builtin
 license: MIT
@@ -24,15 +24,6 @@ Contradictions have already been flagged. Synthesis reflects everything ingested
 
 **Division of labor:** The human curates sources and directs analysis. The agent
 summarizes, cross-references, files, and maintains consistency.
-
-## When This Skill Activates
-
-Use this skill when the user:
-- Asks to create, build, or start a wiki or knowledge base
-- Asks to ingest, add, or process a source into their wiki
-- Asks a question and an existing wiki is present at the configured path
-- Asks to lint, audit, or health-check their wiki
-- References their wiki, knowledge base, or "notes" in a research context
 
 ## Wiki Location
 
@@ -69,6 +60,25 @@ wiki/
 **Layer 2 — The Wiki:** Agent-owned markdown files. Created, updated, and
 cross-referenced by the agent.
 **Layer 3 — The Schema:** `SCHEMA.md` defines structure, conventions, and tag taxonomy.
+
+## Wiki Content Language
+
+**The wiki content (page titles, body text, tags) is written in Chinese.** English technical terms use 中英对照（Chinese-first, English in parentheses）format.
+
+- **Page titles:** Chinese. If the concept has a standard English name, use `中文名称（English Name）`.
+  e.g. `注意力机制（Attention Mechanism）`、`Transformer 架构`、`RLHF（人类反馈强化学习）`
+- **Body text:** Chinese throughout. English terms use 中英对照 on first occurrence:
+  `反向传播（Backpropagation）`，then use either Chinese or the English abbreviation.
+- **Entity names:** Chinese translation (if widely adopted), English original on first mention.
+  e.g. `安德烈·卡帕西（Andrej Karpathy）`、`OpenAI`（well-known English name kept as-is）、`深度求索（DeepSeek）`
+- **Tags:** Chinese tags, with English in parentheses where the English term is standard.
+  e.g. `tags: [模型, 训练, 微调（fine-tuning）, 对齐（alignment）]`
+- **File names:** Chinese filenames are supported (Obsidian handles Unicode). Keep naming consistent.
+  e.g. `Transformer-架构.md` or `transformer-architecture.md` — both fine, pick one style.
+- **Wikilinks:** Use Chinese page names for link targets. `[[注意力机制]]`、`[[GPT 系列]]`
+- **index.md entries:** One-line summaries in Chinese.
+- **log.md entries:** Action keyword in English, subject in Chinese.
+  e.g. `## [2026-06-04] ingest | Transformer 架构详解`
 
 ## Resuming an Existing Wiki (CRITICAL — do this every session)
 
@@ -109,149 +119,17 @@ When the user asks to create or start a wiki:
 
 ### SCHEMA.md Template
 
-Adapt to the user's domain. The schema constrains agent behavior and ensures consistency:
-
-```markdown
-# Wiki Schema
-
-## Domain
-[What this wiki covers — e.g., "AI/ML research", "personal health", "startup intelligence"]
-
-## Conventions
-- File names: lowercase, hyphens, no spaces (e.g., `transformer-architecture.md`)
-- Every wiki page starts with YAML frontmatter (see below)
-- Use `[[wikilinks]]` to link between pages (minimum 2 outbound links per page)
-- When updating a page, always bump the `updated` date
-- Every new page must be added to `index.md` under the correct section
-- Every action must be appended to `log.md`
-- **Provenance markers:** On pages that synthesize 3+ sources, append `^[raw/articles/source-file.md]`
-  at the end of paragraphs whose claims come from a specific source. This lets a reader trace each
-  claim back without re-reading the whole raw file. Optional on single-source pages where the
-  `sources:` frontmatter is enough.
-
-## Frontmatter
-  ```yaml
-  ---
-  title: Page Title
-  created: YYYY-MM-DD
-  updated: YYYY-MM-DD
-  type: entity | concept | comparison | query | summary
-  tags: [from taxonomy below]
-  sources: [raw/articles/source-name.md]
-  # Optional quality signals:
-  confidence: high | medium | low        # how well-supported the claims are
-  contested: true                        # set when the page has unresolved contradictions
-  contradictions: [other-page-slug]      # pages this one conflicts with
-  ---
-  ```
-
-`confidence` and `contested` are optional but recommended for opinion-heavy or fast-moving
-topics. Lint surfaces `contested: true` and `confidence: low` pages for review so weak claims
-don't silently harden into accepted wiki fact.
-
-### raw/ Frontmatter
-
-Raw sources ALSO get a small frontmatter block so re-ingests can detect drift:
-
-```yaml
----
-source_url: https://example.com/article   # original URL, if applicable
-ingested: YYYY-MM-DD
-sha256: <hex digest of the raw content below the frontmatter>
----
-```
-
-The `sha256:` lets a future re-ingest of the same URL skip processing when content is unchanged,
-and flag drift when it has changed. Compute over the body only (everything after the closing
-`---`), not the frontmatter itself.
-
-## Tag Taxonomy
-[Define 10-20 top-level tags for the domain. Add new tags here BEFORE using them.]
-
-Example for AI/ML:
-- Models: model, architecture, benchmark, training
-- People/Orgs: person, company, lab, open-source
-- Techniques: optimization, fine-tuning, inference, alignment, data
-- Meta: comparison, timeline, controversy, prediction
-
-Rule: every tag on a page must appear in this taxonomy. If a new tag is needed,
-add it here first, then use it. This prevents tag sprawl.
-
-## Page Thresholds
-- **Create a page** when an entity/concept appears in 2+ sources OR is central to one source
-- **Add to existing page** when a source mentions something already covered
-- **DON'T create a page** for passing mentions, minor details, or things outside the domain
-- **Split a page** when it exceeds ~200 lines — break into sub-topics with cross-links
-- **Archive a page** when its content is fully superseded — move to `_archive/`, remove from index
-
-## Entity Pages
-One page per notable entity. Include:
-- Overview / what it is
-- Key facts and dates
-- Relationships to other entities ([[wikilinks]])
-- Source references
-
-## Concept Pages
-One page per concept or topic. Include:
-- Definition / explanation
-- Current state of knowledge
-- Open questions or debates
-- Related concepts ([[wikilinks]])
-
-## Comparison Pages
-Side-by-side analyses. Include:
-- What is being compared and why
-- Dimensions of comparison (table format preferred)
-- Verdict or synthesis
-- Sources
-
-## Update Policy
-When new information conflicts with existing content:
-1. Check the dates — newer sources generally supersede older ones
-2. If genuinely contradictory, note both positions with dates and sources
-3. Mark the contradiction in frontmatter: `contradictions: [page-name]`
-4. Flag for user review in the lint report
-```
+Read [`references/templates/SCHEMA-template.md`](references/templates/SCHEMA-template.md), customize the domain and tag taxonomy for the user's domain, then write to `$WIKI/SCHEMA.md`.
 
 ### index.md Template
 
-The index is sectioned by type. Each entry is one line: wikilink + summary.
+Read [`references/templates/index-template.md`](references/templates/index-template.md) and write to `$WIKI/index.md`.
 
-```markdown
-# Wiki Index
-
-> Content catalog. Every wiki page listed under its type with a one-line summary.
-> Read this first to find relevant pages for any query.
-> Last updated: YYYY-MM-DD | Total pages: N
-
-## Entities
-<!-- Alphabetical within section -->
-
-## Concepts
-
-## Comparisons
-
-## Queries
-```
-
-**Scaling rule:** When any section exceeds 50 entries, split it into sub-sections
-by first letter or sub-domain. When the index exceeds 200 entries total, create
-a `_meta/topic-map.md` that groups pages by theme for faster navigation.
+**Scaling rule:** When any index section exceeds 50 entries, split into sub-sections by pinyin first letter or sub-domain. When the index exceeds 200 entries total, create `_meta/主题地图.md` for theme-based navigation.
 
 ### log.md Template
 
-```markdown
-# Wiki Log
-
-> Chronological record of all wiki actions. Append-only.
-> Format: `## [YYYY-MM-DD] action | subject`
-> Actions: ingest, update, query, lint, create, archive, delete
-> When this file exceeds 500 entries, rotate: rename to log-YYYY.md, start fresh.
-
-## [YYYY-MM-DD] create | Wiki initialized
-- Domain: [domain]
-- Structure created with SCHEMA.md, index.md, log.md
-```
+Read [`references/templates/log-template.md`](references/templates/log-template.md) and write to `$WIKI/log.md`.
 
 ## Core Operations
 
@@ -286,7 +164,11 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
 
 ④ **Write or update wiki pages:**
    - **New entities/concepts:** Create pages only if they meet the Page Thresholds
-     in SCHEMA.md (2+ source mentions, or central to one source)
+     in SCHEMA.md (2+ source mentions, or central to one source).
+     **Use Chinese page titles** with 中英对照 when the English term is standard:
+     `[[注意力机制（Attention Mechanism）]]`、`[[安德烈·卡帕西（Andrej Karpathy）]]`、
+     `[[Transformer 架构]]`（well-known English term as-is + Chinese suffix）、
+     `[[OpenAI]]`（well-known English name kept as-is）
    - **Existing pages:** Add new information, update facts, bump `updated` date.
      When new info contradicts existing content, follow the Update Policy.
    - **Cross-reference:** Every new or updated page must link to at least 2 other
@@ -299,9 +181,9 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
      claim is well-supported across multiple sources.
 
 ⑤ **Update navigation:**
-   - Add new pages to `index.md` under the correct section, alphabetically
-   - Update the "Total pages" count and "Last updated" date in index header
-   - Append to `log.md`: `## [YYYY-MM-DD] ingest | Source Title`
+   - Add new pages to `index.md` under the correct section, sorted by pinyin (拼音首字母) for Chinese titles
+   - Update the "总页数" count and "最后更新" date in index header
+   - Append to `log.md`: `## [YYYY-MM-DD] ingest | 来源标题`
    - List every file created or updated in the log entry
 
 ⑥ **Report what changed** — list every file created or updated to the user.
@@ -318,7 +200,7 @@ When the user asks a question about the wiki's domain:
    for key terms — the index alone may miss relevant content.
 ③ **Read the relevant pages** using `read_file`.
 ④ **Synthesize an answer** from the compiled knowledge. Cite the wiki pages
-   you drew from: "Based on [[page-a]] and [[page-b]]..."
+   you drew from: "根据 [[页面A]] 和 [[页面B]]……"
 ⑤ **File valuable answers back** — if the answer is a substantial comparison,
    deep dive, or novel synthesis, create a page in `queries/` or `comparisons/`.
    Don't file trivial lookups — only answers that would be painful to re-derive.
@@ -386,7 +268,7 @@ search_files "transformer" path="$WIKI" file_glob="*.md"
 search_files "*.md" target="files" path="$WIKI"
 
 # Find pages by tag
-search_files "tags:.*alignment" path="$WIKI" file_glob="*.md"
+search_files "tags:.*对齐" path="$WIKI" file_glob="*.md"
 
 # Recent activity
 read_file "$WIKI/log.md" offset=<last 20 lines>
@@ -441,7 +323,7 @@ When content is fully superseded or the domain scope changes:
 1. Create `_archive/` directory if it doesn't exist
 2. Move the page to `_archive/` with its original path (e.g., `_archive/entities/old-page.md`)
 3. Remove from `index.md`
-4. Update any pages that linked to it — replace wikilink with plain text + "(archived)"
+4. Update any pages that linked to it — replace wikilink with plain text + "（已归档）"
 5. Log the archive action
 
 ### Obsidian Integration
@@ -455,7 +337,7 @@ The wiki directory works as an Obsidian vault out of the box:
 For best results:
 - Set Obsidian's attachment folder to `raw/assets/`
 - Enable "Wikilinks" in Obsidian settings (usually on by default)
-- Install Dataview plugin for queries like `TABLE tags FROM "entities" WHERE contains(tags, "company")`
+- Install Dataview plugin for queries like `TABLE tags FROM "实体" WHERE contains(tags, "公司")`
 
 If using the Obsidian skill alongside this one, set `OBSIDIAN_VAULT_PATH` to the
 same directory as the wiki path.

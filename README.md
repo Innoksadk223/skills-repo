@@ -70,7 +70,7 @@
 | minimax-pdf | 高质量 PDF 生成与设计 | ↑ |
 | minimax-xlsx | Excel 表格创建、分析与验证 | ↑ |
 | pptx-generator | PowerPoint 演示文稿生成与编辑 | ↑ |
-| llm-wiki | Karpathy LLM Wiki：持久化相互链接的 Markdown 知识库 | **Hermes 内置** |
+| llm-wiki | Karpathy LLM Wiki：持久化相互链接 Markdown 知识库（中文 + 中英对照） | **Hermes 内置自改版** |
 | academic-search | 学术搜索、引用分析、OA PDF 判定 | [ustc-ai4science](https://github.com/ustc-ai4science/academic-search) |
 | academic-paper-review | 论文审阅、方法论评估、同行评审 | [bytedance/deer-flow](https://github.com/bytedance/deer-flow) |
 | SiliconFlow-rag | 为 raw Markdown 建立本地 RAG 索引，支持硅基流动嵌入与可选重排 | 本仓库 |
