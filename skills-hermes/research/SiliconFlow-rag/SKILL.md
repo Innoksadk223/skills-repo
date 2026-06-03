@@ -58,6 +58,22 @@ Optional: keep RAG parameters in a local JSON config, then pass it with `--confi
 python skills-hermes/research/SiliconFlow-rag/scripts/build_index.py --config rag_config.json
 ```
 
+**Incremental indexing (recommended after initial full build):**
+
+When you add or modify a few files, use `--incremental` to only re-index changed content — avoids re-embedding everything and saves API cost:
+
+```bash
+python skills-hermes/research/SiliconFlow-rag/scripts/build_index.py --md-dir wiki/raw --index-dir 检索索引 --incremental
+```
+
+How it works:
+- Compares file content hashes (SHA256) against previous manifest
+- Only chunks + embeds new or changed files
+- Removes chunks from deleted files
+- Keeps existing embeddings for unchanged files
+- Reports "up to date" if nothing changed
+- Falls back to full build if no existing index found
+
 4. Query the index and use the returned evidence to answer the user:
 
 ```bash
@@ -74,6 +90,22 @@ python skills-hermes/research/SiliconFlow-rag/scripts/query_index.py --config ra
 python skills-hermes/research/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --question "用户的问题" --rerank
 ```
 
+6. Context expansion (optional): include adjacent chunks from the same source file to provide surrounding context for each result:
+
+```bash
+python skills-hermes/research/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --question "用户的问题" --expand-context
+```
+
+Use `--context-window N` to control how many chunks on each side (default: 1). Context chunks are labeled `[context for chunk X]` in the output and do not show similarity/rerank scores.
+
+7. Index statistics: inspect index health and composition without querying:
+
+```bash
+python skills-hermes/research/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --stats
+```
+
+Outputs file count, chunk count, embedding model, build time, format version, per-file chunk distribution, and hash tracking status.
+
 ## Defaults
 
 - Markdown input: `wiki/raw/`
@@ -84,7 +116,7 @@ python skills-hermes/research/SiliconFlow-rag/scripts/query_index.py --index-dir
 - Embedding model: `BAAI/bge-m3`
 - Optional rerank model: `Qwen/Qwen3-Reranker-8B`
 - Build config: `--config <json>` can set `md_dir`, `index_dir`, `model`, `api_key_env`, `api_key_file`, `chunk_size`, `overlap`, `batch_size`, `timeout`, and `sleep`.
-- Query config: `--config <json>` can set `index_dir`, `top_k`, `candidates`, `embedding_model`, `rerank_model`, `api_key_env`, `api_key_file`, and `timeout`.
+- Query config: `--config <json>` can set `index_dir`, `top_k`, `candidates`, `embedding_model`, `rerank_model`, `api_key_env`, `api_key_file`, `timeout`, `expand_context`, and `context_window`.
 - Config format: use top-level keys or nested `build` / `query` sections. Command-line flags have the highest priority.
 - Default retrieval: local vector similarity top 6
 - Optional rerank retrieval: local candidate top 12, reranked top 6
@@ -100,6 +132,8 @@ python skills-hermes/research/SiliconFlow-rag/scripts/query_index.py --index-dir
 ## Index Maintenance
 
 - Rebuild the index whenever `wiki/raw/` changes materially.
+- After the initial full build, prefer `--incremental` for daily updates — it uses content hashes (SHA256) to detect changes and only re-embeds new/modified files.
+- Staleness detection: `social-science-km`'s `check_rebuild_rag.py` compares current file hashes against those stored in `manifest.json` (`file_hashes` field, `format_version: 2`).
 - Keep `检索索引/manifest.json`, `chunks.jsonl`, and `embeddings.jsonl` together.
 - Do not edit index files by hand. Re-run `build_index.py` instead.
 

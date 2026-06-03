@@ -15,9 +15,10 @@ HERMES_MAP=(
     "browser-use:browser-use,remote-browser,cloud,x402,open-source"
     "paperspine:paper-spine,paper-spine-audit,paper-spine-build,paper-spine-citation,paper-spine-humanize,paper-spine-intake,paper-spine-latex,paper-spine-research,paper-spine-rewrite,paper-spine-translate,paper-spine-ui,paper-spine-update"
     "minimax:minimax-docx,minimax-pdf,minimax-xlsx,pptx-generator"
+    "research:llm-wiki,SiliconFlow-rag,social-science-km"
 )
 # 单技能分类 → 技能名即分类名
-HERMES_SOLO="academic-search academic-paper-review social-science-km cleanup find-skills grill-me markitdown skill-creator"
+HERMES_SOLO="academic-search academic-paper-review cleanup find-skills grill-me markitdown skill-creator"
 
 # ── 检测已安装的 agent ──
 AGENTS=()
@@ -65,7 +66,7 @@ GROUP_DESC=(
     "[Browser] browser automation: browser-use, remote-browser, cloud, x402, open-source (5)"
     "[PaperSpine] paper writing pipeline: research, rewrite, LaTeX, translate, etc. (12)"
     "[Minimax] document generation: DOCX, PDF, XLSX, PPTX (4)"
-    "[Academic] academic search, paper review, social-science RAG, knowledge management (4)"
+    "[Academic] llm-wiki, academic search, paper review, social-science RAG, knowledge management (5)"
     "[Tools] skill-creator, cleanup, find-skills, grill-me, markitdown (5)"
 )
 
@@ -95,7 +96,7 @@ skill_group() {
         browser-use|remote-browser|cloud|x402|open-source) echo "browser" ;;
         paper-spine|paper-spine-*)                         echo "paperspine" ;;
         minimax-*|pptx-generator)                          echo "minimax" ;;
-        academic-search|academic-paper-review|social-science-km) echo "academic" ;;
+        llm-wiki|academic-search|academic-paper-review|SiliconFlow-rag|social-science-km) echo "academic" ;;
         cleanup|find-skills|grill-me|markitdown|skill-creator) echo "tools" ;;
         *)                                                 echo "" ;;
     esac

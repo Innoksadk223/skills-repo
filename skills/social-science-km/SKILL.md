@@ -149,7 +149,23 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 RAW_DIR = SCRIPT_DIR / "wiki" / "raw"
 INDEX_DIR = SCRIPT_DIR / "检索索引"
 MANIFEST = INDEX_DIR / "manifest.json"
-BUILD_SCRIPT = Path("D:/hermes/skills/research/SiliconFlow-rag/scripts/build_index.py")
+
+
+def find_build_script() -> Path:
+    candidates = [
+        SCRIPT_DIR / "skills" / "SiliconFlow-rag" / "scripts" / "build_index.py",
+        SCRIPT_DIR / "skills-hermes" / "research" / "SiliconFlow-rag" / "scripts" / "build_index.py",
+        Path.home() / ".codex" / "skills" / "SiliconFlow-rag" / "scripts" / "build_index.py",
+        Path.home() / ".hermes" / "skills" / "research" / "SiliconFlow-rag" / "scripts" / "build_index.py",
+        Path("D:/hermes/skills/research/SiliconFlow-rag/scripts/build_index.py"),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    raise SystemExit("Cannot find SiliconFlow-rag build_index.py; install/update the skill first.")
+
+
+BUILD_SCRIPT = find_build_script()
 
 SKIP_NAMES = {"_conversion_failures.md", "_conversion_manifest.md", "_主题索引.md"}
 

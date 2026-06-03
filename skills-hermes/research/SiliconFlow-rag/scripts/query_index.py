@@ -25,10 +25,12 @@ QUERY_DEFAULTS = {
     "api_key_env": "SILICONFLOW_API_KEY",
     "api_key_file": None,
     "timeout": 60,
+    "expand_context": False,
+    "context_window": 1,
 }
 CONFIG_SECTIONS = {"build", "query"}
 BUILD_CONFIG_FIELDS = {"md_dir", "model", "chunk_size", "overlap", "batch_size", "sleep"}
-QUERY_INT_FIELDS = {"top_k", "candidates", "timeout"}
+QUERY_INT_FIELDS = {"top_k", "candidates", "timeout", "context_window"}
 
 
 def normalize_config(data: dict, fields: set[str], label: str) -> dict:
@@ -99,6 +101,10 @@ def apply_query_config(args: argparse.Namespace) -> argparse.Namespace:
     for key in QUERY_INT_FIELDS:
         setattr(args, key, coerce_int(getattr(args, key), key))
 
+    return args
+
+
+def validate_query_args(args: argparse.Namespace) -> None:
     if args.top_k <= 0:
         raise SystemExit("top_k must be greater than 0")
     if args.candidates <= 0:
@@ -107,7 +113,6 @@ def apply_query_config(args: argparse.Namespace) -> argparse.Namespace:
         raise SystemExit("candidates must be greater than or equal to top_k")
     if args.timeout <= 0:
         raise SystemExit("timeout must be greater than 0")
-    return args
 
 
 def read_jsonl(path: Path) -> list[dict]:
@@ -289,7 +294,101 @@ def retrieve(args: argparse.Namespace) -> tuple[dict, list[dict], str | None]:
                 except Exception as exc:  # keep retrieval usable if optional rerank fails
                     rerank_note = f"Rerank failed; using local similarity order. Reason: {exc}"
 
+    # --- Context expansion ---
+    if args.expand_context and final:
+        lookup: dict[tuple[str, int], dict] = {}
+        for row in rows:
+            key = (row["source_path"], row["chunk_no"])
+            lookup[key] = row
+
+        expanded: list[dict] = []
+        seen_ids: set[str] = {item["id"] for item in final}
+        window = max(1, args.context_window)
+
+        for item in final:
+            # Context before
+            for offset in range(window, 0, -1):
+                prev_key = (item["source_path"], item["chunk_no"] - offset)
+                if prev_key in lookup:
+                    ctx = dict(lookup[prev_key])
+                    if ctx["id"] not in seen_ids:
+                        ctx["is_context"] = True
+                        ctx["context_for_chunk"] = item["chunk_no"]
+                        ctx.pop("embedding", None)
+                        expanded.append(ctx)
+                        seen_ids.add(ctx["id"])
+
+            # Main result
+            item["is_context"] = False
+            expanded.append(item)
+
+            # Context after
+            for offset in range(1, window + 1):
+                next_key = (item["source_path"], item["chunk_no"] + offset)
+                if next_key in lookup:
+                    ctx = dict(lookup[next_key])
+                    if ctx["id"] not in seen_ids:
+                        ctx["is_context"] = True
+                        ctx["context_for_chunk"] = item["chunk_no"]
+                        ctx.pop("embedding", None)
+                        expanded.append(ctx)
+                        seen_ids.add(ctx["id"])
+
+        final = expanded
+
     return manifest, final, rerank_note
+
+
+def print_stats(args: argparse.Namespace) -> None:
+    """Print index health statistics."""
+    from collections import Counter
+
+    index_dir = Path(args.index_dir).resolve()
+    manifest_path = index_dir / "manifest.json"
+    chunks_path = index_dir / "chunks.jsonl"
+
+    if not manifest_path.exists():
+        raise SystemExit(f"Index not found: {manifest_path}")
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    chunks = read_jsonl(chunks_path) if chunks_path.exists() else []
+
+    # Per-file chunk counts
+    file_counts: dict[str, int] = {}
+    for c in chunks:
+        sp = c.get("source_path", "?")
+        file_counts[sp] = file_counts.get(sp, 0) + 1
+
+    top_files = sorted(file_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+
+    print("# Index Statistics")
+    print()
+    print(f"  Files:         {manifest.get('file_count', '?')}")
+    print(f"  Chunks:        {manifest.get('chunk_count', len(chunks))}")
+    print(f"  Embedding:     {manifest.get('embedding_model', '?')}")
+    print(f"  Built:         {manifest.get('created_at', '?')}")
+    print(f"  Format:        v{manifest.get('format_version', '?')}")
+    print(f"  Mock:          {manifest.get('mock', False)}")
+    print(f"  Chunk size:    {manifest.get('chunk_size', '?')} chars")
+    print(f"  Overlap:       {manifest.get('overlap', '?')} chars")
+    if file_counts:
+        avg = sum(file_counts.values()) / len(file_counts)
+        print(f"  Avg chunks/file: {avg:.1f}")
+    print()
+
+    if top_files:
+        print("## Top Files by Chunk Count")
+        for path, count in top_files:
+            print(f"  {count:4d}  {path}")
+
+    # Hash coverage
+    hashes = manifest.get("file_hashes")
+    if hashes:
+        print()
+        print(f"  Files tracked by hash: {len(hashes)}")
+    else:
+        print()
+        print("  (No file_hashes — index was built with format v1; rebuild for incremental support)")
 
 
 def print_evidence(question: str, manifest: dict, results: list[dict], rerank_note: str | None) -> None:
@@ -305,13 +404,22 @@ def print_evidence(question: str, manifest: dict, results: list[dict], rerank_no
         print("No evidence found.")
         return
     for rank, item in enumerate(results, start=1):
+        is_ctx = item.get("is_context")
+        ctx_for = item.get("context_for_chunk")
         score = item.get("rerank_score", item.get("similarity"))
         score_name = "rerank" if "rerank_score" in item else "similarity"
-        print(f"## Evidence {rank}")
-        print(f"- Source: {item['source_path']}")
-        print(f"- Chunk: {item['chunk_no']}")
-        print(f"- {score_name}: {score:.4f}" if isinstance(score, (int, float)) else f"- {score_name}: {score}")
-        print()
+
+        if is_ctx:
+            print(f"## Evidence {rank} [context for chunk {ctx_for}]")
+            print(f"- Source: {item['source_path']}")
+            print(f"- Chunk: {item['chunk_no']}")
+            print()
+        else:
+            print(f"## Evidence {rank}")
+            print(f"- Source: {item['source_path']}")
+            print(f"- Chunk: {item['chunk_no']}")
+            print(f"- {score_name}: {score:.4f}" if isinstance(score, (int, float)) else f"- {score_name}: {score}")
+            print()
         print(item["text"].strip())
         print()
 
@@ -320,7 +428,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Query a local RAG index and print evidence.")
     parser.add_argument("--config", default=None, help="Optional JSON config file for query parameters")
     parser.add_argument("--index-dir", default=None, help="Index directory")
-    parser.add_argument("--question", required=True, help="Question to retrieve evidence for")
+    parser.add_argument("--question", default=None, help="Question to retrieve evidence for (omit with --stats)")
     parser.add_argument("--top-k", type=int, default=None, help="Number of evidence snippets to output")
     parser.add_argument("--candidates", type=int, default=None, help="Candidate count before optional rerank")
     parser.add_argument("--embedding-model", default=None, help="Fallback embedding model if manifest lacks one")
@@ -330,10 +438,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--api-key-file", default=None, help=f"Local private API key config file; default: {DEFAULT_CONFIG_PATH}")
     parser.add_argument("--timeout", type=int, default=None, help="HTTP timeout in seconds")
     parser.add_argument("--mock", action="store_true", help="Use mock query embedding for tests")
+    parser.add_argument("--expand-context", action="store_true", default=None, help="Include adjacent chunks from the same source for each result")
+    parser.add_argument("--context-window", type=int, default=None, help="Number of adjacent chunks on each side (default: 1)")
+    parser.add_argument("--stats", action="store_true", help="Print index statistics instead of querying")
     return apply_query_config(parser.parse_args())
 
 
 if __name__ == "__main__":
     parsed = parse_args()
-    manifest_data, evidence, note = retrieve(parsed)
-    print_evidence(parsed.question, manifest_data, evidence, note)
+    if parsed.stats:
+        print_stats(parsed)
+    elif parsed.question:
+        validate_query_args(parsed)
+        manifest_data, evidence, note = retrieve(parsed)
+        print_evidence(parsed.question, manifest_data, evidence, note)
+    else:
+        print("Usage: query_index.py --index-dir <dir> --question \"...\" [options]")
+        print("       query_index.py --index-dir <dir> --stats")
+        raise SystemExit(1)
