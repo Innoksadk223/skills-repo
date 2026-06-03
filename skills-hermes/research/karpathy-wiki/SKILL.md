@@ -1,7 +1,7 @@
 ---
 name: karpathy-wiki
 description: "Build and maintain a persistent, compounding knowledge base as interlinked markdown files (Karpathy's wiki pattern). Wiki content is written in Chinese with 中英对照 for English terms. Use when the user asks to create/start a wiki, ingest/add/process a source into their wiki, query their wiki, lint/audit/health-check their wiki, or references their wiki/knowledge base/notes in a research context."
-version: 2.3.0
+version: 2.3.1
 author: Hermes Agent
 source: hermes-builtin
 license: MIT
@@ -218,6 +218,10 @@ When the user asks a question about the wiki's domain:
 ### 3. Lint
 
 When the user asks to lint, health-check, or audit the wiki:
+
+**Preferred: run `scripts/lint.py <wiki_path>`** for deterministic results. The script outputs JSON covering all checks below. Parse the JSON, translate into a human-readable report grouped by severity (broken links > orphans > source drift > contested pages > stale content > style issues).
+
+Manual checks (when script unavailable):
 
 ① **Orphan pages:** Find pages with no inbound `[[wikilinks]]` from other pages.
 ```python
