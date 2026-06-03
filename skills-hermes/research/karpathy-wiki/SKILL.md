@@ -1,6 +1,6 @@
 ---
-name: llm-wiki
-description: "Build and maintain a persistent, compounding knowledge base as interlinked markdown files (Karpathy's LLM Wiki pattern). Wiki content is written in Chinese with 中英对照 for English terms. Use when the user asks to create/start a wiki, ingest/add/process a source into their wiki, query their wiki, lint/audit/health-check their wiki, or references their wiki/knowledge base/notes in a research context."
+name: karpathy-wiki
+description: "Build and maintain a persistent, compounding knowledge base as interlinked markdown files (Karpathy's wiki pattern). Wiki content is written in Chinese with 中英对照 for English terms. Use when the user asks to create/start a wiki, ingest/add/process a source into their wiki, query their wiki, lint/audit/health-check their wiki, or references their wiki/knowledge base/notes in a research context."
 version: 2.2.2
 author: Hermes Agent
 source: hermes-builtin
@@ -13,10 +13,10 @@ metadata:
     related_skills: [obsidian, arxiv]
 ---
 
-# Karpathy's LLM Wiki
+# Karpathy's Wiki
 
 Build and maintain a persistent, compounding knowledge base as interlinked markdown files.
-Based on [Andrej Karpathy's LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
+Based on [Andrej Karpathy's wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
 
 Unlike traditional RAG (which rediscovers knowledge from scratch per query), the wiki
 compiles knowledge once and keeps it current. Cross-references are already there.
@@ -149,7 +149,7 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
      PDFs. If no conversion tool is available, read what you can with `read_file`
      and note limitations. Name the file descriptively.
    - **Pasted text** → save to appropriate `raw/` subdirectory
-   - Name the file descriptively: `raw/articles/karpathy-llm-wiki-2026.md`
+   - Name the file descriptively: `raw/articles/karpathy-wiki-2026.md`
    - **Add raw frontmatter** with `ingested`, `sha256` of the body.
      Use `source_url` for web-sourced files only (omit for local files).
      On re-ingest: recompute sha256, compare to stored value — skip if identical,
@@ -371,7 +371,7 @@ npm install -g obsidian-headless
 ob login --email <email> --password '<password>'
 
 # Create a remote vault for the wiki
-ob sync-create-remote --name "LLM Wiki"
+ob sync-create-remote --name "Karpathy Wiki"
 
 # Connect the wiki directory to the vault
 cd ~/wiki
@@ -388,7 +388,7 @@ ob sync --continuous
 ```ini
 # ~/.config/systemd/user/obsidian-wiki-sync.service
 [Unit]
-Description=Obsidian LLM Wiki Sync
+Description=Obsidian Karpathy Wiki Sync
 After=network-online.target
 Wants=network-online.target
 
