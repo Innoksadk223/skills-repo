@@ -264,6 +264,25 @@ def write_jsonl(path: Path, rows: list[dict]) -> None:
             handle.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n")
 
 
+def read_jsonl(path: Path) -> list[dict]:
+    rows = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if line:
+                rows.append(json.loads(line))
+    return rows
+
+
+def compute_file_hashes(md_dir: Path, files: list[Path]) -> dict[str, str]:
+    """Return {source_path: sha256_hex} for each file."""
+    hashes: dict[str, str] = {}
+    for fp in files:
+        rel = fp.relative_to(md_dir).as_posix()
+        hashes[rel] = hashlib.sha256(read_text(fp).encode("utf-8")).hexdigest()
+    return hashes
+
+
 def build_index(args: argparse.Namespace) -> None:
     md_dir = Path(args.md_dir).resolve()
     index_dir = Path(args.index_dir).resolve()
@@ -271,8 +290,56 @@ def build_index(args: argparse.Namespace) -> None:
         raise SystemExit(f"Markdown directory not found: {md_dir}")
 
     files = list_markdown_files(md_dir)
-    chunks: list[dict] = []
-    for file_path in files:
+    current_hashes = compute_file_hashes(md_dir, files)
+
+    # --- Incremental: diff against previous index ---
+    old_chunks: list[dict] = []
+    old_embeddings: list[dict] = []
+    process_files = files  # default: process all
+    skip_embed = False
+
+    if args.incremental:
+        manifest_path = index_dir / "manifest.json"
+        chunks_path = index_dir / "chunks.jsonl"
+        embeddings_path = index_dir / "embeddings.jsonl"
+        if manifest_path.exists() and chunks_path.exists() and embeddings_path.exists():
+            old_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            old_hashes = old_manifest.get("file_hashes", {})
+            new_or_changed = [
+                rel for rel, h in current_hashes.items()
+                if rel not in old_hashes or old_hashes[rel] != h
+            ]
+            deleted = [rel for rel in old_hashes if rel not in current_hashes]
+
+            if not new_or_changed and not deleted:
+                print(f"Index is up to date ({len(files)} files, no changes).")
+                return
+
+            # Load existing chunks and embeddings
+            old_chunks = read_jsonl(chunks_path)
+            old_embeddings = read_jsonl(embeddings_path)
+
+            # Remove chunks from deleted or changed sources
+            remove_sources = set(deleted + new_or_changed)
+            old_chunks = [c for c in old_chunks if c["source_path"] not in remove_sources]
+            kept_ids = {c["id"] for c in old_chunks}
+            old_embeddings = [e for e in old_embeddings if e["id"] in kept_ids]
+
+            # Only process new/changed files
+            process_files = [fp for fp in files if fp.relative_to(md_dir).as_posix() in new_or_changed]
+            if not process_files:
+                skip_embed = True
+                print(f"Removed {len(deleted)} stale file(s), no new content to embed.")
+            else:
+                print(f"Incremental: {len(new_or_changed)} file(s) new/changed, "
+                      f"{len(deleted)} removed, "
+                      f"{len(files) - len(new_or_changed)} unchanged.")
+        else:
+            print("No existing index found; falling back to full build.")
+
+    # --- Chunk new/changed files ---
+    chunks: list[dict] = list(old_chunks)
+    for file_path in process_files:
         rel_path = file_path.relative_to(md_dir).as_posix()
         text = read_text(file_path)
         for chunk_no, (start, end, snippet) in enumerate(chunk_text(text, args.chunk_size, args.overlap), start=1):
@@ -289,10 +356,22 @@ def build_index(args: argparse.Namespace) -> None:
     if not chunks:
         raise SystemExit(f"No Markdown content found under {md_dir}")
 
-    vectors = embed_batches([chunk["text"] for chunk in chunks], args)
-    if len(vectors) != len(chunks):
-        raise RuntimeError("Embedding count does not match chunk count")
+    # --- Embed ---
+    if skip_embed:
+        vectors = [e["embedding"] for e in old_embeddings]
+        if len(vectors) != len(chunks):
+            raise RuntimeError("Embedding count does not match chunk count")
+    else:
+        new_chunks = chunks[len(old_chunks):]
+        if new_chunks:
+            new_vectors = embed_batches([c["text"] for c in new_chunks], args)
+        else:
+            new_vectors = []
+        vectors = [e["embedding"] for e in old_embeddings] + new_vectors
+        if len(vectors) != len(chunks):
+            raise RuntimeError("Embedding count does not match chunk count")
 
+    # --- Write index ---
     index_dir.mkdir(parents=True, exist_ok=True)
     write_jsonl(index_dir / "chunks.jsonl", chunks)
     write_jsonl(index_dir / "embeddings.jsonl", [
@@ -310,10 +389,18 @@ def build_index(args: argparse.Namespace) -> None:
         "overlap": args.overlap,
         "file_count": len(files),
         "chunk_count": len(chunks),
-        "format_version": 1,
+        "format_version": 2,
+        "file_hashes": current_hashes,
     }
     (index_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"Indexed {len(chunks)} chunks from {len(files)} files into {index_dir}")
+
+    new_count = len(chunks) - len(old_chunks)
+    kept_count = len(old_chunks)
+    if args.incremental and kept_count:
+        print(f"Index updated: {kept_count} chunks kept, {new_count} new, "
+              f"total {len(chunks)} chunks from {len(files)} files into {index_dir}")
+    else:
+        print(f"Indexed {len(chunks)} chunks from {len(files)} files into {index_dir}")
 
 
 def parse_args() -> argparse.Namespace:
@@ -330,6 +417,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--timeout", type=int, default=None, help="HTTP timeout in seconds")
     parser.add_argument("--sleep", type=float, default=None, help="Sleep between embedding batches")
     parser.add_argument("--mock", action="store_true", help="Use deterministic local mock embeddings for tests")
+    parser.add_argument("--incremental", action="store_true", help="Only re-index new or changed files (use file content hash)")
     return apply_build_config(parser.parse_args())
 
 

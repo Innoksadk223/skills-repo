@@ -86,7 +86,94 @@ def main() -> None:
         if missing:
             print(output)
             raise SystemExit(f"Self-test failed; missing output markers: {missing}")
-        print("SiliconFlow-rag self-test passed")
+
+        # --- Incremental test: add a new file ---
+        (md_dir / "urban-studies" / "rent.md").write_text(
+            "# Rent Control\n\nRent control policies limit how much landlords can increase rent each year.\n",
+            encoding="utf-8",
+        )
+
+        result = run([
+            sys.executable,
+            str(BUILD),
+            "--config",
+            str(config_path),
+            "--md-dir",
+            str(md_dir),
+            "--index-dir",
+            str(index_dir),
+            "--mock",
+            "--incremental",
+        ], ROOT)
+
+        inc_output = result.stdout
+        if "Index updated" not in inc_output:
+            print(inc_output)
+            raise SystemExit("Incremental test failed: expected 'Index updated' in output")
+
+        # Verify manifest has file_hashes and format_version 2
+        import json
+        manifest = json.loads((index_dir / "manifest.json").read_text(encoding="utf-8"))
+        if manifest.get("format_version") != 2:
+            raise SystemExit(f"Incremental test failed: expected format_version 2, got {manifest.get('format_version')}")
+        if "file_hashes" not in manifest:
+            raise SystemExit("Incremental test failed: manifest missing file_hashes")
+        if len(manifest["file_hashes"]) != 3:
+            raise SystemExit(f"Incremental test failed: expected 3 file hashes, got {len(manifest['file_hashes'])}")
+
+        # --- No-op incremental: run again, should report up to date ---
+        result = run([
+            sys.executable,
+            str(BUILD),
+            "--config",
+            str(config_path),
+            "--md-dir",
+            str(md_dir),
+            "--index-dir",
+            str(index_dir),
+            "--mock",
+            "--incremental",
+        ], ROOT)
+
+        if "up to date" not in result.stdout:
+            print(result.stdout)
+            raise SystemExit("Incremental no-op test failed: expected 'up to date' in output")
+
+        # --- Context expansion test ---
+        result = run([
+            sys.executable,
+            str(QUERY),
+            "--config",
+            str(config_path),
+            "--index-dir",
+            str(index_dir),
+            "--question",
+            "What shapes housing inequality?",
+            "--mock",
+            "--expand-context",
+        ], ROOT)
+
+        ctx_output = result.stdout
+        if "[context for chunk" not in ctx_output:
+            print(ctx_output)
+            raise SystemExit("Context expansion test failed: expected '[context for chunk' in output")
+
+        # --- Stats test ---
+        result = run([
+            sys.executable,
+            str(QUERY),
+            "--index-dir",
+            str(index_dir),
+            "--stats",
+        ], ROOT)
+
+        stats_output = result.stdout
+        for marker in ["Index Statistics", "Files:", "Chunks:", "Format:"]:
+            if marker not in stats_output:
+                print(stats_output)
+                raise SystemExit(f"Stats test failed: missing '{marker}' in output")
+
+        print("SiliconFlow-rag self-test passed (full + incremental + context + stats)")
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
