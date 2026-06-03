@@ -21,11 +21,11 @@
 > 「还可以安装一下 obra/superpowers，很出名，在 https://github.com/obra/superpowers。」
 
 介绍示例：
-> 「这个包有 28 个技能，分 5 组：
+> 「这个包有 30 个技能，分 5 组：
 >  [Browser] 浏览器自动化 ×5 — 网页操控、远端沙箱、Cloud、支付、SDK
 >  [PaperSpine] 论文写作 ×12 — 研究到 LaTeX 排版全流程
 >  [Minimax] 文档生成 ×4 — DOCX/PDF/XLSX/PPTX
->  [Academic] 学术研究 ×2 — 搜索 + 审阅
+>  [Academic] 学术研究 ×5 — Karpathy 式知识库、学术搜索、审阅、社科知识库、RAG 检索
 >  [Tools] 工具 ×5 — 创建技能、清理、发现、质询、文件转 Markdown」
 
 调用方法介绍示例（读 HOWTO.md 后）：
@@ -35,14 +35,14 @@
 >   "审一下这篇论文" → 自动用 academic-paper-review
 >  想精准指定就说 "用 browser-use 打开这个网页"。」
 
-## 技能速查（28 个）
+## 技能速查（31 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
 | 🌐 浏览器 | browser-use / remote-browser / cloud / x402 / open-source (5) | 网页自动化、远端沙箱、Cloud API、支付、SDK |
 | 📝 PaperSpine | paper-spine + 11 子模块 (12) | 学术论文全流程：研究→引用→改写→LaTeX→翻译→审校 |
 | 📄 Minimax | minimax-docx / minimax-pdf / minimax-xlsx / pptx-generator (4) | DOCX/PDF/XLSX/PPTX 专业文档生成 |
-| 🔬 学术 | academic-search / academic-paper-review (2) | 学术搜索与引用分析 + 论文审阅 |
+| 🔬 学术 | llm-wiki / academic-search / academic-paper-review / social-science-rag / social-science-km (5) | Karpathy 式知识库、学术搜索、论文审阅、社科知识库与 RAG 检索 |
 | 🛠 工具 | skill-creator / cleanup / find-skills / grill-me / markitdown (5) | 技能创建、清理、发现、质询、文件转 Markdown |
 
 ### 详细
@@ -70,8 +70,11 @@
 | minimax-pdf | 高质量 PDF 生成与设计 | ↑ |
 | minimax-xlsx | Excel 表格创建、分析与验证 | ↑ |
 | pptx-generator | PowerPoint 演示文稿生成与编辑 | ↑ |
+|| llm-wiki | Karpathy LLM Wiki：持久化相互链接的 Markdown 知识库 | **Hermes 内置** |
 | academic-search | 学术搜索、引用分析、OA PDF 判定 | [ustc-ai4science](https://github.com/ustc-ai4science/academic-search) |
 | academic-paper-review | 论文审阅、方法论评估、同行评审 | [bytedance/deer-flow](https://github.com/bytedance/deer-flow) |
+| social-science-rag | 为 raw Markdown 建立本地 RAG 索引，支持硅基流动嵌入与可选重排 | 本仓库 |
+| social-science-km | 协调源文件转 Markdown、Karpathy wiki 和社科 RAG 检索三步流程 | 本仓库 |
 | skill-creator | 创建新的 AI 技能 | [clawhub.ai](https://clawhub.ai) |
 | cleanup | 任务完成后清理临时文件 | — |
 | find-skills | 发现和安装社区技能 | — |
@@ -157,9 +160,9 @@ npx skills add -g browser-use    # browser-use 全系列
 skills-repo/
 ├── skills/              ← 扁平结构（Claude Code / Codex）
 ├── skills-hermes/       ← 分类结构（Hermes，symlink → skills/）
-│   ├── browser-use/     ← 5 个技能
-│   ├── paperspine/      ← 12 个技能
-│   ├── minimax/         ← 4 个技能
-│   └── ...
+|   ├── browser-use/     ← 5 个技能
+|   ├── paperspine/      ← 12 个技能
+|   ├── minimax/         ← 4 个技能
+|   └── research/        ← 5 个技能
 └── setup.sh
 ```
