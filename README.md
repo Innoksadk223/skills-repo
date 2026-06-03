@@ -40,7 +40,7 @@
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
 | 🌐 浏览器 | browser-use / remote-browser / cloud / x402 / open-source (5) | 网页自动化、远端沙箱、Cloud API、支付、SDK |
-| 📝 PaperSpine | paper-spine + 11 子模块 (12) | 学术论文全流程：研究→引用→改写→LaTeX→翻译→审校 |
+| 📝 PaperSpine | paper-spine + 11 子模块 (12) | 学术论文全流程：研究→引用→改写→LaTeX→翻译→审校<br>💡 Claude Code 用户建议用 [Academic Research Skills](https://github.com/Imbad0202/academic-research-skills) 替代，功能更强且有原生插件支持 |
 | 📄 Minimax | minimax-docx / minimax-pdf / minimax-xlsx / pptx-generator (4) | DOCX/PDF/XLSX/PPTX 专业文档生成 |
 | 🔬 学术 | karpathy-wiki / academic-search / academic-paper-review / SiliconFlow-rag / social-science-km (5) | Karpathy 式知识库、学术搜索、论文审阅、社科知识库与 RAG 检索 |
 | 🛠 工具 | skill-creator / skill-architecture / cleanup / find-skills / grill-me / markitdown (6) | 技能创建、模块化架构、清理、发现、质询、文件转 Markdown |
