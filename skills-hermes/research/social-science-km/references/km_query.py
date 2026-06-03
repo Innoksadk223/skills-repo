@@ -16,10 +16,10 @@ MANIFEST = INDEX_DIR / "manifest.json"
 
 def find_query_script() -> Path:
     candidates = [
-        SCRIPT_DIR / "skills" / "SiliconFlow-rag" / "scripts" / "query_index.py",
         SCRIPT_DIR / "skills-hermes" / "research" / "SiliconFlow-rag" / "scripts" / "query_index.py",
-        Path.home() / ".codex" / "skills" / "SiliconFlow-rag" / "scripts" / "query_index.py",
+        SCRIPT_DIR / "skills" / "SiliconFlow-rag" / "scripts" / "query_index.py",
         Path.home() / ".hermes" / "skills" / "research" / "SiliconFlow-rag" / "scripts" / "query_index.py",
+        Path.home() / ".codex" / "skills" / "SiliconFlow-rag" / "scripts" / "query_index.py",
         Path("D:/hermes/skills/research/SiliconFlow-rag/scripts/query_index.py"),
     ]
     for candidate in candidates:
