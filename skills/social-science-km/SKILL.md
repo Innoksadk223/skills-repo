@@ -76,6 +76,22 @@ Procedure:
 5. Update `wiki/index.md` and append to `wiki/log.md` after ingest.
 6. Preserve factual disagreements with source attribution instead of smoothing them away.
 
+### Bulk Ingest Pattern (50+ files, multi-domain)
+
+When the raw corpus is large and spans multiple disciplines, the llm-wiki parallel workflow is essential. Split source files by domain/field into 2–3 groups, spin one `delegate_task` subagent per group, and have each return **structured extraction only** (no file writes). The parent then synthesizes and creates pages.
+
+**Grouping strategy**: split by source directory domain — e.g. classical texts, secondary scholarship, empirical psychology. Keep groups under ~30 files each.
+
+**Subagent prompt structure** (see `references/bulk-ingest-subagent-template.md`):
+- Domain context (what this wiki covers)
+- Exact file paths to read
+- Output format: Entities, Concepts, Cross-references, Key themes
+- Explicit instruction: "Only analyze, do NOT create or write any files"
+
+**Parent synthesis**: collect all subagent summaries, identify cross-group connections that no single subagent could see, then create wiki pages (concepts first, then entities, then comparisons). Update index.md and log.md in one pass at the end.
+
+**Pitfall**: subagent file-mutation hazard (llm-wiki skill warns about this). Subagents share the parent filesystem — never let them write wiki pages or update navigation. They return structured data; the parent writes.
+
 Validation:
 
 - `wiki/index.md` exists.
@@ -88,11 +104,118 @@ Use `SiliconFlow-rag`.
 
 Before the first real RAG build or query, make sure `SILICONFLOW_API_KEY` is configured in the environment or saved in the local private config `~/.codex/SiliconFlow-rag/config.json`. If it is missing, ask the user for a SiliconFlow API key, explain that raw Markdown chunks/questions will be sent to SiliconFlow for embeddings, and save it only locally if the user wants reuse. Never write a real key into repository files because the skills repo may be uploaded.
 
-Build or refresh the index after `wiki/raw/` changes, running from the project root (`<知识库>/`):
+### Initial Build
+
+Build the index after `wiki/raw/` is populated, running from the project root (`<知识库>/`):
 
 ```bash
 python skills/SiliconFlow-rag/scripts/build_index.py --md-dir wiki/raw --index-dir 检索索引
 ```
+
+### Proactive Index Refresh (mandatory)
+
+**Every session** where the knowledge base is mentioned, proactively check whether the RAG index is stale before doing any query or wiki work. Do NOT wait for the user to ask.
+
+1. Create a helper script `<知识库>/check_rebuild_rag.py` if it doesn't exist (see template below).
+2. Run a check-only scan:
+
+```bash
+cd "<知识库>"
+python check_rebuild_rag.py --check
+```
+
+3. **If stale** ("需要重建"): tell the user "RAG 索引过期了，raw 有更新，要不要重建？" and wait for confirmation.
+4. **If current** ("已是最新"): say nothing, the index is fine.
+5. After user confirms, rebuild:
+
+```bash
+cd "<知识库>"
+python check_rebuild_rag.py
+```
+
+**check_rebuild_rag.py template** — save this as `<知识库>/check_rebuild_rag.py`:
+
+```python
+"""
+RAG 索引自动刷新脚本
+比较 wiki/raw/ 最新 .md 时间 vs 检索索引构建时间。
+用法: python check_rebuild_rag.py         # 检查 + 自动重建
+      python check_rebuild_rag.py --check  # 仅检查
+"""
+import json, os, sys, subprocess
+from pathlib import Path
+from datetime import datetime, timezone
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+RAW_DIR = SCRIPT_DIR / "wiki" / "raw"
+INDEX_DIR = SCRIPT_DIR / "检索索引"
+MANIFEST = INDEX_DIR / "manifest.json"
+BUILD_SCRIPT = Path("D:/hermes/skills/research/SiliconFlow-rag/scripts/build_index.py")
+
+
+def newest_md_mtime(directory: Path) -> datetime:
+    latest = datetime(1970, 1, 1, tzinfo=timezone.utc)
+    for f in directory.rglob("*.md"):
+        mt = datetime.fromtimestamp(f.stat().st_mtime, tz=timezone.utc)
+        if mt > latest:
+            latest = mt
+    return latest
+
+
+def index_built_at() -> datetime | None:
+    if not MANIFEST.exists():
+        return None
+    with open(MANIFEST) as f:
+        data = json.load(f)
+    return datetime.fromisoformat(data["created_at"])
+
+
+def main():
+    check_only = "--check" in sys.argv
+    raw_time = newest_md_mtime(RAW_DIR)
+    index_time = index_built_at()
+
+    if index_time is None:
+        print("[CHECK] 索引不存在 → 需要构建")
+        need_rebuild = True
+    elif raw_time > index_time:
+        delta = raw_time - index_time
+        mins = int(delta.total_seconds() / 60)
+        print(f"[CHECK] raw 比 index 新 {mins} 分钟 → 需要重建")
+        need_rebuild = True
+    else:
+        print("[CHECK] 索引已是最新 → 跳过")
+        need_rebuild = False
+
+    if check_only:
+        return
+
+    if need_rebuild:
+        print("[BUILD] 重建中...")
+        result = subprocess.run(
+            [sys.executable, str(BUILD_SCRIPT),
+             "--md-dir", str(RAW_DIR),
+             "--index-dir", str(INDEX_DIR)],
+            cwd=str(SCRIPT_DIR),
+            capture_output=True, text=True, timeout=600
+        )
+        print(result.stdout)
+        if result.returncode != 0:
+            print(f"[ERROR] {result.stderr}", file=sys.stderr)
+            sys.exit(1)
+        print("[DONE] 索引重建完成")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+**Pitfalls**:
+- `os.walk` can hang on iCloud Drive paths — the script uses `rglob("*.md")` to avoid this.
+- File timestamps may get touched during wiki page creation, resulting in false "stale" reports. Use judgment: if no actual new content was added to `raw/`, skip the rebuild.
+- Rebuilding sends all chunks to SiliconFlow API (tokens + ~30-60s for typical corpus).
+
+### Query
 
 Query without rerank by default:
 
@@ -116,6 +239,7 @@ Validation:
 ## User-Facing Behavior
 
 - Explain progress in plain Chinese.
+- **Proactive RAG check**: every session where the knowledge base is involved, run `check_rebuild_rag.py --check` before any query or wiki work. If stale, ask the user before rebuilding. Do NOT wait for the user to tell you to check.
 - If any source file cannot be converted, explicitly list it or point to `wiki/raw/_conversion_failures.md`.
 - If `SILICONFLOW_API_KEY` and the local private key config are both missing, stop before real RAG indexing/querying and ask the user for the key; do not fake a real index.
 - For final answers over the knowledge base, use retrieved evidence and cite source paths from the RAG output or wiki article links.
