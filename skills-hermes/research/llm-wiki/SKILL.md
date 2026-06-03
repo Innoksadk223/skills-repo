@@ -1,7 +1,7 @@
 ---
 name: llm-wiki
 description: "Build and maintain a persistent, compounding knowledge base as interlinked markdown files (Karpathy's LLM Wiki pattern). Wiki content is written in Chinese with 中英对照 for English terms. Use when the user asks to create/start a wiki, ingest/add/process a source into their wiki, query their wiki, lint/audit/health-check their wiki, or references their wiki/knowledge base/notes in a research context."
-version: 2.2.0
+version: 2.2.2
 author: Hermes Agent
 source: hermes-builtin
 license: MIT
