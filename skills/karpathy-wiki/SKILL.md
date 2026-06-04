@@ -165,6 +165,30 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
 ④ **Write or update wiki pages:**
    - **New entities/concepts:** Create full pages for any entity/concept mentioned
      in the source that is notable within the domain (see SCHEMA.md Page Thresholds).
+     **Concept pages may use these Chinese section headings:** `核心概念`、`相关概念`、`概念厘定`.
+     - `核心概念` = the source's main ideas, mechanisms, arguments, or constructs
+       that the page is centrally about.
+     - `相关概念` = concepts explicitly present in the same raw source that help
+       explain, compare, qualify, contextualize, extend, or apply the core
+       concept, but do not form the page's main focus.
+     - `概念厘定` = an optional clarification section used to distinguish adjacent
+       concepts, resolve ambiguity, define boundaries, or reconcile terminology
+       differences found in the current raw source or already-existing wiki pages.
+     - `核心概念` and `相关概念` must be grounded in `raw/` sources only. Do not
+       add a concept to either list unless it appears explicitly in the ingested
+       raw material (the exact Chinese term, English term, abbreviation, or a
+       clear same-source alias/variant).
+     - `相关概念` is not a dump bucket for background knowledge. If a concept is
+       plausible but does not clearly appear in `raw/`, leave it out.
+     - `概念厘定` is optional, not mandatory boilerplate. Add it only when there
+       is a real distinction, overlap, ambiguity, naming conflict, or scope issue
+       worth clarifying.
+     - `概念厘定` may rely on the current raw source plus already-existing wiki
+       pages, but must not introduce unsupported outside knowledge.
+     - If the clarification grows into a reusable multi-concept distinction,
+       create or update a dedicated page under `comparisons/` and keep only a
+       short summary in the concept page.
+     - Prefer omission over inference.
      **Use Chinese page titles** with 中英对照 when the English term is standard:
      `[[注意力机制（Attention Mechanism）]]`、`[[安德烈·卡帕西（Andrej Karpathy）]]`、
      `[[Transformer 架构]]`（well-known English term as-is + Chinese suffix）、
