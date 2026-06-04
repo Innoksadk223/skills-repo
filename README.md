@@ -4,6 +4,7 @@
 
 > 新手先看 [GUIDE.md](GUIDE.md) — 不用懂技术，会说人话就行。
 > 技能调用方法看 [HOWTO.md](HOWTO.md) — Claude Code / Codex / Hermes 各自怎么触发技能。
+> 知识库怎么用看 [KB-GUIDE.md](KB-GUIDE.md) — 让 AI 帮你整理研究资料，在 Obsidian 里看知识图谱。
 >
 > **Claude Code 用户建议优先从官方源安装**（`npx skills add -g <name>`），版本更新更及时。
 > 此包主要用于：Hermes / Codex 安装、团队统一技能集、离线环境。
@@ -81,6 +82,21 @@
 | find-skills | 发现和安装社区技能 | — |
 | grill-me | 深度质询你的方案/设计决策 | — |
 | markitdown | 使用 Microsoft MarkItDown 将 PDF、Office、HTML 等文件转换为 Markdown | [microsoft/markitdown](https://github.com/microsoft/markitdown) |
+
+## 知识库构建（四技能联合）
+
+把一堆论文变成可搜索、可对话、可可视化的知识库，由四个技能接力完成：
+
+| 步骤 | 技能 | 做什么 |
+|------|------|--------|
+| 1 | **markitdown** | PDF/DOCX → Markdown 文本 |
+| 2 | **karpathy-wiki** | 文本 → 互相链接的概念页面 + 实体页面 + 对比 + 综述 |
+| 3 | **SiliconFlow-rag** | 原文 → 向量索引（硅基流动嵌入模型），支持语义搜索 |
+| 协调 | **social-science-km** | 调度以上三步，一步到位 |
+
+**直接说「帮我把这个文件夹里的论文建个知识库」就行**，AI 会自动调用这四个技能。建完后在 Obsidian 里打开文件夹，按 `Ctrl/Cmd + G` 即可看到彩色知识图谱。
+
+> 📖 详细用法见 [KB-GUIDE.md](KB-GUIDE.md)
 
 ## 安装
 

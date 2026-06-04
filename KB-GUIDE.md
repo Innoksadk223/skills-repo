@@ -29,41 +29,40 @@
 
 ## 三步上手
 
-### 第一步：打开 Obsidian
-
-[Obsidian](https://obsidian.net) 是一个免费的笔记软件，用来**看**你的知识库。
-
-1. 下载安装 Obsidian
-2. 打开 Obsidian → 点击「Open folder as vault」
-3. 选择你的知识库文件夹（AI 建好后会告诉你位置）
-
-配置图谱颜色（可选，但很好看）：
-
-> Obsidian 设置 → 左侧「Graph view」→ 右上齿轮 → Groups →
-> - 新建组：`path:entities/` → 蓝色
-> - 新建组：`path:concepts/` → 绿色
-> - 新建组：`path:comparisons/` → 橙色
-> - 新建组：`path:synthesis/` → 灰色
-
-这样不同颜色的节点代表不同类型的页面——实体（人物/组织）、概念、对比分析、综述。
-
----
-
-### 第二步：丢资料进去
+### 第一步：丢资料进去
 
 跟 AI 说：
 
 > 「帮我把这个文件夹里的论文建个知识库」
 
-或者单篇加入：
-
-> 「把这篇论文加入我的 XX 知识库」
-
 AI 会自动：
 1. 把 PDF 转成可读文本
 2. 提取核心观点和关键概念
-3. 在 Obsidian 里生成互相关联的笔记页面
+3. 生成互相关联的笔记页面
 4. 建立一个「向量索引」，后续可以语义搜索
+
+建好后 AI 会告诉你知识库在哪个文件夹。
+
+---
+
+### 第二步：打开 Obsidian 看图
+
+[Obsidian](https://obsidian.net) 是一个免费的笔记软件，用来看你的知识图谱。
+
+1. 下载安装 Obsidian
+2. 打开 Obsidian → 点击「Open folder as vault」
+3. 选择 AI 建好的知识库文件夹
+4. 按 `Ctrl/Cmd + G` → 你就能看到一张概念关系网络
+
+配置颜色（可选，但很好看）：
+
+> 图谱视图 → 右上齿轮 → Groups →
+> - 新建组：`path:entities/` → 蓝色
+> - 新建组：`path:concepts/` → 绿色
+> - 新建组：`path:comparisons/` → 橙色
+> - 新建组：`path:synthesis/` → 灰色
+
+不同颜色的节点代表不同类型的页面——人物/组织、概念、对比分析、综述。
 
 ---
 
