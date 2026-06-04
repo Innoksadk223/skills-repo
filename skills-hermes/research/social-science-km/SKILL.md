@@ -128,9 +128,9 @@ cd "<知识库>"
 python check_rebuild_rag.py --check
 ```
 
-3. **If stale** ("需要重建"): tell the user "RAG 索引过期了，raw 有更新，要不要重建？" and wait for confirmation.
+3. **If stale** ("需要更新"): tell the user "RAG 索引有更新，raw 有新增/改动，要不要更新？" and wait for confirmation.
 4. **If current** ("已是最新"): say nothing, the index is fine.
-5. After user confirms, rebuild:
+5. After user confirms, update:
 
 ```bash
 cd "<知识库>"
@@ -143,7 +143,7 @@ python check_rebuild_rag.py
 """
 RAG 索引自动刷新脚本
 比较 wiki/raw/ 文件内容哈希 vs 检索索引 manifest 中记录的哈希。
-用法: python check_rebuild_rag.py         # 检查 + 自动重建（增量）
+用法: python check_rebuild_rag.py         # 检查 + 自动更新（增量）
       python check_rebuild_rag.py --check  # 仅检查
 """
 import hashlib, json, os, sys, subprocess
@@ -210,7 +210,7 @@ def main():
                 detail.append(f"{len(new_or_changed)} new/changed")
             if deleted:
                 detail.append(f"{len(deleted)} deleted")
-            print(f"[CHECK] 内容哈希变化 ({', '.join(detail)}) → 需要重建")
+            print(f"[CHECK] 内容哈希变化 ({', '.join(detail)}) → 需要更新")
             need_rebuild = True
         else:
             print("[CHECK] 索引已是最新（内容哈希一致）→ 跳过")
@@ -220,7 +220,7 @@ def main():
         return
 
     if need_rebuild:
-        print("[BUILD] 重建中（增量模式）...")
+        print("[BUILD] 更新中（增量模式）...")
         result = subprocess.run(
             [sys.executable, str(BUILD_SCRIPT),
              "--md-dir", str(RAW_DIR),
@@ -233,7 +233,7 @@ def main():
         if result.returncode != 0:
             print(f"[ERROR] {result.stderr}", file=sys.stderr)
             sys.exit(1)
-        print("[DONE] 索引重建完成")
+        print("[DONE] 索引更新完成")
 
 
 if __name__ == "__main__":
@@ -242,9 +242,9 @@ if __name__ == "__main__":
 
 **Pitfalls**:
 - `os.walk` can hang on iCloud Drive paths — the script uses `rglob("*.md")` to avoid this.
-- Staleness is detected by content hash (SHA256), not mtime. Wiki page creation that touches raw files will NOT trigger false rebuilds — only actual content changes matter.
-- Rebuilding uses `--incremental` mode: only new/changed files are re-embedded, keeping unchanged chunks intact. This saves API cost and time.
-- If the manifest has no `file_hashes` field (old format_version 1 index), all files will be treated as changed and a full rebuild occurs. After that rebuild, format_version 2 + file_hashes are stored and incremental works normally.
+- Staleness is detected by content hash (SHA256), not mtime. Wiki page creation that touches raw files will NOT trigger false updates — only actual content changes matter.
+- Updating uses `--incremental` mode: only new/changed files are re-embedded, keeping unchanged chunks intact. This saves API cost and time.
+- If the manifest has no `file_hashes` field (old format_version 1 index), all files will be treated as changed and a full update occurs. After that update, format_version 2 + file_hashes are stored and incremental works normally.
 
 ### Query
 
