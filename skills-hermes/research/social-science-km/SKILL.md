@@ -32,7 +32,9 @@ Use this fixed directory contract:
 │   ├── entities/                     ← karpathy-wiki 编译的实体页
 │   ├── concepts/                     ← karpathy-wiki 编译的概念页
 │   ├── comparisons/                  ← karpathy-wiki 编译的比较页
-│   └── queries/                      ← karpathy-wiki 存档的查询结果
+│   ├── queries/                      ← karpathy-wiki 存档的查询结果
+│   ├── synthesis/                    ← karpathy-wiki 综述页
+│   ├── qa-log.md                    ← 问答日志（karpathy-wiki 维护）
 └── 检索索引/                         ← RAG 本地索引（由 SiliconFlow-rag 维护）
 ```
 
@@ -72,7 +74,9 @@ Procedure:
    - `wiki/SCHEMA.md`
    - `wiki/index.md`
    - `wiki/log.md`
-4. Compile raw content into `wiki/entities/`, `wiki/concepts/`, and `wiki/comparisons/` per karpathy-wiki's workflow.
+   - `wiki/qa-log.md`
+   - `wiki/synthesis/`
+4. Compile raw content into `wiki/entities/`, `wiki/concepts/`, `wiki/comparisons/`, and `wiki/synthesis/` per karpathy-wiki's workflow.
 5. Update `wiki/index.md` and append to `wiki/log.md` after ingest.
 6. Preserve factual disagreements with source attribution instead of smoothing them away.
 
@@ -88,7 +92,7 @@ When the raw corpus is large and spans multiple disciplines, the karpathy-wiki p
 - Output format: Entities, Concepts, Cross-references, Key themes
 - Explicit instruction: "Only analyze, do NOT create or write any files"
 
-**Parent synthesis**: collect all subagent summaries, identify cross-group connections that no single subagent could see, then create wiki pages (concepts first, then entities, then comparisons). Update index.md and log.md in one pass at the end.
+**Parent synthesis**: collect all subagent summaries, identify cross-group connections that no single subagent could see, then create wiki pages (concepts first, then entities, then comparisons). After all pages are created, if cross-domain themes emerge, create a synthesis page in `wiki/synthesis/`. Update index.md and log.md in one pass at the end.
 
 **Pitfall**: subagent file-mutation hazard (karpathy-wiki skill warns about this). Subagents share the parent filesystem — never let them write wiki pages or update navigation. They return structured data; the parent writes.
 
@@ -306,7 +310,7 @@ When answering a knowledge-base question, the agent MUST follow this structure. 
 
 ## 交叉引用
 - 概念／观点 X 在 A 和 B 中的异同
-- 与 wiki 已有条目的关联：链接到 `wiki/entities/...` 或 `wiki/concepts/...`
+- 与 wiki 已有条目的关联：链接到 `wiki/entities/...`、`wiki/concepts/...`、`wiki/comparisons/...` 或 `wiki/synthesis/...`
 - 与其他源文件中类似论述的联系（如有）
 
 ## 不确定项
