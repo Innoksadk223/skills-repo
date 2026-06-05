@@ -22,9 +22,9 @@
   title: 页面标题（English Title if needed）
   created: YYYY-MM-DD
   updated: YYYY-MM-DD
-  type: entity | concept | comparison | query | summary
+  type: entity | concept | comparison | query | synthesis | claim
   tags: [from taxonomy below]
-  sources: [raw/articles/source-name.md]
+  sources: [raw/articles/source-name.md or wiki page names]
   # Optional quality signals:
   confidence: high | medium | low        # how well-supported the claims are
   contested: true                        # set when the page has unresolved contradictions
@@ -118,6 +118,35 @@ Stubs must still be added to `index.md` under the correct section.
 **Stubs never reference raw/ sources.** Their `sources:` field stays empty.
 When a stub later accumulates enough material, upgrade it to a full page:
 remove the 📝 marker, fill in full content, update `confidence`.
+
+## Claim Pages
+Argument nodes for thesis structures, objections, limitations, and bridge propositions. Include:
+- **命题** — one sentence stating the claim
+- **关系** — body wikilinks for 支撑/反对/限定/依赖 so Obsidian graph shows the argument network
+- **支撑理由** — short reasoning, not a full essay
+- **关键证据** — links to wiki pages plus plain-text raw locations
+- **反驳与限制**
+- **写作用途**
+- **关联页面**
+
+Core claims use `core: true`, must have evidence, and must be listed in `index.md`. Ordinary claims can be `core: false` and `status: stub` while evidence is pending.
+
+Claim-specific frontmatter:
+
+```yaml
+claim_type: main | support | objection | limitation | bridge
+core: true | false
+status: stub | working | supported | contested
+supports: []
+opposes: []
+limits: []
+depends_on: []
+related_concepts: []
+related_entities: []
+related_comparisons: []
+```
+
+Do not wikilink `raw/` files from claim evidence; write raw evidence locations as code paths.
 
 ## 辨析页（Comparison）
 Side-by-side analysis, distinction, or clarification between concepts/entities. Include:

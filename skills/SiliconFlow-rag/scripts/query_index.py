@@ -27,10 +27,14 @@ QUERY_DEFAULTS = {
     "timeout": 60,
     "expand_context": False,
     "context_window": 1,
+    "wiki_index_dir": None,
+    "raw_index_dir": None,
+    "wiki_top_k": 5,
+    "wiki_first": False,
 }
 CONFIG_SECTIONS = {"build", "query"}
 BUILD_CONFIG_FIELDS = {"md_dir", "model", "chunk_size", "overlap", "batch_size", "sleep"}
-QUERY_INT_FIELDS = {"top_k", "candidates", "timeout", "context_window"}
+QUERY_INT_FIELDS = {"top_k", "candidates", "timeout", "context_window", "wiki_top_k"}
 
 
 def normalize_config(data: dict, fields: set[str], label: str) -> dict:
@@ -113,6 +117,8 @@ def validate_query_args(args: argparse.Namespace) -> None:
         raise SystemExit("candidates must be greater than or equal to top_k")
     if args.timeout <= 0:
         raise SystemExit("timeout must be greater than 0")
+    if args.wiki_top_k <= 0:
+        raise SystemExit("wiki_top_k must be greater than 0")
 
 
 def read_jsonl(path: Path) -> list[dict]:
@@ -148,7 +154,12 @@ def cosine(a: list[float], b: list[float]) -> float:
 
 
 def siliconflow_embedding(text: str, model: str, api_key: str, timeout: int) -> list[float]:
-    payload = json.dumps({"model": model, "input": [text]}, ensure_ascii=False).encode("utf-8")
+    payload = json.dumps({
+        "model": model,
+        "input": [text],
+        "encoding_format": "float",
+        "truncate": "right",
+    }, ensure_ascii=False).encode("utf-8")
     request = urllib.request.Request(
         EMBEDDING_API_URL,
         data=payload,
@@ -170,13 +181,18 @@ def siliconflow_embedding(text: str, model: str, api_key: str, timeout: int) -> 
     return sorted(data, key=lambda item: item.get("index", 0))[0]["embedding"]
 
 
-def siliconflow_rerank(query: str, documents: list[str], model: str, api_key: str, timeout: int) -> list[dict]:
-    payload = json.dumps({
+def siliconflow_rerank(query: str, documents: list[str], model: str, api_key: str, timeout: int, top_n: int | None = None) -> list[dict]:
+    payload_data = {
         "model": model,
         "query": query,
         "documents": documents,
         "return_documents": False,
-    }, ensure_ascii=False).encode("utf-8")
+    }
+    if top_n:
+        payload_data["top_n"] = top_n
+    if model.startswith("Qwen/Qwen3-Reranker"):
+        payload_data["instruction"] = "请根据用户问题判断候选材料是否能提供直接证据、概念解释或论证支持。"
+    payload = json.dumps(payload_data, ensure_ascii=False).encode("utf-8")
     request = urllib.request.Request(
         RERANK_API_URL,
         data=payload,
@@ -240,14 +256,18 @@ def load_index(index_dir: Path) -> tuple[dict, list[dict]]:
 
 
 def retrieve(args: argparse.Namespace) -> tuple[dict, list[dict], str | None]:
-    index_dir = Path(args.index_dir).resolve()
+    return retrieve_from_index(args, args.index_dir, args.question, args.top_k, args.candidates)
+
+
+def retrieve_from_index(args: argparse.Namespace, index_dir_value: str, question: str, top_k: int, candidates_count: int, rerank: bool | None = None) -> tuple[dict, list[dict], str | None]:
+    index_dir = Path(index_dir_value).resolve()
     manifest, rows = load_index(index_dir)
     if not rows:
         raise SystemExit(f"Index is empty: {index_dir}")
 
     mock = bool(manifest.get("mock")) or args.mock
     if mock:
-        query_vector = mock_embedding(args.question)
+        query_vector = mock_embedding(question)
     else:
         api_key = load_api_key(args.api_key_env, args.api_key_file)
         if not api_key:
@@ -255,7 +275,7 @@ def retrieve(args: argparse.Namespace) -> tuple[dict, list[dict], str | None]:
                 f"Missing {args.api_key_env}. Set it in the environment or save a local private config at "
                 f"{DEFAULT_CONFIG_PATH}."
             )
-        query_vector = siliconflow_embedding(args.question, manifest.get("embedding_model") or args.embedding_model, api_key, args.timeout)
+        query_vector = siliconflow_embedding(question, manifest.get("embedding_model") or args.embedding_model, api_key, args.timeout)
 
     scored = []
     for row in rows:
@@ -265,12 +285,13 @@ def retrieve(args: argparse.Namespace) -> tuple[dict, list[dict], str | None]:
         scored.append(item)
     scored.sort(key=lambda item: item["similarity"], reverse=True)
 
+    use_rerank = args.rerank if rerank is None else rerank
     rerank_note = None
-    candidate_count = args.candidates if args.rerank else args.top_k
+    candidate_count = candidates_count if use_rerank else top_k
     candidates = scored[:candidate_count]
-    final = candidates[:args.top_k]
+    final = candidates[:top_k]
 
-    if args.rerank:
+    if use_rerank:
         if mock:
             rerank_note = "Rerank skipped because the index/query is using mock embeddings."
         else:
@@ -279,7 +300,7 @@ def retrieve(args: argparse.Namespace) -> tuple[dict, list[dict], str | None]:
                 rerank_note = f"Rerank skipped because {args.api_key_env} or local private config is missing."
             else:
                 try:
-                    reranked = siliconflow_rerank(args.question, [item["text"] for item in candidates], args.rerank_model, api_key, args.timeout)
+                    reranked = siliconflow_rerank(question, [item["text"] for item in candidates], args.rerank_model, api_key, args.timeout, top_k)
                     reordered = []
                     for result in reranked:
                         idx = result.get("index")
@@ -288,7 +309,7 @@ def retrieve(args: argparse.Namespace) -> tuple[dict, list[dict], str | None]:
                             item["rerank_score"] = result.get("relevance_score")
                             reordered.append(item)
                     if reordered:
-                        final = reordered[:args.top_k]
+                        final = reordered[:top_k]
                     else:
                         rerank_note = "Rerank returned no usable results; using local similarity order."
                 except Exception as exc:  # keep retrieval usable if optional rerank fails
@@ -337,6 +358,114 @@ def retrieve(args: argparse.Namespace) -> tuple[dict, list[dict], str | None]:
         final = expanded
 
     return manifest, final, rerank_note
+
+
+def extract_expansion_terms(wiki_hits: list[dict], limit: int = 30) -> list[str]:
+    terms: list[str] = []
+    labels = [
+        "标题：", "命题：", "支撑：", "反对：", "限定：", "依赖：",
+        "相关概念：", "相关人物：", "相关辨析：", "来源：", "正文链接：",
+    ]
+    for item in wiki_hits:
+        for line in item.get("text", "").splitlines():
+            for label in labels:
+                if line.startswith(label):
+                    value = line[len(label):].strip()
+                    for part in value.replace("，", "、").split("、"):
+                        term = part.strip()
+                        if term and len(term) <= 80 and term not in terms:
+                            terms.append(term)
+        if len(terms) >= limit:
+            break
+    return terms[:limit]
+
+
+def extract_raw_evidence_paths(wiki_hits: list[dict]) -> list[str]:
+    paths: list[str] = []
+    for item in wiki_hits:
+        text = item.get("text", "")
+        for marker in ["证据位置：`", "evidence: `"]:
+            start = 0
+            while True:
+                idx = text.find(marker, start)
+                if idx == -1:
+                    break
+                rest = text[idx + len(marker):]
+                raw = rest.split("`", 1)[0].strip()
+                if raw and raw not in paths:
+                    paths.append(raw)
+                start = idx + len(marker)
+    return paths
+
+
+def normalize_evidence_path(path: str) -> str:
+    cleaned = path.split(":", 1)[0].strip().removeprefix("./")
+    return cleaned.removeprefix("raw/")
+
+
+def add_wiki_evidence_hits(raw_hits: list[dict], raw_rows: list[dict], evidence_paths: list[str]) -> list[dict]:
+    if not evidence_paths:
+        return raw_hits
+    targets = {normalize_evidence_path(path) for path in evidence_paths}
+    hits = list(raw_hits)
+    seen_ids = {item["id"] for item in hits}
+    for row in raw_rows:
+        source_path = str(row.get("source_path", ""))
+        if source_path in targets and row["id"] not in seen_ids:
+            item = dict(row)
+            item.pop("embedding", None)
+            item["wiki_evidence_boost"] = True
+            item.setdefault("similarity", 0.0)
+            hits.append(item)
+            seen_ids.add(item["id"])
+    for item in hits:
+        source_path = str(item.get("source_path", ""))
+        if source_path in targets:
+            item["wiki_evidence_boost"] = True
+    return hits
+
+
+def retrieve_wiki_first(args: argparse.Namespace) -> tuple[dict, list[dict], dict, list[dict], str, str | None]:
+    if not args.wiki_index_dir or not args.raw_index_dir:
+        raise SystemExit("--wiki-first requires --wiki-index-dir and --raw-index-dir")
+    wiki_manifest, wiki_hits, wiki_note = retrieve_from_index(args, args.wiki_index_dir, args.question, args.wiki_top_k, max(args.wiki_top_k, args.candidates), rerank=False)
+    terms = extract_expansion_terms(wiki_hits)
+    expanded_query = args.question
+    if terms:
+        expanded_query = args.question + "\n" + "\n".join(terms)
+    raw_manifest, raw_hits, raw_note = retrieve_from_index(args, args.raw_index_dir, expanded_query, args.top_k, args.candidates)
+    _, raw_rows = load_index(Path(args.raw_index_dir).resolve())
+    raw_hits = add_wiki_evidence_hits(raw_hits, raw_rows, extract_raw_evidence_paths(wiki_hits))
+    note = "; ".join(note for note in [wiki_note, raw_note] if note) or None
+    return wiki_manifest, wiki_hits, raw_manifest, raw_hits, expanded_query, note
+
+
+def print_wiki_first_evidence(question: str, wiki_manifest: dict, wiki_hits: list[dict], raw_manifest: dict, raw_hits: list[dict], expanded_query: str, note: str | None) -> None:
+    print("# Wiki-Aware RAG Evidence")
+    print()
+    print(f"Question: {question}")
+    if note:
+        print(f"Note: {note}")
+    print()
+    print("# Wiki Hits")
+    print()
+    for rank, item in enumerate(wiki_hits, start=1):
+        score = item.get("rerank_score", item.get("similarity"))
+        print(f"## Wiki Hit {rank}")
+        print(f"- Source: {item['source_path']}")
+        print(f"- Chunk: {item['chunk_no']}")
+        if isinstance(score, (int, float)):
+            print(f"- similarity: {score:.4f}")
+        print()
+        print(item["text"].strip())
+        print()
+    print("# Expanded Query")
+    print()
+    print(expanded_query)
+    print()
+    print("# Raw Evidence")
+    print()
+    print_evidence(question, raw_manifest, raw_hits, None)
 
 
 def print_stats(args: argparse.Namespace) -> None:
@@ -418,6 +547,8 @@ def print_evidence(question: str, manifest: dict, results: list[dict], rerank_no
             print(f"## Evidence {rank}")
             print(f"- Source: {item['source_path']}")
             print(f"- Chunk: {item['chunk_no']}")
+            if item.get("wiki_evidence_boost"):
+                print("- wiki_evidence_boost: true")
             print(f"- {score_name}: {score:.4f}" if isinstance(score, (int, float)) else f"- {score_name}: {score}")
             print()
         print(item["text"].strip())
@@ -428,6 +559,10 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Query a local RAG index and print evidence.")
     parser.add_argument("--config", default=None, help="Optional JSON config file for query parameters")
     parser.add_argument("--index-dir", default=None, help="Index directory")
+    parser.add_argument("--wiki-index-dir", default=None, help="Wiki-layer index directory for --wiki-first")
+    parser.add_argument("--raw-index-dir", default=None, help="Raw evidence index directory for --wiki-first")
+    parser.add_argument("--wiki-first", action="store_true", default=None, help="Retrieve wiki hits first, expand the query, then retrieve raw evidence")
+    parser.add_argument("--wiki-top-k", type=int, default=None, help="Number of wiki hits to use for query expansion")
     parser.add_argument("--question", default=None, help="Question to retrieve evidence for (omit with --stats)")
     parser.add_argument("--top-k", type=int, default=None, help="Number of evidence snippets to output")
     parser.add_argument("--candidates", type=int, default=None, help="Candidate count before optional rerank")
@@ -448,6 +583,10 @@ if __name__ == "__main__":
     parsed = parse_args()
     if parsed.stats:
         print_stats(parsed)
+    elif parsed.question and parsed.wiki_first:
+        validate_query_args(parsed)
+        wiki_manifest_data, wiki_hits, raw_manifest_data, raw_evidence, expanded_query, note = retrieve_wiki_first(parsed)
+        print_wiki_first_evidence(parsed.question, wiki_manifest_data, wiki_hits, raw_manifest_data, raw_evidence, expanded_query, note)
     elif parsed.question:
         validate_query_args(parsed)
         manifest_data, evidence, note = retrieve(parsed)

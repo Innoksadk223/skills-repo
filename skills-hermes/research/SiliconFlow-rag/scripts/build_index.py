@@ -28,6 +28,9 @@ BUILD_DEFAULTS = {
     "batch_size": 16,
     "timeout": 60,
     "sleep": 0.0,
+    "include_dirs": None,
+    "exclude_dirs": None,
+    "metadata_mode": "plain",
 }
 CONFIG_SECTIONS = {"build", "query"}
 QUERY_CONFIG_FIELDS = {"top_k", "candidates", "embedding_model", "rerank_model"}
@@ -131,7 +134,21 @@ def apply_build_config(args: argparse.Namespace) -> argparse.Namespace:
         raise SystemExit("timeout must be greater than 0")
     if args.sleep < 0:
         raise SystemExit("sleep must be 0 or greater")
+    args.include_dirs = parse_csv(args.include_dirs)
+    args.exclude_dirs = parse_csv(args.exclude_dirs)
+    if args.metadata_mode not in {"plain", "wiki"}:
+        raise SystemExit("metadata_mode must be 'plain' or 'wiki'")
     return args
+
+
+def parse_csv(value: object) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        items = value
+    else:
+        items = str(value).split(",")
+    return [str(item).strip().strip("/") for item in items if str(item).strip()]
 
 
 def read_text(path: Path) -> str:
@@ -142,15 +159,124 @@ def stable_id(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:24]
 
 
-def list_markdown_files(md_dir: Path) -> list[Path]:
+def path_matches_dir(rel_path: Path, dirs: list[str]) -> bool:
+    rel = rel_path.as_posix()
+    return any(rel == folder or rel.startswith(f"{folder}/") for folder in dirs)
+
+
+def list_markdown_files(md_dir: Path, include_dirs: list[str] | None = None, exclude_dirs: list[str] | None = None) -> list[Path]:
+    include_dirs = include_dirs or []
+    exclude_dirs = exclude_dirs or []
     files = []
     for path in md_dir.rglob("*.md"):
+        rel_path = path.relative_to(md_dir)
         if path.name in SKIP_NAMES:
             continue
-        if any(part.startswith(".") for part in path.relative_to(md_dir).parts):
+        if any(part.startswith(".") for part in rel_path.parts):
+            continue
+        if include_dirs and not path_matches_dir(rel_path, include_dirs):
+            continue
+        if exclude_dirs and path_matches_dir(rel_path, exclude_dirs):
             continue
         files.append(path)
     return sorted(files)
+
+
+def parse_frontmatter(text: str) -> tuple[dict, str]:
+    if not text.startswith("---\n"):
+        return {}, text
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        return {}, text
+    block = text[4:end]
+    body = text[end + 5:]
+    data: dict[str, object] = {}
+    for line in block.splitlines():
+        if ":" not in line or line.startswith(" "):
+            continue
+        key, value = line.split(":", 1)
+        key = key.strip()
+        value = value.strip()
+        if not key:
+            continue
+        if value.startswith("[") and value.endswith("]"):
+            inner = value[1:-1].strip()
+            data[key] = [item.strip().strip('"').strip("'") for item in inner.split(",") if item.strip()] if inner else []
+        elif value.lower() in {"true", "false"}:
+            data[key] = value.lower() == "true"
+        else:
+            data[key] = value.strip('"').strip("'")
+    return data, body
+
+
+def extract_wikilinks(text: str) -> list[str]:
+    links: list[str] = []
+    for part in text.split("[[")[1:]:
+        target = part.split("]]", 1)[0].split("|", 1)[0].strip()
+        if target and target not in links:
+            links.append(target)
+    return links
+
+
+def extract_section(body: str, heading: str) -> str:
+    marker = f"## {heading}"
+    start = body.find(marker)
+    if start == -1:
+        return ""
+    section = body[start + len(marker):]
+    next_heading = section.find("\n## ")
+    if next_heading != -1:
+        section = section[:next_heading]
+    return section.strip()
+
+
+def as_list(value: object) -> list[str]:
+    if isinstance(value, list):
+        return [str(item) for item in value if str(item)]
+    if value in (None, ""):
+        return []
+    return [str(value)]
+
+
+def wiki_retrieval_text(text: str, rel_path: str) -> str:
+    frontmatter, body = parse_frontmatter(text)
+    page_type = str(frontmatter.get("type") or Path(rel_path).parent.name or "wiki")
+    title = str(frontmatter.get("title") or Path(rel_path).stem)
+    fields = [
+        f"页面类型：{page_type}",
+        f"标题：{title}",
+        f"路径：{rel_path}",
+    ]
+    for key, label in [
+        ("claim_type", "claim_type"),
+        ("core", "核心论证"),
+        ("status", "状态"),
+        ("confidence", "置信度"),
+        ("supports", "支撑"),
+        ("opposes", "反对"),
+        ("limits", "限定"),
+        ("depends_on", "依赖"),
+        ("related_concepts", "相关概念"),
+        ("related_entities", "相关人物"),
+        ("related_comparisons", "相关辨析"),
+        ("sources", "来源"),
+    ]:
+        value = frontmatter.get(key)
+        if value not in (None, "", []):
+            items = as_list(value)
+            fields.append(f"{label}：{'、'.join(items) if items else value}")
+    proposition = extract_section(body, "命题")
+    if proposition:
+        fields.append(f"命题：{proposition}")
+    evidence = extract_section(body, "关键证据")
+    if evidence:
+        fields.append(f"关键证据：{evidence}")
+    links = extract_wikilinks(body)
+    if links:
+        fields.append(f"正文链接：{'、'.join(links)}")
+    plain = body.replace("[[", "").replace("]]", "")
+    fields.append(plain[:1600])
+    return "\n".join(fields)
 
 
 def chunk_text(text: str, chunk_size: int, overlap: int) -> list[tuple[int, int, str]]:
@@ -190,7 +316,12 @@ def mock_embedding(text: str, dimensions: int = 64) -> list[float]:
 
 
 def siliconflow_embeddings(texts: list[str], model: str, api_key: str, timeout: int) -> list[list[float]]:
-    payload = json.dumps({"model": model, "input": texts}, ensure_ascii=False).encode("utf-8")
+    payload = json.dumps({
+        "model": model,
+        "input": texts,
+        "encoding_format": "float",
+        "truncate": "right",
+    }, ensure_ascii=False).encode("utf-8")
     request = urllib.request.Request(
         API_URL,
         data=payload,
@@ -283,14 +414,34 @@ def compute_file_hashes(md_dir: Path, files: list[Path]) -> dict[str, str]:
     return hashes
 
 
+def manifest_settings(args: argparse.Namespace, md_dir: Path, index_dir: Path) -> dict:
+    return {
+        "md_dir": str(md_dir),
+        "index_dir": str(index_dir),
+        "embedding_model": args.model,
+        "mock": bool(args.mock),
+        "chunk_size": args.chunk_size,
+        "overlap": args.overlap,
+        "format_version": 2,
+        "include_dirs": args.include_dirs,
+        "exclude_dirs": args.exclude_dirs,
+        "metadata_mode": args.metadata_mode,
+    }
+
+
+def changed_index_settings(old_manifest: dict, current: dict) -> list[str]:
+    return [key for key, value in current.items() if old_manifest.get(key) != value]
+
+
 def build_index(args: argparse.Namespace) -> None:
     md_dir = Path(args.md_dir).resolve()
     index_dir = Path(args.index_dir).resolve()
     if not md_dir.is_dir():
         raise SystemExit(f"Markdown directory not found: {md_dir}")
 
-    files = list_markdown_files(md_dir)
+    files = list_markdown_files(md_dir, args.include_dirs, args.exclude_dirs)
     current_hashes = compute_file_hashes(md_dir, files)
+    current_settings = manifest_settings(args, md_dir, index_dir)
 
     # --- Incremental: diff against previous index ---
     old_chunks: list[dict] = []
@@ -304,36 +455,40 @@ def build_index(args: argparse.Namespace) -> None:
         embeddings_path = index_dir / "embeddings.jsonl"
         if manifest_path.exists() and chunks_path.exists() and embeddings_path.exists():
             old_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            old_hashes = old_manifest.get("file_hashes", {})
-            new_or_changed = [
-                rel for rel, h in current_hashes.items()
-                if rel not in old_hashes or old_hashes[rel] != h
-            ]
-            deleted = [rel for rel in old_hashes if rel not in current_hashes]
-
-            if not new_or_changed and not deleted:
-                print(f"Index is up to date ({len(files)} files, no changes).")
-                return
-
-            # Load existing chunks and embeddings
-            old_chunks = read_jsonl(chunks_path)
-            old_embeddings = read_jsonl(embeddings_path)
-
-            # Remove chunks from deleted or changed sources
-            remove_sources = set(deleted + new_or_changed)
-            old_chunks = [c for c in old_chunks if c["source_path"] not in remove_sources]
-            kept_ids = {c["id"] for c in old_chunks}
-            old_embeddings = [e for e in old_embeddings if e["id"] in kept_ids]
-
-            # Only process new/changed files
-            process_files = [fp for fp in files if fp.relative_to(md_dir).as_posix() in new_or_changed]
-            if not process_files:
-                skip_embed = True
-                print(f"Removed {len(deleted)} stale file(s), no new content to embed.")
+            changed_settings = changed_index_settings(old_manifest, current_settings)
+            if changed_settings:
+                print("Incremental settings changed; falling back to full build: " + ", ".join(changed_settings))
             else:
-                print(f"Incremental: {len(new_or_changed)} file(s) new/changed, "
-                      f"{len(deleted)} removed, "
-                      f"{len(files) - len(new_or_changed)} unchanged.")
+                old_hashes = old_manifest.get("file_hashes", {})
+                new_or_changed = [
+                    rel for rel, h in current_hashes.items()
+                    if rel not in old_hashes or old_hashes[rel] != h
+                ]
+                deleted = [rel for rel in old_hashes if rel not in current_hashes]
+
+                if not new_or_changed and not deleted:
+                    print(f"Index is up to date ({len(files)} files, no changes).")
+                    return
+
+                # Load existing chunks and embeddings
+                old_chunks = read_jsonl(chunks_path)
+                old_embeddings = read_jsonl(embeddings_path)
+
+                # Remove chunks from deleted or changed sources
+                remove_sources = set(deleted + new_or_changed)
+                old_chunks = [c for c in old_chunks if c["source_path"] not in remove_sources]
+                kept_ids = {c["id"] for c in old_chunks}
+                old_embeddings = [e for e in old_embeddings if e["id"] in kept_ids]
+
+                # Only process new/changed files
+                process_files = [fp for fp in files if fp.relative_to(md_dir).as_posix() in new_or_changed]
+                if not process_files:
+                    skip_embed = True
+                    print(f"Removed {len(deleted)} stale file(s), no new content to embed.")
+                else:
+                    print(f"Incremental: {len(new_or_changed)} file(s) new/changed, "
+                          f"{len(deleted)} removed, "
+                          f"{len(files) - len(new_or_changed)} unchanged.")
         else:
             print("No existing index found; falling back to full build.")
 
@@ -342,6 +497,8 @@ def build_index(args: argparse.Namespace) -> None:
     for file_path in process_files:
         rel_path = file_path.relative_to(md_dir).as_posix()
         text = read_text(file_path)
+        if args.metadata_mode == "wiki":
+            text = wiki_retrieval_text(text, rel_path)
         for chunk_no, (start, end, snippet) in enumerate(chunk_text(text, args.chunk_size, args.overlap), start=1):
             chunk_id = stable_id(f"{rel_path}\n{chunk_no}\n{snippet}")
             chunks.append({
@@ -378,20 +535,14 @@ def build_index(args: argparse.Namespace) -> None:
         {"id": chunk["id"], "embedding": vector}
         for chunk, vector in zip(chunks, vectors)
     ])
-    manifest = {
+    manifest = dict(current_settings)
+    manifest.update({
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "md_dir": str(md_dir),
-        "index_dir": str(index_dir),
-        "embedding_model": args.model,
         "api_key_env": args.api_key_env,
-        "mock": bool(args.mock),
-        "chunk_size": args.chunk_size,
-        "overlap": args.overlap,
         "file_count": len(files),
         "chunk_count": len(chunks),
-        "format_version": 2,
         "file_hashes": current_hashes,
-    }
+    })
     (index_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
 
     new_count = len(chunks) - len(old_chunks)
@@ -418,6 +569,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sleep", type=float, default=None, help="Sleep between embedding batches")
     parser.add_argument("--mock", action="store_true", help="Use deterministic local mock embeddings for tests")
     parser.add_argument("--incremental", action="store_true", help="Only re-index new or changed files (use file content hash)")
+    parser.add_argument("--include-dirs", default=None, help="Comma-separated directories under md-dir to include")
+    parser.add_argument("--exclude-dirs", default=None, help="Comma-separated directories under md-dir to exclude")
+    parser.add_argument("--metadata-mode", default=None, choices=["plain", "wiki"], help="Use wiki retrieval text instead of raw markdown chunks")
     return apply_build_config(parser.parse_args())
 
 

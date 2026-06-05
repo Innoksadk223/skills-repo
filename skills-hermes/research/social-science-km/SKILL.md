@@ -8,10 +8,10 @@ description: Coordinate a social-science paper knowledge-management workflow. Us
 Use this skill as the coordinator for a three-step social-science paper knowledge system:
 
 1. Convert source documents to Markdown with `markitdown`, writing the processed Markdown into the knowledge-base wiki's `raw/` directory.
-2. Compile that `raw/` into a persistent `wiki/` knowledge base with `karpathy-wiki`.
-3. Build and query a local RAG index from that `raw/` with `SiliconFlow-rag`.
+2. Compile that `raw/` into a persistent, graph-readable `wiki/` knowledge base with `karpathy-wiki`, including `claims/` argument nodes when the corpus contains thesis, theory, objections, limitations, or evidence logic.
+3. Build and query two local RAG indexes with `SiliconFlow-rag`: `检索索引/raw` for source evidence and `检索索引/wiki` for wiki-first recall expansion.
 
-Do not create a separate `资料md/` layer. In this workflow, `wiki/raw/` is the single bottom-layer text store.
+Do not create a separate `资料md/` layer. In this workflow, `wiki/raw/` is the single bottom-layer text store. `wiki/claims`, `wiki/concepts`, `wiki/entities`, and `wiki/comparisons` are graph-readable knowledge layers, not replacements for raw evidence.
 
 ## Directory Contract
 
@@ -29,16 +29,19 @@ Use this fixed directory contract:
 │   ├── raw/                          ← markitdown 输出的 Markdown 语料
 │   │   ├── <topic>/                  ← 按原始主题/目录组织
 │   │   └── _主题索引.md              ← Step 1 生成的语料清单
-│   ├── entities/                     ← karpathy-wiki 编译的实体页
+│   ├── claims/                       ← karpathy-wiki 编译的论证节点页
 │   ├── concepts/                     ← karpathy-wiki 编译的概念页
-│   ├── comparisons/                  ← karpathy-wiki 编译的比较页
+│   ├── entities/                     ← karpathy-wiki 编译的实体页
+│   ├── comparisons/                  ← karpathy-wiki 编译的比较/辨析页
 │   ├── queries/                      ← karpathy-wiki 存档的查询结果
-│   ├── synthesis/                    ← karpathy-wiki 综述页
-│   ├── qa-log.md                    ← 问答日志（karpathy-wiki 维护）
+│   ├── synthesis/                    ← 轻量入口页/路线图，不承载主要证据银行
+│   ├── qa-log.md                     ← 问答日志（karpathy-wiki 维护）
 └── 检索索引/                         ← RAG 本地索引（由 SiliconFlow-rag 维护）
+    ├── raw/                          ← raw source evidence index
+    └── wiki/                         ← wiki structure index for wiki-first recall
 ```
 
-Treat `<source-folder>（知识库）/` as the project root when running commands. Set `WIKI_PATH` to `<知识库>/wiki/` so that `karpathy-wiki` operates on the correct wiki directory. `SiliconFlow-rag` indexes `wiki/raw/` (relative to the project root) and stores embeddings in `检索索引/`.
+Treat `<source-folder>（知识库）/` as the project root when running commands. Set `WIKI_PATH` to `<知识库>/wiki/` so that `karpathy-wiki` operates on the correct wiki directory. `SiliconFlow-rag` builds two indexes relative to the project root: `wiki/raw/` → `检索索引/raw`, and graph-readable wiki pages → `检索索引/wiki`.
 
 Do not place `raw/`, `wiki/`, or `检索索引/` beside the source folder's parent directory, and do not put the knowledge-base folder inside the source folder. Keeping source and knowledge-base folders as siblings prevents converted Markdown, wiki files, and index files from being scanned again as source material.
 
@@ -75,8 +78,15 @@ Procedure:
    - `wiki/index.md`
    - `wiki/log.md`
    - `wiki/qa-log.md`
+   - `wiki/claims/`
+   - `wiki/concepts/`
+   - `wiki/entities/`
+   - `wiki/comparisons/`
+   - `wiki/queries/`
    - `wiki/synthesis/`
-4. Compile raw content into `wiki/entities/`, `wiki/concepts/`, `wiki/comparisons/`, and `wiki/synthesis/` per karpathy-wiki's workflow.
+4. Compile raw content into `wiki/claims/`, `wiki/concepts/`, `wiki/entities/`, `wiki/comparisons/`, and lightweight `wiki/synthesis/` per karpathy-wiki's workflow.
+   - Use `claims/` for theses, support propositions, objections, limitations, and bridge claims.
+   - Use `synthesis/` only as route maps, reading order, current state, and gaps; do not keep long durable evidence banks there.
 5. Update `wiki/index.md` and append to `wiki/log.md` after ingest.
 6. Preserve factual disagreements with source attribution instead of smoothing them away.
 
@@ -92,7 +102,7 @@ When the raw corpus is large and spans multiple disciplines, the karpathy-wiki p
 - Output format: Entities, Concepts, Cross-references, Key themes
 - Explicit instruction: "Only analyze, do NOT create or write any files"
 
-**Parent synthesis**: collect all subagent summaries, identify cross-group connections that no single subagent could see, then create wiki pages (concepts first, then entities, then comparisons). After all pages are created, if cross-domain themes emerge, create a synthesis page in `wiki/synthesis/`. Update index.md and log.md in one pass at the end.
+**Parent synthesis**: collect all subagent summaries, identify cross-group connections that no single subagent could see, then create wiki pages in this order: claims and concepts first, then entities and comparisons, then only lightweight synthesis route maps if cross-domain themes emerge. Update index.md and log.md in one pass at the end.
 
 **Pitfall**: subagent file-mutation hazard (karpathy-wiki skill warns about this). Subagents share the parent filesystem — never let them write wiki pages or update navigation. They return structured data; the parent writes.
 
@@ -106,21 +116,30 @@ Validation:
 
 Use `SiliconFlow-rag`.
 
-Before the first real RAG build or query, make sure `SILICONFLOW_API_KEY` is configured in the environment or saved in the local private config `~/.codex/SiliconFlow-rag/config.json`. If it is missing, ask the user for a SiliconFlow API key, explain that raw Markdown chunks/questions will be sent to SiliconFlow for embeddings, and save it only locally if the user wants reuse. Never write a real key into repository files because the skills repo may be uploaded.
+Before the first real RAG build or query, make sure `SILICONFLOW_API_KEY` is configured in the environment or saved in the local private config `~/.codex/SiliconFlow-rag/config.json`. If it is missing, ask the user for a SiliconFlow API key, explain that raw Markdown chunks/questions will be sent to SiliconFlow for embeddings, wiki-page retrieval text will be sent when building the wiki index, and rerank sends candidate snippets. Never write a real key into repository files because the skills repo may be uploaded.
 
 ### Initial Build
 
-Build the index after `wiki/raw/` is populated, running from the project root (`<知识库>/`):
+Build both indexes after `wiki/raw/` and graph-readable wiki pages are populated, running from the project root (`<知识库>/`):
 
 ```bash
-python skills/SiliconFlow-rag/scripts/build_index.py --md-dir wiki/raw --index-dir 检索索引
+python skills/SiliconFlow-rag/scripts/build_index.py \
+  --md-dir wiki/raw \
+  --index-dir 检索索引/raw
+
+python skills/SiliconFlow-rag/scripts/build_index.py \
+  --md-dir wiki \
+  --index-dir 检索索引/wiki \
+  --include-dirs claims,concepts,entities,comparisons,synthesis,queries \
+  --exclude-dirs raw,_archive \
+  --metadata-mode wiki
 ```
 
 ### Proactive Index Refresh (mandatory)
 
-**Every session** where the knowledge base is mentioned, proactively check whether the RAG index is stale before doing any query or wiki work. Do NOT wait for the user to ask.
+**Every session** where the knowledge base is mentioned, proactively check whether either RAG index is stale before doing any query or wiki work. Do NOT wait for the user to ask.
 
-1. Create a helper script `<知识库>/check_rebuild_rag.py` if it doesn't exist (see template below).
+1. Create a helper script `<知识库>/check_rebuild_rag.py` if it doesn't exist.
 2. Run a check-only scan:
 
 ```bash
@@ -128,8 +147,8 @@ cd "<知识库>"
 python check_rebuild_rag.py --check
 ```
 
-3. **If stale** ("需要更新"): tell the user "RAG 索引有更新，raw 有新增/改动，要不要更新？" and wait for confirmation.
-4. **If current** ("已是最新"): say nothing, the index is fine.
+3. **If stale**: tell the user which index needs updating, e.g. "RAG 索引有更新：raw 有新增/改动" or "wiki 结构页有新增/改动，要不要更新？" and wait for confirmation.
+4. **If current**: say nothing, the indexes are fine.
 5. After user confirms, update:
 
 ```bash
@@ -137,163 +156,84 @@ cd "<知识库>"
 python check_rebuild_rag.py
 ```
 
-**check_rebuild_rag.py template** — save this as `<知识库>/check_rebuild_rag.py`:
+**Staleness logic**:
 
-```python
-"""
-RAG 索引自动刷新脚本
-比较 wiki/raw/ 文件内容哈希 vs 检索索引 manifest 中记录的哈希。
-用法: python check_rebuild_rag.py         # 检查 + 自动更新（增量）
-      python check_rebuild_rag.py --check  # 仅检查
-"""
-import hashlib, json, os, sys, subprocess
-from pathlib import Path
-
-SCRIPT_DIR = Path(__file__).resolve().parent
-RAW_DIR = SCRIPT_DIR / "wiki" / "raw"
-INDEX_DIR = SCRIPT_DIR / "检索索引"
-MANIFEST = INDEX_DIR / "manifest.json"
-
-
-def find_build_script() -> Path:
-    candidates = [
-        SCRIPT_DIR / "skills" / "SiliconFlow-rag" / "scripts" / "build_index.py",
-        SCRIPT_DIR / "skills-hermes" / "research" / "SiliconFlow-rag" / "scripts" / "build_index.py",
-        Path.home() / ".codex" / "skills" / "SiliconFlow-rag" / "scripts" / "build_index.py",
-        Path.home() / ".hermes" / "skills" / "research" / "SiliconFlow-rag" / "scripts" / "build_index.py",
-        Path("D:/hermes/skills/research/SiliconFlow-rag/scripts/build_index.py"),
-    ]
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate
-    raise SystemExit("Cannot find SiliconFlow-rag build_index.py; install/update the skill first.")
-
-
-BUILD_SCRIPT = find_build_script()
-
-SKIP_NAMES = {"_conversion_failures.md", "_conversion_manifest.md", "_主题索引.md"}
-
-
-def compute_hashes(raw_dir: Path) -> dict[str, str]:
-    """Return {relative_path: sha256_hex} for all .md files under raw_dir."""
-    hashes = {}
-    for f in sorted(raw_dir.rglob("*.md")):
-        if f.name in SKIP_NAMES:
-            continue
-        if any(p.startswith(".") for p in f.relative_to(raw_dir).parts):
-            continue
-        rel = f.relative_to(raw_dir).as_posix()
-        content = f.read_text(encoding="utf-8", errors="replace").lstrip("\ufeff")
-        hashes[rel] = hashlib.sha256(content.encode("utf-8")).hexdigest()
-    return hashes
-
-
-def main():
-    check_only = "--check" in sys.argv
-    current_hashes = compute_hashes(RAW_DIR)
-
-    if not MANIFEST.exists():
-        print("[CHECK] 索引不存在 → 需要构建")
-        need_rebuild = True
-    else:
-        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-        stored_hashes = manifest.get("file_hashes", {})
-        new_or_changed = [
-            rel for rel, h in current_hashes.items()
-            if rel not in stored_hashes or stored_hashes[rel] != h
-        ]
-        deleted = [rel for rel in stored_hashes if rel not in current_hashes]
-
-        if new_or_changed or deleted:
-            detail = []
-            if new_or_changed:
-                detail.append(f"{len(new_or_changed)} new/changed")
-            if deleted:
-                detail.append(f"{len(deleted)} deleted")
-            print(f"[CHECK] 内容哈希变化 ({', '.join(detail)}) → 需要更新")
-            need_rebuild = True
-        else:
-            print("[CHECK] 索引已是最新（内容哈希一致）→ 跳过")
-            need_rebuild = False
-
-    if check_only:
-        return
-
-    if need_rebuild:
-        print("[BUILD] 更新中（增量模式）...")
-        result = subprocess.run(
-            [sys.executable, str(BUILD_SCRIPT),
-             "--md-dir", str(RAW_DIR),
-             "--index-dir", str(INDEX_DIR),
-             "--incremental"],
-            cwd=str(SCRIPT_DIR),
-            capture_output=True, text=True, timeout=600
-        )
-        print(result.stdout)
-        if result.returncode != 0:
-            print(f"[ERROR] {result.stderr}", file=sys.stderr)
-            sys.exit(1)
-        print("[DONE] 索引更新完成")
-
-
-if __name__ == "__main__":
-    main()
-```
-
-**Pitfalls**:
-- `os.walk` can hang on iCloud Drive paths — the script uses `rglob("*.md")` to avoid this.
-- Staleness is detected by content hash (SHA256), not mtime. Wiki page creation that touches raw files will NOT trigger false updates — only actual content changes matter.
-- Updating uses `--incremental` mode: only new/changed files are re-embedded, keeping unchanged chunks intact. This saves API cost and time.
-- If the manifest has no `file_hashes` field (old format_version 1 index), all files will be treated as changed and a full update occurs. After that update, format_version 2 + file_hashes are stored and incremental works normally.
+- Raw index checks `wiki/raw/` against `检索索引/raw/manifest.json`.
+- Wiki index checks `wiki/claims`, `wiki/concepts`, `wiki/entities`, `wiki/comparisons`, `wiki/synthesis`, and `wiki/queries` against `检索索引/wiki/manifest.json`.
+- Content hashes are SHA256, not mtime.
+- Use `--incremental`; `SiliconFlow-rag` falls back to full rebuild automatically if index settings changed.
 
 ### Query
 
-Query without rerank by default:
+Default to wiki-first for conceptual, argumentative, cross-source, or thesis-writing questions:
 
 ```bash
-python skills/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --question "用户的问题"
+python skills/SiliconFlow-rag/scripts/query_index.py \
+  --wiki-first \
+  --wiki-index-dir 检索索引/wiki \
+  --raw-index-dir 检索索引/raw \
+  --question "用户的问题"
+```
+
+Use raw-only only when the user explicitly wants direct source snippets without wiki expansion:
+
+```bash
+python skills/SiliconFlow-rag/scripts/query_index.py \
+  --index-dir 检索索引/raw \
+  --question "用户的问题"
 ```
 
 Use rerank only when the user explicitly asks for better ordering, precise ranking, rerank mode, or use of the rerank model:
 
 ```bash
-python skills/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引 --question "用户的问题" --rerank
+python skills/SiliconFlow-rag/scripts/query_index.py \
+  --wiki-first \
+  --wiki-index-dir 检索索引/wiki \
+  --raw-index-dir 检索索引/raw \
+  --question "用户的问题" \
+  --rerank
 ```
 
 ### Unified Query (km_query.py)
 
-For daily use, `km_query.py` combines staleness check + context-expanded query into one command. Save `references/km_query.py` as `<知识库>/km_query.py`.
+For daily use, `km_query.py` should combine dual-index staleness checks + wiki-first query into one command.
 
 ```bash
 python km_query.py "亲亲与仁的关系"
 ```
 
 Behaviour:
-- **Staleness check**: compares content hashes against manifest — if raw has changed since last index build, prints a warning and exits (does NOT auto-rebuild).
-- **If current**: runs `query_index.py --expand-context` and prints evidence with surrounding context.
-- `--skip-check`: skip staleness check, query with current index as-is.
-- `--no-context`: disable context expansion for shorter output.
+- **Staleness check**: checks both raw and wiki manifests; if either is stale, prints a warning and exits unless the user has confirmed rebuild.
+- **If current**: runs `query_index.py --wiki-first` and prints `# Wiki Hits`, `# Expanded Query`, and `# Raw Evidence`.
+- `--raw-only`: run raw-only query against `检索索引/raw`.
+- `--skip-check`: skip staleness check, query with current indexes as-is.
+- `--rerank`: enable SiliconFlow rerank for raw evidence candidates.
 
-This is the recommended query entry point for agents and daily use — it prevents stale-index answers with zero extra steps.
+This is the recommended query entry point for agents and daily use — it prevents stale-index answers while using wiki structure for recall.
 
 Validation:
 
-- `检索索引/manifest.json` exists.
-- `检索索引/chunks.jsonl` exists.
-- `检索索引/embeddings.jsonl` exists.
-- Query output contains source paths and evidence snippets.
+- `检索索引/raw/manifest.json`, `chunks.jsonl`, and `embeddings.jsonl` exist.
+- `检索索引/wiki/manifest.json`, `chunks.jsonl`, and `embeddings.jsonl` exist when wiki pages exist.
+- Wiki-first query output contains `# Wiki Hits`, `# Expanded Query`, `# Raw Evidence`, source paths, and evidence snippets.
 
 ## Answering Template
 
-When answering a knowledge-base question, the agent MUST follow this structure. Every claim must cite a specific source (RAG snippet path or wiki article). Never fabricate — if evidence is weak, say so.
+When answering a knowledge-base question, the agent MUST follow this structure. Every substantive claim must cite raw evidence. Wiki hits explain the recall/argument path; raw evidence proves the answer. Never treat a wiki hit alone as proof, and never fabricate — if evidence is weak, say so.
 
 ```markdown
 ## 检索摘要
 - 查询意图：（一句话概括用户想知道什么）
-- 命中源文件：X 个（列出文件名）
+- Wiki 命中节点：（列出命中的 claim/concept/comparison/entity；如 raw-only 则写「未使用」）
+- Raw 命中源文件：X 个（列出文件名）
 - 索引状态：当前 / 过期（如过期已提醒用户）
 
-## 证据梳理
+## Wiki 路径
+- 命中的 claim / concept / comparison 如何帮助扩展问题
+- 相关的支持、反对、限定或依赖关系
+- 注意：这里是召回路径，不是最终证据
+
+## 原始证据
 （每条证据一个子标题，来自不同源文件时分开展示）
 
 ### 观点／发现 A
@@ -308,10 +248,10 @@ When answering a knowledge-base question, the agent MUST follow this structure. 
 
 解读：...
 
-## 交叉引用
-- 概念／观点 X 在 A 和 B 中的异同
-- 与 wiki 已有条目的关联：链接到 `wiki/entities/...`、`wiki/concepts/...`、`wiki/comparisons/...` 或 `wiki/synthesis/...`
-- 与其他源文件中类似论述的联系（如有）
+## 综合解读
+- 只基于 Raw Evidence 回答问题
+- 可以说明 Wiki Hits 帮助定位了哪些概念或论证节点
+- 不把 wiki 页面当作原始证据引用
 
 ## 不确定项
 - 哪些推论证据不足、需要更多查证
@@ -320,17 +260,18 @@ When answering a knowledge-base question, the agent MUST follow this structure. 
 ```
 
 **Rules:**
-- 每次回答必须包含以上四个段落。
-- 如果某段落无内容（如无交叉引用），写「（无）」而不是删掉。
-- 原文引用必须逐字复制 RAG 输出，不得改写。
+- 每次回答必须包含以上五个段落。
+- 如果某段落无内容（如 raw-only 下无 Wiki 路径），写「（无）」而不是删掉。
+- 原文引用必须逐字复制 Raw Evidence 输出，不得改写。
 - 解读部分允许用自己的话概括，但必须忠实于原文。
+- Wiki Hits 只能用于解释检索路径和论证结构，不能单独支撑论文断言。
 - 不确定项不是可选项——宁可多写也不敢装懂。
 
 ## User-Facing Behavior
 
 - Explain progress in plain Chinese.
-- **Proactive RAG check**: every session where the knowledge base is involved, run `check_rebuild_rag.py --check` before any query or wiki work. If stale, ask the user before rebuilding. Do NOT wait for the user to tell you to check.
-- **Prefer `km_query.py`** for queries: it auto-checks staleness and uses context expansion — one command instead of two.
+- **Proactive RAG check**: every session where the knowledge base is involved, run `check_rebuild_rag.py --check` before any query or wiki work. If either raw or wiki index is stale, ask the user before rebuilding. Do NOT wait for the user to tell you to check.
+- **Prefer `km_query.py`** for queries: it auto-checks both indexes and uses wiki-first retrieval by default — one command instead of several.
 - If any source file cannot be converted, explicitly list it or point to `wiki/raw/_conversion_failures.md`.
 - If `SILICONFLOW_API_KEY` and the local private key config are both missing, stop before real RAG indexing/querying and ask the user for the key; do not fake a real index.
 - For final answers over the knowledge base, follow the **Answering Template** above: cite source paths, keep evidence and interpretation separate, always flag uncertainties.

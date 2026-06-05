@@ -16,13 +16,14 @@ RAW = os.path.join(WIKI, "raw")
 ENTITIES = os.path.join(WIKI, "entities")
 CONCEPTS = os.path.join(WIKI, "concepts")
 COMPARISONS = os.path.join(WIKI, "comparisons")
+CLAIMS = os.path.join(WIKI, "claims")
 QUERIES = os.path.join(WIKI, "queries")
 ARCHIVE = os.path.join(WIKI, "_archive")
 INDEX = os.path.join(WIKI, "index.md")
 SCHEMA = os.path.join(WIKI, "SCHEMA.md")
 LOG = os.path.join(WIKI, "log.md")
 
-WIKI_DIRS = [ENTITIES, CONCEPTS, COMPARISONS, QUERIES]
+WIKI_DIRS = [ENTITIES, CONCEPTS, COMPARISONS, CLAIMS, QUERIES]
 RAW_DIRS = [os.path.join(RAW, d) for d in ["articles", "papers", "transcripts"]]
 
 def read_frontmatter(filepath):
@@ -338,6 +339,54 @@ def load_taxonomy():
                     tags.add(tag)
     return tags
 
+def check_claim_structure(pages):
+    """Claim pages must expose argument structure in frontmatter and body wikilinks."""
+    issues = []
+    required = [
+        "claim_type", "core", "status", "confidence", "supports", "opposes",
+        "limits", "depends_on", "related_concepts", "related_entities",
+        "related_comparisons", "sources"
+    ]
+    valid_types = {"main", "support", "objection", "limitation", "bridge"}
+    valid_status = {"stub", "working", "supported", "contested"}
+    for relpath, abspath, name, fm in pages:
+        is_claim = relpath.startswith("claims/") or (fm and fm.get("type") == "claim")
+        if not is_claim:
+            continue
+        if not fm:
+            issues.append({"page": relpath, "issue": "claim missing frontmatter"})
+            continue
+        missing = [f for f in required if f not in fm]
+        if missing:
+            issues.append({"page": relpath, "issue": f"claim missing fields: {missing}"})
+        if fm.get("claim_type") and fm.get("claim_type") not in valid_types:
+            issues.append({"page": relpath, "issue": f"invalid claim_type: {fm.get('claim_type')}"})
+        if fm.get("status") and fm.get("status") not in valid_status:
+            issues.append({"page": relpath, "issue": f"invalid status: {fm.get('status')}"})
+        try:
+            with open(abspath, "r", encoding="utf-8") as f:
+                content = f.read()
+        except Exception:
+            issues.append({"page": relpath, "issue": "unreadable claim body"})
+            continue
+        if "## 命题" not in content:
+            issues.append({"page": relpath, "issue": "missing ## 命题 section"})
+        if "## 关系" not in content:
+            issues.append({"page": relpath, "issue": "missing ## 关系 section"})
+        if "[[raw/" in content or "[[../raw/" in content:
+            issues.append({"page": relpath, "issue": "raw file wikilinked; use plain-text path instead"})
+        core = str(fm.get("core", "")).lower() == "true"
+        sources = fm.get("sources", [])
+        if isinstance(sources, str):
+            sources = [s.strip() for s in sources.strip("[]").split(",") if s.strip()]
+        if core:
+            for section in ["## 关键证据", "## 写作用途"]:
+                if section not in content:
+                    issues.append({"page": relpath, "issue": f"core claim missing {section}"})
+            if not sources:
+                issues.append({"page": relpath, "issue": "core claim has no sources"})
+    return issues
+
 # ── Main ──
 
 def main():
@@ -374,6 +423,11 @@ def main():
     fm_issues = check_frontmatter(pages, taxonomy)
     if fm_issues:
         report["findings"]["frontmatter"] = fm_issues
+
+    # ④b Claim structure
+    claim_issues = check_claim_structure(pages)
+    if claim_issues:
+        report["findings"]["claim_structure"] = claim_issues
 
     # ⑤ Stale content
     stale = check_stale_content(pages, raw_files)

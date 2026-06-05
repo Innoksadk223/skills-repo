@@ -139,6 +139,38 @@ def main() -> None:
             print(result.stdout)
             raise SystemExit("Incremental no-op test failed: expected 'up to date' in output")
 
+        # --- Incremental setting changes should force full rebuild ---
+        result = run([
+            sys.executable,
+            str(BUILD),
+            "--config",
+            str(config_path),
+            "--md-dir",
+            str(md_dir),
+            "--index-dir",
+            str(index_dir),
+            "--mock",
+            "--incremental",
+            "--chunk-size",
+            "120",
+        ], ROOT)
+        if "Incremental settings changed; falling back to full build" not in result.stdout:
+            print(result.stdout)
+            raise SystemExit("Incremental settings-change test failed: expected full rebuild fallback")
+
+        # Restore original chunk settings for later tests.
+        run([
+            sys.executable,
+            str(BUILD),
+            "--config",
+            str(config_path),
+            "--md-dir",
+            str(md_dir),
+            "--index-dir",
+            str(index_dir),
+            "--mock",
+        ], ROOT)
+
         # --- Context expansion test ---
         result = run([
             sys.executable,
@@ -173,7 +205,120 @@ def main() -> None:
                 print(stats_output)
                 raise SystemExit(f"Stats test failed: missing '{marker}' in output")
 
-        print("SiliconFlow-rag self-test passed (full + incremental + context + stats)")
+        # --- Wiki-aware retrieval tests ---
+        wiki_root = temp_dir / "wiki"
+        raw_dir = wiki_root / "raw"
+        claims_dir = wiki_root / "claims"
+        concepts_dir = wiki_root / "concepts"
+        raw_dir.mkdir(parents=True)
+        claims_dir.mkdir(parents=True)
+        concepts_dir.mkdir(parents=True)
+        (raw_dir / "care.md").write_text(
+            "# Care Evidence\n\nLong-term parental care, love, and responsive support explain why filial duties are not based only on biological birth.\n",
+            encoding="utf-8",
+        )
+        (raw_dir / "unrelated.md").write_text(
+            "# Transit\n\nUrban transport scheduling has no relation to family ethics.\n",
+            encoding="utf-8",
+        )
+        (claims_dir / "孝的道德基础是良好照料.md").write_text(
+            """---
+title: 孝的道德基础是良好照料
+type: claim
+claim_type: support
+core: true
+status: supported
+confidence: medium
+supports: [孝为仁之本]
+opposes: [孝基于生育事实]
+limits: []
+depends_on: []
+related_concepts: [孝, 照料]
+related_entities: [Cline]
+related_comparisons: []
+sources: [Cline]
+---
+# 孝的道德基础是良好照料
+
+## 命题
+孝的道德基础不是单纯生育事实，而是长期照料、爱与支持。
+
+## 关系
+- 支撑：[[孝为仁之本]]
+- 反对：[[孝基于生育事实]]
+
+## 关键证据
+- [[Cline]]：良好照料比生育事实更能解释孝的道德基础。
+  - 证据位置：`raw/care.md:1-2`
+
+## 写作用途
+回应孝是否只是血缘义务。
+""",
+            encoding="utf-8",
+        )
+        (concepts_dir / "孝.md").write_text(
+            "# 孝\n\n[[孝的道德基础是良好照料]] 说明孝与照料相关。\n",
+            encoding="utf-8",
+        )
+
+        raw_index = temp_dir / "检索索引" / "raw"
+        wiki_index = temp_dir / "检索索引" / "wiki"
+        run([
+            sys.executable,
+            str(BUILD),
+            "--md-dir",
+            str(wiki_root),
+            "--index-dir",
+            str(wiki_index),
+            "--include-dirs",
+            "claims,concepts",
+            "--exclude-dirs",
+            "raw,_archive",
+            "--metadata-mode",
+            "wiki",
+            "--mock",
+        ], ROOT)
+        run([
+            sys.executable,
+            str(BUILD),
+            "--md-dir",
+            str(raw_dir),
+            "--index-dir",
+            str(raw_index),
+            "--mock",
+        ], ROOT)
+        manifest = json.loads((wiki_index / "manifest.json").read_text(encoding="utf-8"))
+        if manifest.get("include_dirs") != ["claims", "concepts"]:
+            raise SystemExit(f"Wiki index manifest missing include_dirs: {manifest}")
+        if manifest.get("metadata_mode") != "wiki":
+            raise SystemExit(f"Wiki index manifest missing metadata_mode wiki: {manifest}")
+        chunks_text = (wiki_index / "chunks.jsonl").read_text(encoding="utf-8")
+        if "页面类型：claim" not in chunks_text or "相关概念：孝、照料" not in chunks_text:
+            print(chunks_text)
+            raise SystemExit("Wiki metadata-mode test failed: retrieval text missing claim metadata")
+        if "Transit" in chunks_text:
+            print(chunks_text)
+            raise SystemExit("Wiki include/exclude test failed: raw content appeared in wiki index")
+
+        result = run([
+            sys.executable,
+            str(QUERY),
+            "--wiki-index-dir",
+            str(wiki_index),
+            "--raw-index-dir",
+            str(raw_index),
+            "--question",
+            "孝为什么不是只基于生育事实？",
+            "--wiki-first",
+            "--mock",
+        ], ROOT)
+        wiki_output = result.stdout
+        for marker in ["# Wiki Hits", "# Expanded Query", "# Raw Evidence", "孝的道德基础是良好照料", "care.md", "wiki_evidence_boost: true"]:
+            if marker not in wiki_output:
+                print(wiki_output)
+                raise SystemExit(f"Wiki-first test failed: missing '{marker}' in output")
+
+        print("SiliconFlow-rag self-test passed (full + incremental + context + stats + wiki-aware)")
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 

@@ -1,14 +1,14 @@
 ---
 name: karpathy-wiki
-description: "Build and maintain a persistent, compounding knowledge base as interlinked markdown files (Karpathy's wiki pattern). Wiki content is written in Chinese with 中英对照 for English terms. Use when the user asks to create/start a wiki, ingest/add/process a source into their wiki, query their wiki, lint/audit/health-check their wiki, or references their wiki/knowledge base/notes in a research context."
-version: 2.5.0
+description: "Build and maintain a persistent, graph-readable wiki as interlinked markdown files. Use when the user asks to create/start a wiki, ingest/add/process sources, query a wiki, lint/audit/health-check a wiki, create synthesis/claims, or work with a research knowledge base/Obsidian graph."
+version: 2.6.0
 author: Hermes Agent
 source: hermes-builtin
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [wiki, knowledge-base, research, notes, markdown, rag-alternative]
+    tags: [wiki, knowledge-base, research, notes, markdown, obsidian, graph]
     category: research
     related_skills: [obsidian, arxiv]
 ---
@@ -18,72 +18,65 @@ metadata:
 Build and maintain a persistent, compounding knowledge base as interlinked markdown files.
 Based on [Andrej Karpathy's wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
 
-Unlike traditional RAG (which rediscovers knowledge from scratch per query), the wiki
-compiles knowledge once and keeps it current. Cross-references are already there.
-Contradictions have already been flagged. Synthesis reflects everything ingested.
+Core principle: **the wiki must be graph-readable, not just human-readable.** Human-friendly summaries are useful, but durable knowledge belongs in linked pages whose relationships are visible in Obsidian.
 
-**Division of labor:** The human curates sources and directs analysis. The agent
-summarizes, cross-references, files, and maintains consistency.
+**Division of labor:** The human curates sources and directs analysis. The agent captures sources, extracts concepts/entities/comparisons/claims, cross-links pages, maintains navigation, and keeps the graph healthy.
 
 ## Wiki Location
 
-**Location:** Set via `WIKI_PATH` environment variable (e.g. in `~/.hermes/.env`).
-
-If unset, defaults to `~/wiki`.
+Set via `WIKI_PATH` environment variable (e.g. in `~/.hermes/.env`). If unset, default to `~/wiki`.
 
 ```bash
 WIKI="${WIKI_PATH:-$HOME/wiki}"
 ```
 
-The wiki is just a directory of markdown files — open it in Obsidian, VS Code, or
-any editor. No database, no special tooling required.
+The wiki is just a directory of markdown files — open it in Obsidian, VS Code, or any editor. No database required.
 
-## Architecture: Three Layers
+## Architecture: Graph-Readable Layers
 
 ```
 wiki/
 ├── SCHEMA.md           # Conventions, structure rules, domain config
-├── index.md            # Sectioned content catalog with one-line summaries
+├── index.md            # Core catalog; lists all standard pages + only core claims
 ├── log.md              # Chronological action log (append-only, rotated yearly)
-├── raw/                # Layer 1: Immutable source material
-│   ├── articles/       # Web articles, clippings
-│   ├── papers/         # PDFs, arxiv papers
-│   ├── transcripts/    # Meeting notes, interviews
-│   └── assets/         # Images, diagrams referenced by sources
-├── entities/           # Layer 2: Entity pages (people, orgs, products, models)
-├── concepts/           # Layer 2: Concept/topic pages
+├── raw/                # Layer 1: immutable source material; excluded from graph
+│   ├── articles/
+│   ├── papers/
+│   ├── transcripts/
+│   └── assets/
+├── entities/           # Layer 2: people, authors, orgs, products, texts
+├── concepts/           # Layer 2: concepts/topics
 ├── comparisons/        # Layer 2: 辨析页（comparison/distinction）
-├── queries/            # Layer 2: Filed query results worth keeping
-├── synthesis/          # Layer 2: Cross-topic synthesis pages
-├── qa-log.md           # Q&A log (append-only, queries + answers)
+├── claims/             # Layer 2: graph-visible argument nodes
+├── queries/            # Layer 2: filed query results worth keeping
+├── synthesis/          # Layer 2: lightweight human entry pages only
+├── qa-log.md           # Q&A log (append-only)
 ```
 
-**Layer 1 — Raw Sources:** Immutable. The agent reads but never modifies these.
-**Layer 2 — The Wiki:** Agent-owned markdown files. Created, updated, and
-cross-referenced by the agent.
-**Layer 3 — The Schema:** `SCHEMA.md` defines structure, conventions, and tag taxonomy.
+- **raw/**: Immutable. Read but do not modify except during source capture/re-ingest. Do not make raw files graph nodes.
+- **concepts/entities/comparisons/**: Knowledge nodes.
+- **claims/**: Argument nodes — propositions that can be supported, opposed, limited, or depended on.
+- **synthesis/**: Lightweight entry pages / route maps. Do not store the main argument structure or detailed evidence bank here.
+- **SCHEMA.md**: Domain rules, frontmatter, tag taxonomy, thresholds.
 
 ## Wiki Content Language
 
-**The wiki content (page titles, body text, tags) is written in Chinese.** English technical terms use 中英对照（Chinese-first, English in parentheses）format.
+**Wiki content is written in Chinese.** English technical terms use 中英对照（Chinese-first, English in parentheses）format.
 
-- **Page titles:** Chinese. If the concept has a standard English name, use `中文名称（English Name）`.
-  e.g. `注意力机制（Attention Mechanism）`、`Transformer 架构`、`RLHF（人类反馈强化学习）`
-- **Body text:** Chinese throughout. English terms use 中英对照 on first occurrence.
-- **Entity names:** Chinese translation (if widely adopted), English original on first mention.
-- **Tags:** Chinese tags, with English in parentheses where the English term is standard.
-- **File names:** Chinese filenames are supported (Obsidian handles Unicode). Keep naming consistent.
-- **Wikilinks:** Use Chinese page names for link targets. `[[注意力机制]]`、`[[GPT 系列]]`
-- **index.md entries:** One-line summaries in Chinese.
-- **log.md entries:** Action keyword in English, subject in Chinese.
+- **Page titles:** Chinese; standard English terms use `中文名称（English Name）` when helpful.
+- **Body text:** Chinese throughout; first occurrence can include English.
+- **File names:** Chinese filenames are fine. For `claims/`, use the full proposition sentence as the filename.
+- **Wikilinks:** Use Chinese page names: `[[注意力机制]]`, `[[孝的道德基础是良好照料]]`.
+- **index.md/log.md:** Chinese summaries; log action keyword can be English.
 
-## Resuming an Existing Wiki (CRITICAL — do this every session)
+## Resuming an Existing Wiki (CRITICAL)
 
-When the user has an existing wiki, **always orient yourself before doing anything**:
+When the user has an existing wiki, always orient before editing:
 
-① **Read `SCHEMA.md`** — understand the domain, conventions, and tag taxonomy.
-② **Read `index.md`** — learn what pages exist and their summaries.
-③ **Scan recent `log.md`** — read the last 20-30 entries to understand recent activity.
+1. Read `SCHEMA.md` — domain, conventions, taxonomy.
+2. Read `index.md` — existing pages and core claims.
+3. Scan recent `log.md` — last 20-30 entries.
+4. For large wikis (100+ pages), `search_files` for the topic before creating anything new.
 
 ```bash
 WIKI="${WIKI_PATH:-$HOME/wiki}"
@@ -92,63 +85,85 @@ read_file "$WIKI/index.md"
 read_file "$WIKI/log.md" offset=<last 30 lines>
 ```
 
-Only after orientation should you ingest, query, or lint. For large wikis (100+ pages),
-also run a quick `search_files` for the topic at hand before creating anything new.
-
 ## Initializing a New Wiki
 
-When the user asks to create or start a wiki:
+When creating a wiki:
 
-1. Determine the wiki path (from `$WIKI_PATH` env var, or ask the user; default `~/wiki`)
-2. Create the directory structure above
-3. Ask the user what domain the wiki covers — be specific
-4. Write `SCHEMA.md` customized to the domain: read [`references/templates/SCHEMA-template.md`](references/templates/SCHEMA-template.md), customize the domain and tag taxonomy, then write to `$WIKI/SCHEMA.md`
-5. Write initial `index.md`: read [`references/templates/index-template.md`](references/templates/index-template.md). Scaling rule: when any index section exceeds 50 entries, split by pinyin first letter. When index exceeds 200 entries total, create `_meta/主题地图.md`.
-6. Write initial `log.md`: read [`references/templates/log-template.md`](references/templates/log-template.md)
-7. Create empty `qa-log.md` — append-only Q&A log. Format: `## [YYYY-MM-DD] Q: 问题` → `A: 摘要（来源：[[页面]]）`
-8. Create `synthesis/` directory
-9. Confirm the wiki is ready and suggest first sources to ingest
+1. Determine wiki path from `$WIKI_PATH` or ask; default `~/wiki`.
+2. Create the directory structure above, including `claims/` and `synthesis/`.
+3. Ask what domain the wiki covers.
+4. Write `SCHEMA.md` from `references/templates/SCHEMA-template.md`, customized to the domain.
+5. Write `index.md` from `references/templates/index-template.md`. When any section exceeds 50 entries, split by pinyin first letter; when index exceeds 200 entries total, create `_meta/主题地图.md`.
+6. Write `log.md` from `references/templates/log-template.md`.
+7. Create empty `qa-log.md`: `## [YYYY-MM-DD] Q: 问题` → `A: 摘要（来源：[[页面]]）`.
+8. Confirm the wiki is ready and suggest first sources to ingest.
 
 ## Core Operations
 
 | 用户意图 | 加载 | 说明 |
 |---------|------|------|
-| 摄入来源 (ingest) | [`references/ingest.md`](references/ingest.md) | 单个来源 → wiki 页面 + 交叉引用 + 导航更新 |
-| 查询知识 (query) | [`references/query.md`](references/query.md) | 检索 → 综合回答 → 有价值的存档 |
-| 健康检查 (lint) | [`references/lint.md`](references/lint.md) | 运行 `scripts/lint.py` → 解析 JSON → 汇报 + 研究建议 |
-| 批量摄入 (bulk) | [`references/bulk-ingest.md`](references/bulk-ingest.md) | 5+ 来源的并行/顺序策略 |
-| 综述 (synthesis) | [`references/synthesis.md`](references/synthesis.md) | 跨主题综述：当前认知 + 争议 + 知识缺口 |
-| Obsidian 集成 | [`references/obsidian-setup.md`](references/obsidian-setup.md) | 图谱颜色分组、Dataview 等配置 |
+| 摄入来源 (ingest) | `references/ingest.md` | 单个来源 → wiki 页面 + 交叉引用 + 导航更新 |
+| 查询知识 (query) | `references/query.md` | 检索 → 综合回答 → 有价值的存档 |
+| 论证节点 (claims) | `references/claims.md` | 将论文/理论论证拆成图谱可见的小型论证卡片 |
+| 健康检查 (lint) | `references/lint.md` | 运行 `scripts/lint.py` → 解析 JSON → 汇报 + 研究建议 |
+| 批量摄入 (bulk) | `references/bulk-ingest.md` | 5+ 来源的并行/顺序策略 |
+| 综述/入口 (synthesis) | `references/synthesis.md` | 轻量入口页；论证型 synthesis 必须抽取 claims |
+| Obsidian 集成 | `references/obsidian-setup.md` | 图谱路径分组、Dataview、raw 排除 |
 
 ## Searching
 
 ```bash
-search_files "transformer" path="$WIKI" file_glob="*.md"
+search_files "孝" path="$WIKI" file_glob="*.md"
 search_files "*.md" target="files" path="$WIKI"
-search_files "tags:.*对齐" path="$WIKI" file_glob="*.md"
+search_files "type: claim" path="$WIKI/claims" file_glob="*.md"
 read_file "$WIKI/log.md" offset=<last 20 lines>
 ```
 
+## Argument Structure Rule
+
+When content contains thesis structure, theoretical framework, objections, limitations, or evidence logic, do **not** leave it as a long `synthesis/` page. Extract graph-worthy propositions into `claims/`.
+
+Use `claims/` for:
+- main theses;
+- support propositions;
+- core objections;
+- limitation/boundary claims;
+- bridge claims connecting fields or theories.
+
+Use `synthesis/` only for lightweight entry pages: route maps, reading order, current state, key links, and gaps. Do not generate a standalone long evidence bank; evidence belongs inside the claim it supports.
+
 ## Archiving
 
-When content is fully superseded or the domain scope changes:
+When content is fully superseded or domain scope changes:
 
-1. Create `_archive/` directory if it doesn't exist
-2. Move the page to `_archive/` with its original path (e.g., `_archive/entities/old-page.md`)
-3. Remove from `index.md`
-4. Update any pages that linked to it — replace wikilink with plain text + "（已归档）"
-5. Log the archive action
+1. Create `_archive/` if needed.
+2. Move the page to `_archive/` with original path preserved.
+3. Remove from `index.md`.
+4. Update pages that linked to it — replace wikilink with plain text + `（已归档）`.
+5. Log the archive action.
 
-## Pitfalls
+## Common Pitfalls
 
-- **Never modify files in `raw/`** — sources are immutable. Corrections go in wiki pages.
-- **Always orient first** — read SCHEMA + index + recent log before any operation in a new session.
+- **Never modify files in `raw/`** except source capture/re-ingest; corrections go in wiki pages.
+- **Always orient first** — read SCHEMA + index + recent log before working.
 - **Always update index.md and log.md** — skipping this makes the wiki degrade.
-- **Don't create pages for things outside the domain** — follow the Page Thresholds in SCHEMA.md.
-- **Don't create pages without cross-references** — every page must link to at least 2 other pages.
-- **Frontmatter is required** — it enables search, filtering, and staleness detection.
-- **Tags must come from the taxonomy** — add new tags to SCHEMA.md first, then use them.
-- **Keep pages scannable** — a wiki page should be readable in 30 seconds. Split pages over 200 lines.
-- **Ask before mass-updating** — if an ingest would touch 10+ existing pages, confirm scope with the user first.
-- **Rotate the log** — when log.md exceeds 500 entries, rename it `log-YYYY.md` and start fresh.
-- **Handle contradictions explicitly** — don't silently overwrite. Note both claims with dates, mark in frontmatter, flag for user review.
+- **Don't create pages outside the domain** — follow SCHEMA thresholds.
+- **Don't create graph-dead pages** — every page should link to at least 2 other pages; create stubs for dead wikilinks.
+- **Don't bury arguments in synthesis** — if it is a proposition with support/opposition/limits, make a claim page.
+- **Don't keep evidence banks as durable products** — evidence belongs under the relevant claim; raw locations are plain-text paths, not wikilinks.
+- **Frontmatter is required** — it enables filtering, linting, and staleness detection.
+- **Tags must come from the taxonomy** — add new tags to SCHEMA.md first.
+- **Keep pages scannable** — split pages over ~200 lines.
+- **Ask before mass-updating** — if an operation would touch 10+ existing pages, confirm scope.
+- **Handle contradictions explicitly** — do not silently overwrite; mark contested claims and flag for review.
+
+## Verification Checklist
+
+- [ ] `SCHEMA.md`, `index.md`, and recent `log.md` were read before edits.
+- [ ] New/updated pages have required frontmatter and Chinese wikilinks.
+- [ ] `claims/` exists when the wiki contains argument-oriented material.
+- [ ] Core claims are listed in `index.md`; non-core claims are discoverable through links.
+- [ ] Claim pages include `## 命题` and `## 关系` so Obsidian graph edges are visible.
+- [ ] No `raw/` file is wikilinked as a graph node; raw evidence locations are plain-text paths.
+- [ ] `index.md` and `log.md` were updated.
+- [ ] `scripts/lint.py <wiki_path>` was run when doing health checks or structural migrations.
