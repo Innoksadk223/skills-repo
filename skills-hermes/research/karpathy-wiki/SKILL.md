@@ -2,15 +2,10 @@
 name: karpathy-wiki
 description: "Build and maintain a persistent, graph-readable wiki as interlinked markdown files. Use when the user asks to create/start a wiki, ingest/add/process sources, query a wiki, lint/audit/health-check a wiki, create synthesis/claims, or work with a research knowledge base/Obsidian graph."
 version: 2.6.0
-author: Hermes Agent
-source: hermes-builtin
-license: MIT
-platforms: [linux, macos, windows]
 metadata:
-  hermes:
-    tags: [wiki, knowledge-base, research, notes, markdown, obsidian, graph]
-    category: research
-    related_skills: [obsidian, arxiv]
+  tags: [wiki, knowledge-base, research, notes, markdown, obsidian, graph]
+  category: research
+  related_skills: [obsidian, arxiv]
 ---
 
 # Karpathy's Wiki
