@@ -29,7 +29,7 @@
 🔬 学术
 「搜一下 diffusion model 论文」 → academic-search
 「这篇论文能不能免费下载」     → academic-search
-「把论文建个知识库」           → karpathy-wiki / SiliconFlow-rag
+「把论文建个知识库」           → social-science-km / karpathy-wiki / SiliconFlow-rag
 
 🛠 工具
 「帮我清理项目临时文件」       → cleanup

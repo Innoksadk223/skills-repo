@@ -22,11 +22,11 @@
 > 「还可以安装一下 obra/superpowers，很出名，在 https://github.com/obra/superpowers。」
 
 介绍示例：
-> 「这个包有 30 个技能，分 5 组：
+> 「这个包有 32 个技能，分 5 组：
 >  [Browser] 浏览器自动化 ×5 — 网页操控、远端沙箱、Cloud、支付、SDK
 >  [PaperSpine] 论文写作 ×12 — 研究到 LaTeX 排版全流程
 >  [Minimax] 文档生成 ×4 — DOCX/PDF/XLSX/PPTX
->  [Academic] 学术研究 ×5 — Karpathy 式知识库、学术搜索、审阅、社科知识库、RAG 检索
+>  [Academic] 学术研究 ×5 — 图谱化知识库、论证节点、学术搜索、审阅、wiki-first RAG 检索
 >  [Tools] 工具 ×5 — 创建技能、清理、发现、质询、文件转 Markdown」
 
 调用方法介绍示例（读 HOWTO.md 后）：
@@ -43,7 +43,7 @@
 | 🌐 浏览器 | browser-use / remote-browser / cloud / x402 / open-source (5) | 网页自动化、远端沙箱、Cloud API、支付、SDK |
 | 📝 PaperSpine | paper-spine + 11 子模块 (12) | 学术论文全流程：研究→引用→改写→LaTeX→翻译→审校<br>💡 Claude Code 用户建议用 [Academic Research Skills](https://github.com/Imbad0202/academic-research-skills) 替代，功能更强且有原生插件支持 |
 | 📄 Minimax | minimax-docx / minimax-pdf / minimax-xlsx / pptx-generator (4) | DOCX/PDF/XLSX/PPTX 专业文档生成 |
-| 🔬 学术 | karpathy-wiki / academic-search / academic-paper-review / SiliconFlow-rag / social-science-km (5) | Karpathy 式知识库、学术搜索、论文审阅、社科知识库与 RAG 检索 |
+| 🔬 学术 | karpathy-wiki / academic-search / academic-paper-review / SiliconFlow-rag / social-science-km (5) | 图谱化知识库、论证节点、学术搜索、论文审阅、wiki-first RAG 检索 |
 | 🛠 工具 | skill-creator / skill-architecture / cleanup / find-skills / grill-me / markitdown (6) | 技能创建、模块化架构、清理、发现、质询、文件转 Markdown |
 
 ### 详细
@@ -71,11 +71,11 @@
 | minimax-pdf | 高质量 PDF 生成与设计 | ↑ |
 | minimax-xlsx | Excel 表格创建、分析与验证 | ↑ |
 | pptx-generator | PowerPoint 演示文稿生成与编辑 | ↑ |
-| karpathy-wiki | Karpathy Wiki：持久化相互链接 Markdown 知识库（中文 + 中英对照） | **Hermes 内置自改版** |
+| karpathy-wiki | Karpathy Wiki：图谱可读 Markdown 知识库，支持 claims / concepts / entities / comparisons | **Hermes 内置自改版** |
 | academic-search | 学术搜索、引用分析、OA PDF 判定 | [ustc-ai4science](https://github.com/ustc-ai4science/academic-search) |
 | academic-paper-review | 论文审阅、方法论评估、同行评审 | [bytedance/deer-flow](https://github.com/bytedance/deer-flow) |
-| SiliconFlow-rag | 为 raw Markdown 建立本地 RAG 索引，支持硅基流动嵌入与可选重排 | 本仓库 |
-| social-science-km | 协调源文件转 Markdown、Karpathy wiki 和社科 RAG 检索三步流程 | 本仓库 |
+| SiliconFlow-rag | 为 raw 原文与 wiki 结构建立双索引，支持 wiki-first 检索、硅基流动嵌入与可选重排 | 本仓库 |
+| social-science-km | 协调源文件转 Markdown、图谱 wiki、双索引 RAG 与论文知识库问答 | 本仓库 |
 | skill-creator | 创建新的 AI 技能 | [clawhub.ai](https://clawhub.ai) |
 | skill-architecture | 模块化技能架构设计：松耦合、高内聚、断点续传 | 本仓库 |
 | cleanup | 任务完成后清理临时文件 | — |
@@ -90,8 +90,8 @@
 | 步骤 | 技能 | 做什么 |
 |------|------|--------|
 | 1 | **markitdown** | PDF/DOCX → Markdown 文本 |
-| 2 | **karpathy-wiki** | 文本 → 互相链接的概念页面 + 实体页面 + 对比 + 综述 |
-| 3 | **SiliconFlow-rag** | 原文 → 向量索引（硅基流动嵌入模型），支持语义搜索 |
+| 2 | **karpathy-wiki** | 文本 → claims 论证节点 + concepts/entities/comparisons 图谱页面 + 轻量 synthesis |
+| 3 | **SiliconFlow-rag** | raw 原文 + wiki 结构 → 双向量索引，查询默认 wiki-first |
 | 协调 | **social-science-km** | 调度以上三步，一步到位 |
 
 **直接说「帮我把这个文件夹里的论文建个知识库」就行**，AI 会自动调用这四个技能。建完后在 Obsidian 里打开文件夹，按 `Ctrl/Cmd + G` 即可看到彩色知识图谱。
@@ -110,7 +110,7 @@ bash setup.sh
 - 自动检测你装了哪些 agent（支持多选 / 全选）
 - **可选分组安装** — 默认全装，也可只选 browser / paperspine / minimax 等
 - 直接将技能文件复制到 agent 目录（非 symlink，独立可迁移）
-- Hermes 自动构建分类目录（browser-use/, paperspine/, minimax/）
+- Hermes 自动构建分类目录与 DESCRIPTION.md（browser-use/, paperspine/, minimax/, research/, superpowers/ 等）
 - 已有技能自动比较更新（`diff -rq`），不一致则覆盖
 
 ## 给 Agent 的安装/更新指令
@@ -150,7 +150,7 @@ npx skills add -g browser-use    # browser-use 全系列
 ```
 skills-repo/
 ├── skills/              ← 扁平结构（Claude Code / Codex）
-├── skills-hermes/       ← 分类结构（Hermes，symlink → skills/）
+├── skills-hermes/       ← 分类结构（Hermes；组根 DESCRIPTION.md + 子技能 symlink → skills/）
 |   ├── browser-use/     ← 5 个技能
 |   ├── paperspine/      ← 12 个技能
 |   ├── minimax/         ← 4 个技能
