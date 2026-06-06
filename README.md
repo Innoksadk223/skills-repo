@@ -22,12 +22,13 @@
 > 「还可以安装一下 obra/superpowers，很出名，在 https://github.com/obra/superpowers。」
 
 介绍示例：
-> 「这个包有 32 个技能，分 5 组：
+> 「这个包有 34 个技能，分 6 组：
 >  [Browser] 浏览器自动化 ×5 — 网页操控、远端沙箱、Cloud、支付、SDK
 >  [PaperSpine] 论文写作 ×12 — 研究到 LaTeX 排版全流程
 >  [Minimax] 文档生成 ×4 — DOCX/PDF/XLSX/PPTX
 >  [Academic] 学术研究 ×5 — 图谱化知识库、论证节点、学术搜索、审阅、wiki-first RAG 检索
->  [Tools] 工具 ×5 — 创建技能、清理、发现、质询、文件转 Markdown」
+>  [Creative] 创作 ×1 — 专业 PPT 演示文稿全流程生成
+>  [Tools] 工具 ×7 — 创建技能、架构设计、清理、发现、质询、环境踩坑记录、文件转 Markdown」
 
 调用方法介绍示例（读 HOWTO.md 后）：
 > 「Claude Code 直接说人话就行，比如：
@@ -36,7 +37,7 @@
 >   "审一下这篇论文" → 自动用 academic-paper-review
 >  想精准指定就说 "用 browser-use 打开这个网页"。」
 
-## 技能速查（32 个）
+## 技能速查（34 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
@@ -44,7 +45,8 @@
 | 📝 PaperSpine | paper-spine + 11 子模块 (12) | 学术论文全流程：研究→引用→改写→LaTeX→翻译→审校<br>💡 Claude Code 用户建议用 [Academic Research Skills](https://github.com/Imbad0202/academic-research-skills) 替代，功能更强且有原生插件支持 |
 | 📄 Minimax | minimax-docx / minimax-pdf / minimax-xlsx / pptx-generator (4) | DOCX/PDF/XLSX/PPTX 专业文档生成 |
 | 🔬 学术 | karpathy-wiki / academic-search / academic-paper-review / SiliconFlow-rag / social-science-km (5) | 图谱化知识库、论证节点、学术搜索、论文审阅、wiki-first RAG 检索 |
-| 🛠 工具 | skill-creator / skill-architecture / cleanup / find-skills / grill-me / markitdown (6) | 技能创建、模块化架构、清理、发现、质询、文件转 Markdown |
+| 🎨 创作 | ppt-agent-skill (1) | 专业 PPT 演示文稿全流程生成 |
+| 🛠 工具 | skill-creator / skill-architecture / cleanup / find-skills / grill-me / capture-gotcha / markitdown (7) | 技能创建、模块化架构、清理、发现、质询、环境踩坑记录、文件转 Markdown |
 
 ### 详细
 
@@ -81,7 +83,9 @@
 | cleanup | 任务完成后清理临时文件 | — |
 | find-skills | 发现和安装社区技能 | — |
 | grill-me | 深度质询你的方案/设计决策 | — |
+| capture-gotcha | 记录跨任务复用的环境类踩坑经验 | 本仓库 |
 | markitdown | 使用 Microsoft MarkItDown 将 PDF、Office、HTML 等文件转换为 Markdown | [microsoft/markitdown](https://github.com/microsoft/markitdown) |
+| ppt-agent-skill | 专业 PPT 演示文稿全流程生成，输出 HTML/预览/PPTX 管线 | 本仓库 |
 
 ## 知识库构建（四技能联合）
 
@@ -110,7 +114,7 @@ bash setup.sh
 - 自动检测你装了哪些 agent（支持多选 / 全选）
 - **可选分组安装** — 默认全装，也可只选 browser / paperspine / minimax 等
 - 直接将技能文件复制到 agent 目录（非 symlink，独立可迁移）
-- Hermes 自动构建分类目录与 DESCRIPTION.md（browser-use/, paperspine/, minimax/, research/, superpowers/ 等）
+- Hermes 自动构建分类目录（browser-use/, paperspine/, minimax/, research/, creative/ 等）
 - 已有技能自动比较更新（`diff -rq`），不一致则覆盖
 
 ## 给 Agent 的安装/更新指令
@@ -150,10 +154,11 @@ npx skills add -g browser-use    # browser-use 全系列
 ```
 skills-repo/
 ├── skills/              ← 扁平结构（Claude Code / Codex）
-├── skills-hermes/       ← 分类结构（Hermes；组根 DESCRIPTION.md + 子技能 symlink → skills/）
+├── skills-hermes/       ← 分类结构（Hermes；按用途分组）
 |   ├── browser-use/     ← 5 个技能
 |   ├── paperspine/      ← 12 个技能
 |   ├── minimax/         ← 4 个技能
-|   └── research/        ← 5 个技能
+|   ├── research/        ← 3 个知识库/RAG 技能
+|   └── creative/        ← PPT Agent
 └── setup.sh
 ```
