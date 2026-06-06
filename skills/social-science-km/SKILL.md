@@ -135,7 +135,7 @@ python skills/SiliconFlow-rag/scripts/build_index.py \
   --metadata-mode wiki
 ```
 
-### Proactive Index Refresh (mandatory)
+### Proactive Index Status Check & Incremental Update (mandatory)
 
 **Every session** where the knowledge base is mentioned, proactively check whether either RAG index is stale before doing any query or wiki work. Do NOT wait for the user to ask.
 
@@ -147,9 +147,13 @@ cd "<知识库>"
 python check_rebuild_rag.py --check
 ```
 
-3. **If stale**: tell the user which index needs updating, e.g. "RAG 索引有更新：raw 有新增/改动" or "wiki 结构页有新增/改动，要不要更新？" and wait for confirmation.
+3. **If stale**: tell the user which index needs updating, and distinguish the operation precisely:
+   - `new/changed` files → say "新增/改动，需要增量更新索引" or "补入索引".
+   - `deleted` files → say "有删除，需要从索引移除对应条目".
+   - only say "重建" when the tool reports a settings/model/index-format change that forces a **full rebuild**.
+   - Example: "RAG 索引有更新：raw 有 1 个新增文件，要不要增量更新 raw 索引？"
 4. **If current**: say nothing, the indexes are fine.
-5. After user confirms, update:
+5. After user confirms, update/add to the index:
 
 ```bash
 cd "<知识库>"
@@ -161,7 +165,7 @@ python check_rebuild_rag.py
 - Raw index checks `wiki/raw/` against `检索索引/raw/manifest.json`.
 - Wiki index checks `wiki/claims`, `wiki/concepts`, `wiki/entities`, `wiki/comparisons`, `wiki/synthesis`, and `wiki/queries` against `检索索引/wiki/manifest.json`.
 - Content hashes are SHA256, not mtime.
-- Use `--incremental`; `SiliconFlow-rag` falls back to full rebuild automatically if index settings changed.
+- Use `--incremental`; for ordinary new/changed files, describe the result as "增量更新 / 新增到索引". `SiliconFlow-rag` falls back to a full rebuild only if index settings changed; reserve "重建" for that case.
 
 ### Query
 
@@ -203,7 +207,7 @@ python km_query.py "亲亲与仁的关系"
 ```
 
 Behaviour:
-- **Staleness check**: checks both raw and wiki manifests; if either is stale, prints a warning and exits unless the user has confirmed rebuild.
+- **Staleness check**: checks both raw and wiki manifests; if either is stale, prints a warning and exits unless the user has confirmed an index update. Use "增量更新/新增到索引" wording for ordinary new/changed files; reserve "重建" for forced full rebuilds caused by settings/model/index-format changes.
 - **If current**: runs `query_index.py --wiki-first` and prints `# Wiki Hits`, `# Expanded Query`, and `# Raw Evidence`.
 - `--raw-only`: run raw-only query against `检索索引/raw`.
 - `--skip-check`: skip staleness check, query with current indexes as-is.
@@ -270,7 +274,7 @@ When answering a knowledge-base question, the agent MUST follow this structure. 
 ## User-Facing Behavior
 
 - Explain progress in plain Chinese.
-- **Proactive RAG check**: every session where the knowledge base is involved, run `check_rebuild_rag.py --check` before any query or wiki work. If either raw or wiki index is stale, ask the user before rebuilding. Do NOT wait for the user to tell you to check.
+- **Proactive RAG check**: every session where the knowledge base is involved, run `check_rebuild_rag.py --check` before any query or wiki work. If either raw or wiki index is stale, ask the user before updating the index. Say "新增到索引" or "增量更新" for ordinary new/changed files; say "重建" only for full rebuilds. Do NOT wait for the user to tell you to check.
 - **Prefer `km_query.py`** for queries: it auto-checks both indexes and uses wiki-first retrieval by default — one command instead of several.
 - If any source file cannot be converted, explicitly list it or point to `wiki/raw/_conversion_failures.md`.
 - If `SILICONFLOW_API_KEY` and the local private key config are both missing, stop before real RAG indexing/querying and ask the user for the key; do not fake a real index.

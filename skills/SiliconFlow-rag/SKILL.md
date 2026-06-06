@@ -86,7 +86,7 @@ The wiki layer improves recall by finding the relevant concept/claim/objection p
    - Do not put API keys in `rag_config.json`, repo files, skill files, logs, manifests, or examples.
    - Explain that indexing sends chunks to SiliconFlow embeddings; querying sends the question/expanded query; reranking sends candidate snippets.
 
-2. Build or refresh the raw index:
+2. Build or incrementally update the raw index:
 
 ```bash
 python skills/SiliconFlow-rag/scripts/build_index.py \
@@ -94,7 +94,7 @@ python skills/SiliconFlow-rag/scripts/build_index.py \
   --index-dir 检索索引/raw
 ```
 
-3. If the project has `karpathy-wiki` pages, build the wiki index:
+3. If the project has `karpathy-wiki` pages, build or incrementally update the wiki index:
 
 ```bash
 python skills/SiliconFlow-rag/scripts/build_index.py \
@@ -194,9 +194,10 @@ Command-line flags override config values.
 
 ## Index Maintenance
 
-- Rebuild the raw index whenever `wiki/raw/` changes materially.
-- Rebuild the wiki index whenever `claims/`, `concepts/`, `entities/`, `comparisons/`, `synthesis/`, or `queries/` change materially.
-- After the initial full build, `--incremental` can be used only when index settings are unchanged. If `metadata_mode`, embedding model, mock/real mode, chunk size, overlap, include/exclude dirs, source dir, or index format changes, the script falls back to a full rebuild so stale vectors are not reused.
+- When `wiki/raw/` changes materially, update the raw index. If the tool reports only ordinary new/changed files, call this "新增到索引" or "增量更新", not "重建".
+- When `claims/`, `concepts/`, `entities/`, `comparisons/`, `synthesis/`, or `queries/` change materially, update the wiki index. If only files changed, call this "增量更新 wiki 索引".
+- Use "重建" only for a full rebuild: initial build from an empty/missing index, or automatic fallback caused by changed `metadata_mode`, embedding model, mock/real mode, chunk size, overlap, include/exclude dirs, source dir, or index format.
+- After the initial full build, `--incremental` can be used when index settings are unchanged. The script keeps unchanged chunks, adds/updates changed chunks, and removes deleted-file chunks.
 - Keep each index directory's `manifest.json`, `chunks.jsonl`, and `embeddings.jsonl` together.
 - Do not edit index files by hand. Re-run `build_index.py` instead.
 
@@ -206,7 +207,7 @@ Command-line flags override config values.
 - In wiki-first mode, use `# Wiki Hits` to understand the conceptual/argument path and `# Raw Evidence` for citable evidence.
 - Cite source paths shown by the script.
 - Do not claim a paper says something unless the raw evidence supports it.
-- If retrieval returns weak or empty evidence, say so and suggest rebuilding the relevant index or broadening the question.
+- If retrieval returns weak or empty evidence, say so and suggest updating the relevant index or broadening the question.
 - Reranking is optional. If reranking fails, continue with local similarity results and mention the fallback.
 
 ## Testing
