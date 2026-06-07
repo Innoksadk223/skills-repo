@@ -285,6 +285,8 @@ sources: [Cline]
             str(raw_dir),
             "--index-dir",
             str(raw_index),
+            "--metadata-mode",
+            "enriched_raw",
             "--mock",
         ], ROOT)
         manifest = json.loads((wiki_index / "manifest.json").read_text(encoding="utf-8"))
@@ -292,6 +294,16 @@ sources: [Cline]
             raise SystemExit(f"Wiki index manifest missing include_dirs: {manifest}")
         if manifest.get("metadata_mode") != "wiki":
             raise SystemExit(f"Wiki index manifest missing metadata_mode wiki: {manifest}")
+        raw_manifest = json.loads((raw_index / "manifest.json").read_text(encoding="utf-8"))
+        if raw_manifest.get("metadata_mode") != "enriched_raw":
+            raise SystemExit(f"Raw index manifest missing metadata_mode enriched_raw: {raw_manifest}")
+        raw_chunks_text = (raw_index / "chunks.jsonl").read_text(encoding="utf-8")
+        if "semantic_metadata" not in raw_chunks_text or "孝的道德基础是良好照料" not in raw_chunks_text:
+            print(raw_chunks_text)
+            raise SystemExit("Enriched raw test failed: raw chunks missing semantic metadata")
+        if "embedding_text" not in raw_chunks_text or "检索增强标签" not in raw_chunks_text:
+            print(raw_chunks_text)
+            raise SystemExit("Enriched raw test failed: raw chunks missing retrieval-only embedding text")
         chunks_text = (wiki_index / "chunks.jsonl").read_text(encoding="utf-8")
         if "页面类型：claim" not in chunks_text or "相关概念：孝、照料" not in chunks_text:
             print(chunks_text)
@@ -313,12 +325,12 @@ sources: [Cline]
             "--mock",
         ], ROOT)
         wiki_output = result.stdout
-        for marker in ["# Wiki Hits", "# Expanded Query", "# Raw Evidence", "孝的道德基础是良好照料", "care.md", "wiki_evidence_boost: true"]:
+        for marker in ["# Wiki Hits", "# Expanded Query", "# Raw Evidence", "孝的道德基础是良好照料", "care.md", "wiki_evidence_boost: true", "semantic_type_boost", "retrieval_tags"]:
             if marker not in wiki_output:
                 print(wiki_output)
                 raise SystemExit(f"Wiki-first test failed: missing '{marker}' in output")
 
-        print("SiliconFlow-rag self-test passed (full + incremental + context + stats + wiki-aware)")
+        print("SiliconFlow-rag self-test passed (full + incremental + context + stats + wiki-aware + enriched-raw)")
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 

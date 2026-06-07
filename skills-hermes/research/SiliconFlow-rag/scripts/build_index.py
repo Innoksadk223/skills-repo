@@ -8,6 +8,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import time
 import urllib.error
 import urllib.request
@@ -136,8 +137,8 @@ def apply_build_config(args: argparse.Namespace) -> argparse.Namespace:
         raise SystemExit("sleep must be 0 or greater")
     args.include_dirs = parse_csv(args.include_dirs)
     args.exclude_dirs = parse_csv(args.exclude_dirs)
-    if args.metadata_mode not in {"plain", "wiki"}:
-        raise SystemExit("metadata_mode must be 'plain' or 'wiki'")
+    if args.metadata_mode not in {"plain", "wiki", "enriched_raw"}:
+        raise SystemExit("metadata_mode must be 'plain', 'wiki', or 'enriched_raw'")
     return args
 
 
@@ -278,6 +279,107 @@ def wiki_retrieval_text(text: str, rel_path: str) -> str:
     fields.append(plain[:1600])
     return "\n".join(fields)
 
+
+
+def unique_limited(values: list[str], limit: int) -> list[str]:
+    seen: list[str] = []
+    for value in values:
+        item = str(value).strip().strip("[]")
+        if not item or item in seen:
+            continue
+        seen.append(item)
+        if len(seen) >= limit:
+            break
+    return seen
+
+
+def extract_raw_evidence_paths(text: str) -> list[str]:
+    paths: list[str] = []
+    patterns = [
+        r"证据位置：`([^`]+)`",
+        r"evidence:\s*`([^`]+)`",
+        r"sources?:\s*\[([^\]]+)\]",
+    ]
+    for pattern in patterns:
+        for match in re.findall(pattern, text, flags=re.IGNORECASE):
+            for part in str(match).replace("，", ",").split(","):
+                cleaned = part.strip().strip("'\"")
+                if cleaned:
+                    paths.append(cleaned)
+    return paths
+
+
+def normalize_raw_evidence_path(path: str) -> str:
+    cleaned = str(path).split(":", 1)[0].strip().removeprefix("./")
+    return cleaned.removeprefix("wiki/raw/").removeprefix("raw/")
+
+
+def merge_hint(target: dict, key: str, values: list[str], limit: int) -> None:
+    existing = target.setdefault(key, [])
+    target[key] = unique_limited(existing + values, limit)
+
+
+def collect_raw_semantic_hints(md_dir: Path) -> dict[str, dict]:
+    """Collect minimal wiki labels that explicitly point back to raw files.
+
+    The labels are a retrieval bridge only. They are stored separately from raw_text
+    and must not be cited as source evidence.
+    """
+    if md_dir.name != "raw":
+        return {}
+    wiki_root = md_dir.parent
+    if not wiki_root.is_dir():
+        return {}
+
+    hints: dict[str, dict] = {}
+    for folder in ["claims", "concepts", "comparisons", "entities"]:
+        page_dir = wiki_root / folder
+        if not page_dir.is_dir():
+            continue
+        for page in sorted(page_dir.rglob("*.md")):
+            text = read_text(page)
+            frontmatter, body = parse_frontmatter(text)
+            title = str(frontmatter.get("title") or page.stem)
+            page_type = str(frontmatter.get("type") or folder.rstrip("s"))
+            targets = [normalize_raw_evidence_path(path) for path in extract_raw_evidence_paths(text)]
+            targets = [target for target in targets if target]
+            if not targets:
+                continue
+
+            concepts = as_list(frontmatter.get("related_concepts"))
+            entities = as_list(frontmatter.get("related_entities"))
+            comparisons = as_list(frontmatter.get("related_comparisons"))
+            claim_titles = [title] if page_type == "claim" or folder == "claims" else []
+            comparison_titles = [title] if page_type == "comparison" or folder == "comparisons" else []
+            comparison_titles += comparisons
+
+            for target in targets:
+                hint = hints.setdefault(target, {})
+                merge_hint(hint, "concepts", concepts, 4)
+                merge_hint(hint, "entities", entities, 3)
+                merge_hint(hint, "claims", claim_titles, 2)
+                merge_hint(hint, "comparisons", comparison_titles, 1)
+                hint.setdefault("text_role", "原文依据")
+    return hints
+
+
+def enriched_raw_embedding_text(raw_text: str, hint: dict) -> str:
+    lines = ["检索增强标签（仅用于召回，不作为原文证据）："]
+    if hint.get("concepts"):
+        lines.append("相关概念：" + "；".join(unique_limited(hint["concepts"], 4)))
+    if hint.get("claims"):
+        lines.append("相关论证：" + "；".join(unique_limited(hint["claims"], 2)))
+    if hint.get("comparisons"):
+        lines.append("相关辨析：" + "；".join(unique_limited(hint["comparisons"], 1)))
+    if hint.get("entities"):
+        lines.append("相关实体：" + "；".join(unique_limited(hint["entities"], 3)))
+    if hint.get("source_type"):
+        lines.append("来源类型：" + str(hint["source_type"]))
+    if hint.get("text_role"):
+        lines.append("文本作用：" + str(hint["text_role"]))
+    lines.append("原文：")
+    lines.append(raw_text)
+    return "\n".join(lines)
 
 def chunk_text(text: str, chunk_size: int, overlap: int) -> list[tuple[int, int, str]]:
     normalized = text.replace("\r\n", "\n").strip()
@@ -494,21 +596,28 @@ def build_index(args: argparse.Namespace) -> None:
 
     # --- Chunk new/changed files ---
     chunks: list[dict] = list(old_chunks)
+    raw_semantic_hints = collect_raw_semantic_hints(md_dir) if args.metadata_mode == "enriched_raw" else {}
     for file_path in process_files:
         rel_path = file_path.relative_to(md_dir).as_posix()
-        text = read_text(file_path)
+        source_text = read_text(file_path)
         if args.metadata_mode == "wiki":
-            text = wiki_retrieval_text(text, rel_path)
-        for chunk_no, (start, end, snippet) in enumerate(chunk_text(text, args.chunk_size, args.overlap), start=1):
-            chunk_id = stable_id(f"{rel_path}\n{chunk_no}\n{snippet}")
-            chunks.append({
+            source_text = wiki_retrieval_text(source_text, rel_path)
+        for chunk_no, (start, end, snippet) in enumerate(chunk_text(source_text, args.chunk_size, args.overlap), start=1):
+            hint = raw_semantic_hints.get(rel_path, {}) if args.metadata_mode == "enriched_raw" else {}
+            embedding_text = enriched_raw_embedding_text(snippet, hint) if hint else snippet
+            chunk_id = stable_id(f"{rel_path}\n{chunk_no}\n{snippet}\n{json.dumps(hint, ensure_ascii=False, sort_keys=True)}")
+            row = {
                 "id": chunk_id,
                 "source_path": rel_path,
                 "chunk_no": chunk_no,
                 "char_start": start,
                 "char_end": end,
                 "text": snippet,
-            })
+            }
+            if hint:
+                row["embedding_text"] = embedding_text
+                row["semantic_metadata"] = hint
+            chunks.append(row)
 
     if not chunks:
         raise SystemExit(f"No Markdown content found under {md_dir}")
@@ -521,7 +630,7 @@ def build_index(args: argparse.Namespace) -> None:
     else:
         new_chunks = chunks[len(old_chunks):]
         if new_chunks:
-            new_vectors = embed_batches([c["text"] for c in new_chunks], args)
+            new_vectors = embed_batches([c.get("embedding_text") or c["text"] for c in new_chunks], args)
         else:
             new_vectors = []
         vectors = [e["embedding"] for e in old_embeddings] + new_vectors
@@ -571,7 +680,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--incremental", action="store_true", help="Only re-index new or changed files (use file content hash)")
     parser.add_argument("--include-dirs", default=None, help="Comma-separated directories under md-dir to include")
     parser.add_argument("--exclude-dirs", default=None, help="Comma-separated directories under md-dir to exclude")
-    parser.add_argument("--metadata-mode", default=None, choices=["plain", "wiki"], help="Use wiki retrieval text instead of raw markdown chunks")
+    parser.add_argument("--metadata-mode", default=None, choices=["plain", "wiki", "enriched_raw"], help="Metadata strategy: plain raw chunks, wiki retrieval text, or minimal wiki-label enriched raw chunks")
     return apply_build_config(parser.parse_args())
 
 

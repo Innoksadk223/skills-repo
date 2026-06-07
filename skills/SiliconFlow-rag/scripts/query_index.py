@@ -214,6 +214,54 @@ def siliconflow_rerank(query: str, documents: list[str], model: str, api_key: st
     return results
 
 
+
+def infer_query_intent(question: str) -> str:
+    q = question.lower()
+    if any(word in question for word in ["区别", "对比", "辨析", "关系", "是否等同", "异同", "融合"]):
+        return "comparison"
+    if any(word in question for word in ["是否成立", "为什么", "如何证明", "支持", "反对", "论证", "根据什么"]):
+        return "claim"
+    if any(word in question for word in ["是什么", "含义", "定义", "概念"]):
+        return "concept"
+    if any(word in question for word in ["原文", "出处", "哪一段", "引用", "证据"]):
+        return "raw"
+    if any(word in question for word in ["论文", "题目", "框架", "综述", "怎么写"]):
+        return "synthesis"
+    if any(word in q for word in ["compare", "difference", "relationship", "integrate", "integration"]):
+        return "comparison"
+    if any(word in q for word in ["support", "oppose", "argue", "evidence"]):
+        return "claim"
+    return "general"
+
+
+def row_page_type(row: dict) -> str:
+    source = str(row.get("source_path", ""))
+    if source.startswith("claims/"):
+        return "claim"
+    if source.startswith("concepts/"):
+        return "concept"
+    if source.startswith("comparisons/"):
+        return "comparison"
+    if source.startswith("entities/"):
+        return "entity"
+    if source.startswith("synthesis/"):
+        return "synthesis"
+    text = str(row.get("text", ""))
+    for line in text.splitlines()[:5]:
+        if line.startswith("页面类型："):
+            return line.split("：", 1)[1].strip()
+    return ""
+
+
+def semantic_type_boost(intent: str, page_type: str) -> float:
+    table = {
+        "comparison": {"comparison": 0.18, "claim": 0.08, "concept": 0.06},
+        "claim": {"claim": 0.18, "comparison": 0.06, "concept": 0.04},
+        "concept": {"concept": 0.18, "comparison": 0.06, "claim": 0.04},
+        "synthesis": {"claim": 0.10, "comparison": 0.08, "concept": 0.08, "synthesis": 0.04},
+    }
+    return table.get(intent, {}).get(page_type, 0.0)
+
 def load_api_key(api_key_env: str, api_key_file: str | None) -> str:
     env_value = os.environ.get(api_key_env)
     if env_value:
@@ -278,9 +326,17 @@ def retrieve_from_index(args: argparse.Namespace, index_dir_value: str, question
         query_vector = siliconflow_embedding(question, manifest.get("embedding_model") or args.embedding_model, api_key, args.timeout)
 
     scored = []
+    intent = infer_query_intent(question)
+    is_wiki_index = manifest.get("metadata_mode") == "wiki"
     for row in rows:
         item = dict(row)
-        item["similarity"] = cosine(query_vector, row["embedding"])
+        base_similarity = cosine(query_vector, row["embedding"])
+        boost = semantic_type_boost(intent, row_page_type(row)) if is_wiki_index else 0.0
+        item["similarity"] = base_similarity + boost
+        if boost:
+            item["similarity_base"] = base_similarity
+            item["semantic_type_boost"] = boost
+            item["query_intent"] = intent
         item.pop("embedding", None)
         scored.append(item)
     scored.sort(key=lambda item: item["similarity"], reverse=True)
@@ -456,6 +512,8 @@ def print_wiki_first_evidence(question: str, wiki_manifest: dict, wiki_hits: lis
         print(f"- Chunk: {item['chunk_no']}")
         if isinstance(score, (int, float)):
             print(f"- similarity: {score:.4f}")
+        if item.get("semantic_type_boost"):
+            print(f"- semantic_type_boost: {item['semantic_type_boost']:.4f}")
         print()
         print(item["text"].strip())
         print()
@@ -549,6 +607,16 @@ def print_evidence(question: str, manifest: dict, results: list[dict], rerank_no
             print(f"- Chunk: {item['chunk_no']}")
             if item.get("wiki_evidence_boost"):
                 print("- wiki_evidence_boost: true")
+            if item.get("semantic_type_boost"):
+                print(f"- semantic_type_boost: {item['semantic_type_boost']:.4f}")
+            if item.get("semantic_metadata"):
+                md = item["semantic_metadata"]
+                tags = []
+                for key in ["concepts", "claims", "comparisons"]:
+                    if md.get(key):
+                        tags.append(f"{key}={'/'.join(md[key])}")
+                if tags:
+                    print("- retrieval_tags: " + "; ".join(tags))
             print(f"- {score_name}: {score:.4f}" if isinstance(score, (int, float)) else f"- {score_name}: {score}")
             print()
         print(item["text"].strip())
