@@ -36,7 +36,7 @@
 > 「帮我把这个文件夹里的论文建个知识库」
 
 AI 会自动：
-1. 用 MinerU 把 PDF 转成可读文本；其他格式优先用 MarkItDown，失败或乱码时也交给 MinerU 兜底
+1. 优先用 MinerU 把 PDF 转成可读文本；扫描件、古籍影印本、表格/公式多的资料都走 MinerU；其他格式才优先用 MarkItDown，失败或乱码时也交给 MinerU 兜底
 2. 提取概念、实体、比较关系和论证命题
 3. 生成可以在 Obsidian 图谱中看到的 claims / concepts / entities / comparisons 页面
 4. 建立 raw 原文索引 + wiki 结构索引，后续提问先定位论证路径，再回到原文证据
@@ -156,7 +156,7 @@ A: 你电脑上。知识库就是一个普通文件夹，里面的 Markdown 文�
 A: 只有向量化时会发送文本片段给硅基流动（为了让它能理解内容）。不会存储你的原文。如果介意，可以先问 AI 具体哪些内容会被发送。
 
 **Q: 支持什么格式？**
-A: PDF、Word、网页文章、纯文本。PDF 默认用 MinerU 处理，扫描版 PDF 也能处理（但更慢）；其他格式如果 MarkItDown 失败或乱码，会再用 MinerU 兜底。
+A: PDF、Word、网页文章、纯文本。PDF 默认优先用 MinerU 处理，尤其是扫描版 PDF、古籍影印本、论文、表格和公式；MarkItDown 只作为非 PDF 的轻量转换工具，失败、空输出或乱码时再用 MinerU 兜底。
 
 **Q: 能多人协作吗？**
 A: 知识库就是一个文件夹。放在 iCloud 或 Dropbox 里就可以多设备同步。放在 GitHub 上可以协作。

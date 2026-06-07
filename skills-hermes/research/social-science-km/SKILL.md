@@ -7,7 +7,7 @@ description: Coordinate a social-science paper knowledge-management workflow. Us
 
 Use this skill as the coordinator for a three-step social-science paper knowledge system:
 
-1. Convert source documents to Markdown in the knowledge-base wiki's `raw/` directory: use MinerU for PDF files; use `markitdown` for non-PDF sources; if MarkItDown fails, returns empty output, or produces obvious乱码/garbled text, retry that file with MinerU.
+1. Convert source documents to Markdown in the knowledge-base wiki's `raw/` directory: use MinerU first for all PDF files, especially scanned PDFs, 古籍/影印本, papers, tables, formulas, and complex layouts; use `markitdown` only as the lightweight first pass for non-PDF sources; if MarkItDown fails, returns empty output, or produces obvious乱码/garbled text, retry that file with MinerU.
 2. Compile that `raw/` into a persistent, graph-readable `wiki/` knowledge base with `karpathy-wiki`, including `claims/` argument nodes when the corpus contains thesis, theory, objections, limitations, or evidence logic.
 3. Build and query two local RAG indexes with `SiliconFlow-rag`: `检索索引/raw` for source evidence and `检索索引/wiki` for wiki-first recall expansion.
 
@@ -47,7 +47,7 @@ Do not place `raw/`, `wiki/`, or `检索索引/` beside the source folder's pare
 
 ## Step 1: Convert Sources To Raw Markdown
 
-Use `mineru-document-extractor` for PDFs and any MarkItDown failure/fallback cases. Use the `markitdown` skill and Microsoft MarkItDown CLI for non-PDF sources that convert cleanly.
+Use `mineru-document-extractor` for PDFs and any MarkItDown failure/fallback cases. Use the `markitdown` skill and Microsoft MarkItDown CLI only for non-PDF sources that convert cleanly.
 
 Dependency note: this workflow requires both the MinerU skill and the MinerU MCP. The skill is already installed; the MinerU MCP still needs to be installed/configured from https://mineru.net/ecosystem so agents can call MinerU directly.
 
@@ -57,7 +57,7 @@ Procedure:
 2. Check the active Python environment with `python -m markitdown --version`; install `markitdown` and needed optional dependencies only if missing and only for non-PDF conversion.
 3. Recursively scan the source folder for convertible files such as PDF, DOCX, PPTX, XLSX, HTML, TXT, Markdown, and common document formats.
 4. Route conversions by file type:
-   - **PDF (`.pdf`) → MinerU first**. Do not use MarkItDown as the default PDF path, because MinerU preserves layouts, tables, formulas, OCR, and scanned-paper content better.
+   - **PDF (`.pdf`) → MinerU first**. Do not use MarkItDown as the default PDF path. Real test case: a 37-page scanned classical-text PDF (`荀子集解（王先谦） 天论篇.pdf`) produced empty/near-empty MarkItDown output because there was no text layer, while MinerU OCR extracted usable Markdown. MinerU preserves layouts, tables, formulas, OCR, and scanned/影印 content better.
    - **Non-PDF → MarkItDown first** when the format is supported and the output looks usable.
    - **MarkItDown fallback → MinerU** when MarkItDown fails, returns empty/near-empty output, or produces obvious乱码/garbled text.
 5. Convert each file to `<知识库>/wiki/raw/<source-folder-name>/...` while preserving the relative directory structure when possible. Keep the output extension as `.md`.

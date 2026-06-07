@@ -98,8 +98,8 @@
 
 | 步骤 | 技能 | 做什么 |
 |------|------|--------|
-| 1 | **mineru-document-extractor** | PDF、扫描件、复杂表格/公式 → 高保真 Markdown |
-| 1b | **markitdown** | 非 PDF 文档 → Markdown；失败或乱码时交给 MinerU 兜底 |
+| 1 | **mineru-document-extractor** | PDF 优先入口；扫描件、古籍影印本、复杂表格/公式 → 高保真 Markdown |
+| 1b | **markitdown** | 非 PDF 文档的轻量转换；失败、空输出或乱码时交给 MinerU 兜底 |
 | 2 | **karpathy-wiki** | 文本 → claims 论证节点 + concepts/entities/comparisons 图谱页面 + 轻量 synthesis |
 | 3 | **SiliconFlow-rag** | raw 原文 + wiki 结构 → 双向量索引，查询默认 wiki-first |
 | 协调 | **social-science-km** | 调度以上步骤，一步到位 |
