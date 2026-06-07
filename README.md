@@ -21,10 +21,11 @@
 > 「还可以安装一下 obra/superpowers，很出名，在 https://github.com/obra/superpowers。」
 
 介绍示例：
-> 「这个包有 35 个技能，分 7 组：
+> 「这个包有 36 个技能，分 8 组：
 >  [Browser] 浏览器自动化 ×5 — 网页操控、远端沙箱、Cloud、支付、SDK
 >  [PaperSpine] 论文写作 ×12 — 研究到 LaTeX 排版全流程
 >  [Minimax] 文档生成 ×4 — DOCX/PDF/XLSX/PPTX
+>  [Search] 实时搜索 ×1 — AnySearch 实时网页搜索、垂直领域搜索、URL 内容提取（MCP + skill + API）
 >  [Academic] 学术研究 ×5 — 图谱化知识库、论证节点、学术搜索、审阅、wiki-first RAG 检索
 >  [Productivity] 生产力 ×1 — MinerU 文档解析、PDF/OCR/表格/公式提取
 >  [Creative] 创作 ×1 — 专业 PPT 演示文稿全流程生成
@@ -37,13 +38,14 @@
 >   "审一下这篇论文" → 自动用 academic-paper-review
 >  想精准指定就说 "用 browser-use 打开这个网页"。」
 
-## 技能速查（35 个）
+## 技能速查（36 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
 | 🌐 浏览器 | browser-use / remote-browser / cloud / x402 / open-source (5) | 网页自动化、远端沙箱、Cloud API、支付、SDK |
 | 📝 PaperSpine | paper-spine + 11 子模块 (12) | 学术论文全流程：研究→引用→改写→LaTeX→翻译→审校<br>💡 Claude Code 用户建议用 [Academic Research Skills](https://github.com/Imbad0202/academic-research-skills) 替代，功能更强且有原生插件支持 |
 | 📄 Minimax | minimax-docx / minimax-pdf / minimax-xlsx / pptx-generator (4) | DOCX/PDF/XLSX/PPTX 专业文档生成 |
+| 🔎 搜索 | anysearch (1) | AnySearch 实时网页搜索、垂直领域搜索、批量搜索、URL 内容提取；支持 MCP + skill + API，官网：https://www.anysearch.com/ |
 | 🔬 学术 | karpathy-wiki / academic-search / academic-paper-review / SiliconFlow-rag / social-science-km (5) | 图谱化知识库、论证节点、学术搜索、论文审阅、wiki-first RAG 检索 |
 | 📚 生产力 | mineru-document-extractor (1) | MinerU 文档解析：PDF、扫描件 OCR、表格、公式、多格式转 Markdown |
 | 🎨 创作 | ppt-agent-skill (1) | 专业 PPT 演示文稿全流程生成 |
@@ -58,6 +60,7 @@
 | cloud | Browser Use Cloud API / 云端浏览器 | ↑ |
 | x402 | Cloud 支付集成（USDC 钱包，无需 API key） | ↑ |
 | open-source | browser-use Python SDK 开发文档 | ↑ |
+| anysearch | 实时网页搜索、垂直领域搜索、批量搜索、URL 内容提取；同时提供 MCP 服务、agent skill 和 HTTP API；API Key 可选，高额度建议配置 `ANYSEARCH_API_KEY` | [AnySearch](https://www.anysearch.com/) / [API Docs](https://www.anysearch.com/docs) |
 | paper-spine | 学术论文写作流水线总调度 | [PaperSpine](https://github.com/WUBING2023/PaperSpine) |
 | paper-spine-audit | 审计输出完整性 | ↑ |
 | paper-spine-build | 从素材构建论文 | ↑ |
@@ -165,6 +168,7 @@ skills-repo/
 |   ├── minimax/         ← 4 个技能
 |   ├── research/        ← 3 个知识库/RAG 技能
 |   ├── productivity/    ← MinerU 文档解析
-|   └── creative/        ← PPT Agent
+|   ├── creative/        ← PPT Agent
+|   └── anysearch        ← 实时搜索（solo symlink）
 └── setup.sh
 ```

@@ -18,7 +18,7 @@ HERMES_MAP=(
     "productivity:mineru-document-extractor"
     "creative:ppt-agent-skill"
 )
-HERMES_SOLO="academic-search academic-paper-review cleanup find-skills grill-me markitdown skill-creator skill-architecture capture-gotcha"
+HERMES_SOLO="academic-search academic-paper-review anysearch cleanup find-skills grill-me markitdown skill-creator skill-architecture capture-gotcha"
 
 # ── 检测已安装的 agent ──
 AGENTS=()
@@ -61,11 +61,12 @@ case "$choice" in
 esac
 
 # ── 选择分组 ──
-GROUP_KEYS=(browser paperspine minimax academic productivity creative tools)
+GROUP_KEYS=(browser paperspine minimax search academic productivity creative tools)
 GROUP_DESC=(
     "[Browser] browser automation: browser-use, remote-browser, cloud, x402, open-source (5)"
     "[PaperSpine] paper writing pipeline: research, rewrite, LaTeX, translate, etc. (12)"
     "[Minimax] document generation: DOCX, PDF, XLSX, PPTX (4)"
+    "[Search] AnySearch real-time web/vertical search, URL extraction; MCP + skill + API (1)"
     "[Academic] karpathy-wiki, academic search, paper review, social-science RAG, knowledge management (5)"
     "[Productivity] MinerU document extraction: PDF, OCR, tables, formulas, Markdown (1)"
     "[Creative] PPT agent: professional presentation workflow (1)"
@@ -97,6 +98,7 @@ skill_group() {
         browser-use|remote-browser|cloud|x402|open-source) echo "browser" ;;
         paper-spine|paper-spine-*)                         echo "paperspine" ;;
         minimax-*|pptx-generator)                          echo "minimax" ;;
+        anysearch)                                           echo "search" ;;
         karpathy-wiki|academic-search|academic-paper-review|SiliconFlow-rag|social-science-km) echo "academic" ;;
         mineru-document-extractor)                          echo "productivity" ;;
         ppt-agent-skill)                                      echo "creative" ;;
