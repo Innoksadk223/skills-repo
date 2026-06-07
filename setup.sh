@@ -15,6 +15,7 @@ HERMES_MAP=(
     "paperspine:paper-spine,paper-spine-audit,paper-spine-build,paper-spine-citation,paper-spine-humanize,paper-spine-intake,paper-spine-latex,paper-spine-research,paper-spine-rewrite,paper-spine-translate,paper-spine-ui,paper-spine-update"
     "minimax:minimax-docx,minimax-pdf,minimax-xlsx,pptx-generator"
     "research:karpathy-wiki,SiliconFlow-rag,social-science-km"
+    "productivity:mineru-document-extractor"
     "creative:ppt-agent-skill"
 )
 HERMES_SOLO="academic-search academic-paper-review cleanup find-skills grill-me markitdown skill-creator skill-architecture capture-gotcha"
@@ -60,12 +61,13 @@ case "$choice" in
 esac
 
 # ── 选择分组 ──
-GROUP_KEYS=(browser paperspine minimax academic creative tools)
+GROUP_KEYS=(browser paperspine minimax academic productivity creative tools)
 GROUP_DESC=(
     "[Browser] browser automation: browser-use, remote-browser, cloud, x402, open-source (5)"
     "[PaperSpine] paper writing pipeline: research, rewrite, LaTeX, translate, etc. (12)"
     "[Minimax] document generation: DOCX, PDF, XLSX, PPTX (4)"
     "[Academic] karpathy-wiki, academic search, paper review, social-science RAG, knowledge management (5)"
+    "[Productivity] MinerU document extraction: PDF, OCR, tables, formulas, Markdown (1)"
     "[Creative] PPT agent: professional presentation workflow (1)"
     "[Tools] skill-creator, skill-architecture, cleanup, find-skills, grill-me, capture-gotcha, markitdown (7)"
 )
@@ -96,6 +98,7 @@ skill_group() {
         paper-spine|paper-spine-*)                         echo "paperspine" ;;
         minimax-*|pptx-generator)                          echo "minimax" ;;
         karpathy-wiki|academic-search|academic-paper-review|SiliconFlow-rag|social-science-km) echo "academic" ;;
+        mineru-document-extractor)                          echo "productivity" ;;
         ppt-agent-skill)                                      echo "creative" ;;
         cleanup|find-skills|grill-me|markitdown|skill-creator|skill-architecture|capture-gotcha) echo "tools" ;;
         *)                                                 echo "" ;;

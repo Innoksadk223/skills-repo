@@ -22,11 +22,12 @@
 > 「还可以安装一下 obra/superpowers，很出名，在 https://github.com/obra/superpowers。」
 
 介绍示例：
-> 「这个包有 34 个技能，分 6 组：
+> 「这个包有 35 个技能，分 7 组：
 >  [Browser] 浏览器自动化 ×5 — 网页操控、远端沙箱、Cloud、支付、SDK
 >  [PaperSpine] 论文写作 ×12 — 研究到 LaTeX 排版全流程
 >  [Minimax] 文档生成 ×4 — DOCX/PDF/XLSX/PPTX
 >  [Academic] 学术研究 ×5 — 图谱化知识库、论证节点、学术搜索、审阅、wiki-first RAG 检索
+>  [Productivity] 生产力 ×1 — MinerU 文档解析、PDF/OCR/表格/公式提取
 >  [Creative] 创作 ×1 — 专业 PPT 演示文稿全流程生成
 >  [Tools] 工具 ×7 — 创建技能、架构设计、清理、发现、质询、环境踩坑记录、文件转 Markdown」
 
@@ -37,7 +38,7 @@
 >   "审一下这篇论文" → 自动用 academic-paper-review
 >  想精准指定就说 "用 browser-use 打开这个网页"。」
 
-## 技能速查（34 个）
+## 技能速查（35 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
@@ -45,6 +46,7 @@
 | 📝 PaperSpine | paper-spine + 11 子模块 (12) | 学术论文全流程：研究→引用→改写→LaTeX→翻译→审校<br>💡 Claude Code 用户建议用 [Academic Research Skills](https://github.com/Imbad0202/academic-research-skills) 替代，功能更强且有原生插件支持 |
 | 📄 Minimax | minimax-docx / minimax-pdf / minimax-xlsx / pptx-generator (4) | DOCX/PDF/XLSX/PPTX 专业文档生成 |
 | 🔬 学术 | karpathy-wiki / academic-search / academic-paper-review / SiliconFlow-rag / social-science-km (5) | 图谱化知识库、论证节点、学术搜索、论文审阅、wiki-first RAG 检索 |
+| 📚 生产力 | mineru-document-extractor (1) | MinerU 文档解析：PDF、扫描件 OCR、表格、公式、多格式转 Markdown |
 | 🎨 创作 | ppt-agent-skill (1) | 专业 PPT 演示文稿全流程生成 |
 | 🛠 工具 | skill-creator / skill-architecture / cleanup / find-skills / grill-me / capture-gotcha / markitdown (7) | 技能创建、模块化架构、清理、发现、质询、环境踩坑记录、文件转 Markdown |
 
@@ -78,6 +80,7 @@
 | academic-paper-review | 论文审阅、方法论评估、同行评审 | [bytedance/deer-flow](https://github.com/bytedance/deer-flow) |
 | SiliconFlow-rag | 为 raw 原文与 wiki 结构建立双索引，支持 wiki-first 检索、硅基流动嵌入与可选重排 | 本仓库 |
 | social-science-km | 协调源文件转 Markdown、图谱 wiki、双索引 RAG 与论文知识库问答 | 本仓库 |
+| mineru-document-extractor | MinerU 文档解析：PDF、扫描件 OCR、表格、公式、多格式转 Markdown；配合 MinerU MCP 使用 | [OpenDataLab MinerU Ecosystem](https://mineru.net/ecosystem) |
 | skill-creator | 创建新的 AI 技能 | [clawhub.ai](https://clawhub.ai) |
 | skill-architecture | 模块化技能架构设计：松耦合、高内聚、断点续传 | 本仓库 |
 | cleanup | 任务完成后清理临时文件 | — |
@@ -87,18 +90,21 @@
 | markitdown | 使用 Microsoft MarkItDown 将 PDF、Office、HTML 等文件转换为 Markdown | [microsoft/markitdown](https://github.com/microsoft/markitdown) |
 | ppt-agent-skill | 专业 PPT 演示文稿全流程生成，输出 HTML/预览/PPTX 管线 | 本仓库 |
 
-## 知识库构建（四技能联合）
+## 知识库构建（五技能联合）
 
-把一堆论文变成可搜索、可对话、可可视化的知识库，由四个技能接力完成：
+把一堆论文变成可搜索、可对话、可可视化的知识库，由五个技能接力完成：
 
 | 步骤 | 技能 | 做什么 |
 |------|------|--------|
-| 1 | **markitdown** | PDF/DOCX → Markdown 文本 |
+| 1 | **mineru-document-extractor** | PDF、扫描件、复杂表格/公式 → 高保真 Markdown |
+| 1b | **markitdown** | 非 PDF 文档 → Markdown；失败或乱码时交给 MinerU 兜底 |
 | 2 | **karpathy-wiki** | 文本 → claims 论证节点 + concepts/entities/comparisons 图谱页面 + 轻量 synthesis |
 | 3 | **SiliconFlow-rag** | raw 原文 + wiki 结构 → 双向量索引，查询默认 wiki-first |
-| 协调 | **social-science-km** | 调度以上三步，一步到位 |
+| 协调 | **social-science-km** | 调度以上步骤，一步到位 |
 
-**直接说「帮我把这个文件夹里的论文建个知识库」就行**，AI 会自动调用这四个技能。建完后在 Obsidian 里打开文件夹，按 `Ctrl/Cmd + G` 即可看到彩色知识图谱。
+> MinerU 需要 **skill + MCP** 两部分：`mineru-document-extractor` skill 已在本仓库；MinerU MCP 需要按 https://mineru.net/ecosystem 的说明安装/配置。
+
+**直接说「帮我把这个文件夹里的论文建个知识库」就行**，AI 会自动调用这些技能。建完后在 Obsidian 里打开文件夹，按 `Ctrl/Cmd + G` 即可看到彩色知识图谱。
 
 > 📖 详细用法见 [KB-GUIDE.md](KB-GUIDE.md)
 
@@ -159,6 +165,7 @@ skills-repo/
 |   ├── paperspine/      ← 12 个技能
 |   ├── minimax/         ← 4 个技能
 |   ├── research/        ← 3 个知识库/RAG 技能
+|   ├── productivity/    ← MinerU 文档解析
 |   └── creative/        ← PPT Agent
 └── setup.sh
 ```
