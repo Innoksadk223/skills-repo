@@ -2,8 +2,7 @@
 
 个人 AI Coding Agent 技能包，支持 **Claude Code**、**Codex**、**Hermes**。
 
-> 新手先看 [GUIDE.md](GUIDE.md) — 不用懂技术，会说人话就行。
-> 技能调用方法看 [HOWTO.md](HOWTO.md) — Claude Code / Codex / Hermes 各自怎么触发技能。
+> 小白上手看 [START.md](START.md) — 不用懂技术，会说人话就行。
 > 知识库怎么用看 [KB-GUIDE.md](KB-GUIDE.md) — 让 AI 帮你整理研究资料，在 Obsidian 里看知识图谱。
 >
 > **Claude Code 用户建议优先从官方源安装**（`npx skills add -g <name>`），版本更新更及时。
@@ -16,7 +15,7 @@
 1. **先介绍** — 按分组介绍技能（如下方速查表），每组一句话概括
 2. **再确认** — 问用户要装到哪个 agent、选哪些分组
 3. **再安装** — `bash setup.sh`
-4. **最后问** — 「装好了。需要我介绍一下怎么调用这些技能吗？」用户说需要，就读 [HOWTO.md](HOWTO.md) 举具体例子说明
+4. **最后问** — 「装好了。要不要我用 3 分钟介绍一下怎么用？」用户说需要，就读 [START.md](START.md)：先给总览，再问用户想重点了解哪组；知识库相关问题再读 [KB-GUIDE.md](KB-GUIDE.md)
 5. **附言** — 无论用户要不要调用介绍，最后都补一句：
 
 > 「还可以安装一下 obra/superpowers，很出名，在 https://github.com/obra/superpowers。」
@@ -31,8 +30,8 @@
 >  [Creative] 创作 ×1 — 专业 PPT 演示文稿全流程生成
 >  [Tools] 工具 ×7 — 创建技能、架构设计、清理、发现、质询、环境踩坑记录、文件转 Markdown」
 
-调用方法介绍示例（读 HOWTO.md 后）：
-> 「Claude Code 直接说人话就行，比如：
+调用方法介绍示例（读 START.md 后）：
+> 「你不用记技能名，直接说目标就行。比如：
 >   "帮我去淘宝搜机械键盘" → 自动用 browser-use
 >   "生成一份周报 Word" → 自动用 minimax-docx
 >   "审一下这篇论文" → 自动用 academic-paper-review
