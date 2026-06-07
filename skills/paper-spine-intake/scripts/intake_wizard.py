@@ -9,11 +9,9 @@ import os
 import re
 import shutil
 import sys
-import textwrap
 import unicodedata
 from dataclasses import asdict, dataclass
 from pathlib import Path
-
 
 WORKFLOWS = ("rewrite_existing", "build_from_materials")
 SCENES = ("journal", "conference", "report_review", "competition")
@@ -299,7 +297,44 @@ def tr(ui_language: str, key: str) -> str:
     return LABELS.get(ui_language, LABELS["zh"]).get(key, key)
 
 
+_ANSI_ENABLED = True
+
+
+def _enable_windows_vt() -> bool:
+    """Enable ANSI escape processing on the Windows console.
+
+    Without ENABLE_VIRTUAL_TERMINAL_PROCESSING, legacy conhost renders color and
+    box-drawing escape sequences as literal garbage (e.g. ``←[0m``). Returns True
+    when virtual-terminal mode is active.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.windll.kernel32
+    # Declare signatures so 64-bit handle pointers are not truncated to c_int,
+    # which would make GetConsoleMode fail and wrongly disable color.
+    kernel32.GetStdHandle.restype = wintypes.HANDLE
+    kernel32.GetStdHandle.argtypes = [wintypes.DWORD]
+    kernel32.GetConsoleMode.restype = wintypes.BOOL
+    kernel32.GetConsoleMode.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+    kernel32.SetConsoleMode.restype = wintypes.BOOL
+    kernel32.SetConsoleMode.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+
+    ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
+    STD_OUTPUT_HANDLE = -11
+    handle = kernel32.GetStdHandle(wintypes.DWORD(STD_OUTPUT_HANDLE & 0xFFFFFFFF))
+    if not handle or handle == wintypes.HANDLE(-1).value:
+        return False
+    mode = wintypes.DWORD()
+    if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+        return False
+    if mode.value & ENABLE_VIRTUAL_TERMINAL_PROCESSING:
+        return True
+    return bool(kernel32.SetConsoleMode(handle, mode.value | ENABLE_VIRTUAL_TERMINAL_PROCESSING))
+
+
 def configure_windows_console() -> None:
+    global _ANSI_ENABLED
     if os.name != "nt" or not sys.stdout.isatty():
         return
     try:
@@ -308,6 +343,13 @@ def configure_windows_console() -> None:
         sys.stderr.reconfigure(encoding="utf-8")
     except Exception:
         pass
+    # Colors only render if the console accepts ANSI; fall back to plain text
+    # rather than printing raw escape codes when it does not.
+    try:
+        if not _enable_windows_vt():
+            _ANSI_ENABLED = False
+    except Exception:
+        _ANSI_ENABLED = False
 
 
 def help_text(key: str, value: str, ui_language: str) -> str:
@@ -316,7 +358,7 @@ def help_text(key: str, value: str, ui_language: str) -> str:
 
 
 def ansi(text: str, code: str) -> str:
-    if not sys.stdout.isatty():
+    if not _ANSI_ENABLED or not sys.stdout.isatty():
         return text
     return f"\033[{code}m{text}\033[0m"
 
@@ -952,7 +994,7 @@ def render_keyboard_frame(
         + style("│", accent, color),
         split_mid,
     ]
-    for left, right in zip(left_lines, right_lines):
+    for left, right in zip(left_lines, right_lines, strict=False):
         frame.append(
             style("│", accent, color)
             + pad_ansi(left, left_w)

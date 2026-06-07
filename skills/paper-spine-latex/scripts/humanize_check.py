@@ -15,7 +15,6 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-
 # --- self-contained table helpers (no _paper_spine_utils import) ---
 
 def _split_table_line(line: str) -> list[str]:
@@ -41,7 +40,7 @@ def _table_rows(text: str) -> tuple[list[str], list[list[str]]]:
 
 def _split_paragraphs(text: str) -> list[str]:
     parts = re.split(r"\n\s*\n+", text)
-    return [re.sub(r"\s+", " ", p).strip() for p in parts if len(p.strip()) > 50]
+    return [re.sub(r"\s+", " ", p).strip() for p in parts if len(p.strip()) > MIN_PARAGRAPH_CHARS]
 
 
 # --- AI pattern detection ---
@@ -63,6 +62,21 @@ CNKI_DIMENSIONS = (
     "sentence structure", "paragraph similarity", "information density",
     "connector frequency", "term-context matching",
 )
+
+# --- tunable detection thresholds ---
+# A paragraph shorter than this many characters is ignored for coverage.
+MIN_PARAGRAPH_CHARS = 50
+# Matrix rows must cover at least this fraction of manuscript paragraphs.
+MIN_COVERAGE_RATIO = 0.5
+# Coverage is only enforced once the manuscript has more than this many paragraphs.
+COVERAGE_MIN_PARAGRAPHS = 2
+# Sentence-length sampling window (characters).
+SENTENCE_MIN_CHARS = 5
+SENTENCE_MAX_CHARS = 300
+# Below this stddev sentence lengths are too uniform (AI signal).
+MIN_SENTENCE_LENGTH_STDDEV = 6
+# Connector occurrences per 1k characters above this are an AI signal.
+MAX_CONNECTOR_DENSITY = 8
 
 
 @dataclass
@@ -88,7 +102,11 @@ def parse_args() -> argparse.Namespace:
 
 def sentence_lengths(text: str) -> list[int]:
     sents = re.split(r"[.。!！?？;；\n]+", text)
-    return [len(s.strip()) for s in sents if 5 < len(s.strip()) < 300]
+    return [
+        len(s.strip())
+        for s in sents
+        if SENTENCE_MIN_CHARS < len(s.strip()) < SENTENCE_MAX_CHARS
+    ]
 
 
 def count_connectors(text: str, lang: str) -> int:
@@ -113,11 +131,13 @@ def check_matrix(matrix_path: Path, manuscript_text: str, lang: str) -> Humanize
     if result.manuscript_paragraphs > 0:
         result.coverage_ratio = result.matrix_rows / result.manuscript_paragraphs
 
-    if result.coverage_ratio < 0.5 and result.manuscript_paragraphs > 2:
+    if (
+        result.coverage_ratio < MIN_COVERAGE_RATIO
+        and result.manuscript_paragraphs > COVERAGE_MIN_PARAGRAPHS
+    ):
         result.findings.append(
             f"Coverage {result.coverage_ratio:.0%}: {result.matrix_rows} rows for "
-            f"{result.manuscript_paragraphs} paragraphs. Minimum 50%."
-
+            f"{result.manuscript_paragraphs} paragraphs. Minimum {MIN_COVERAGE_RATIO:.0%}."
         )
 
     header_text = " ".join(c.lower() for c in header)
@@ -149,17 +169,17 @@ def check_matrix(matrix_path: Path, manuscript_text: str, lang: str) -> Humanize
     lengths = sentence_lengths(manuscript_text)
     if len(lengths) > 2:
         result.sentence_length_stddev = round(statistics.stdev(lengths), 2)
-        if result.sentence_length_stddev < 6:
+        if result.sentence_length_stddev < MIN_SENTENCE_LENGTH_STDDEV:
             result.findings.append(
                 f"Sentence length stddev = {result.sentence_length_stddev} — too uniform. "
-                "AI text typically < 6; human text > 10."
+                f"AI text typically < {MIN_SENTENCE_LENGTH_STDDEV}; human text > 10."
             )
 
     char_count = len(manuscript_text)
     conn_count = count_connectors(manuscript_text, lang)
     if char_count > 0:
         result.connector_density = round(conn_count / (char_count / 1000), 2)
-        threshold = 8
+        threshold = MAX_CONNECTOR_DENSITY
         if result.connector_density > threshold:
             result.findings.append(
                 f"Connector density = {result.connector_density}/1k chars (threshold: {threshold}). "

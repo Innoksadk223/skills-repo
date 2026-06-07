@@ -8,7 +8,6 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".svg", ".webp", ".tif", ".tiff"}
 PDF_EXTS = {".pdf"}
 WORD_TEXT_EXTS = {".docx", ".doc", ".txt", ".md", ".rtf"}

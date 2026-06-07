@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from _paper_spine_utils import is_separator_row, split_table_line, table_rows, year_from_row
+from _paper_spine_utils import table_rows, year_from_row
 
 CURRENT_YEAR = 2026
 DEFAULT_TARGET_COUNT = 20

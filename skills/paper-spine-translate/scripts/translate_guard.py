@@ -18,7 +18,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from _paper_spine_utils import markdown_tables, read_text, table_rows
+from _paper_spine_utils import table_rows
 
 # ---------------------------------------------------------------------------
 # constants

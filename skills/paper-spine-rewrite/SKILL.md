@@ -1,6 +1,6 @@
 ---
 name: paper-spine-rewrite
-description: Rewrites an existing manuscript from confirmed motivation, research, paragraph-level rationale, and evidence.
+description: Rewrites an existing manuscript from confirmed motivation, research, paragraph-level rationale, and evidence. (internal /paperspine step)
 ---
 
 # PaperSpine Rewrite

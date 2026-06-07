@@ -21,7 +21,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-
 DEFAULT_MANIFEST_URL = (
     "https://raw.githubusercontent.com/WUBING2023/PaperSpine/main/dist/paperspine_version.json"
 )
@@ -222,7 +221,7 @@ def latest_manifest(args: argparse.Namespace) -> dict[str, Any]:
 
 def validate_repo(root: Path) -> dict[str, Any]:
     root_files = [
-        "install.ps1", "install.sh", "README.md", "README.zh-CN.md",
+        "install.ps1", "install.sh", "README.md", "README.en.md",
     ]
     plugin_files = [
         ".claude-plugin/plugin.json", ".claude-plugin/marketplace.json",
@@ -254,7 +253,7 @@ def validate_repo(root: Path) -> dict[str, Any]:
             path = root / "dist" / host / "skills" / skill / "SKILL.md"
             if not path.exists():
                 missing.append(str(path.relative_to(root)))
-    for cmd_name in ("paperspine.md", "paper-spine.md", "paperspine-legacy.md"):
+    for cmd_name in ("paperspine.md",):
         cmd_path = root / "dist" / "claude" / "commands" / cmd_name
         if not cmd_path.exists():
             missing.append(str(cmd_path.relative_to(root)))
@@ -355,6 +354,19 @@ def install_target(root: Path, target: str) -> list[str]:
     return installed
 
 
+def resolve_claude_settings_dir() -> Path:
+    """Resolve the Claude settings directory, honoring the install-dir override.
+
+    This must follow PAPERSPINE_CLAUDE_SKILLS_DIR so that callers (and tests)
+    that redirect installs away from the real home never mutate the developer's
+    actual ~/.claude/settings.json.
+    """
+    skills_dir = Path(
+        os.environ.get("PAPERSPINE_CLAUDE_SKILLS_DIR", Path.home() / ".claude" / "skills")
+    )
+    return skills_dir.parent
+
+
 def sync_skill_overrides(claude_settings_dir: Path) -> None:
     """Remove stale PaperSpine skillOverrides. All skills are now visible."""
     settings_path = claude_settings_dir / "settings.json"
@@ -418,7 +430,7 @@ def run(args: argparse.Namespace) -> int:
         print(f"PaperSpine is already latest: {current}")
         if comparison == 0 and not args.check_only:
             write_install_state(config_dir, manifest, target_names(args.target))
-            sync_skill_overrides(Path.home() / ".claude")
+            sync_skill_overrides(resolve_claude_settings_dir())
         return 0
 
     print(f"PaperSpine update available: {current} -> {latest}")
@@ -436,7 +448,7 @@ def run(args: argparse.Namespace) -> int:
             raise UpdateError(f"Archive version {package_version} does not match manifest version {latest}.")
         installed = install_target(root, args.target)
         if "claude" in installed:
-            sync_skill_overrides(Path.home() / ".claude")
+            sync_skill_overrides(resolve_claude_settings_dir())
         write_install_state(config_dir, package_manifest, installed)
     print(f"PaperSpine updated to {latest}: {', '.join(installed)}")
     print(f"Global config preserved: {config_dir / 'config.json'}")

@@ -11,13 +11,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from _paper_spine_utils import (
-    is_separator_row,
     markdown_tables,
-    split_table_line,
-    table_rows,
     year_from_row,
 )
-
 
 WORKFLOWS = ("rewrite_existing", "build_from_materials")
 TIERS = ("flash", "pro")

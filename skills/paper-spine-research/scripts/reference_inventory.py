@@ -8,7 +8,6 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-
 REFERENCE_EXTENSIONS = {
     ".pdf": "paper_pdf",
     ".caj": "paper_caj",

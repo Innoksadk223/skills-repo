@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from xml.etree import ElementTree
 
-
 PLACEHOLDER_PATTERNS = (
     r"\bTODO\b",
     r"\bTBD\b",
@@ -20,6 +19,60 @@ PLACEHOLDER_PATTERNS = (
     r"\[\[",
     r"\]\]",
 )
+
+# LaTeX control sequences that should never survive into a finished .docx.
+# Their presence means pandoc emitted the raw source instead of rendered output.
+LATEX_COMMAND_PATTERN = re.compile(
+    r"\\(?:cite[a-zA-Z]*|ref|eqref|autoref|cref|Cref|label|textbf|textit|emph|"
+    r"section|subsection|subsubsection|begin|end|includegraphics|caption|"
+    r"footnote|item|hline|toprule|midrule|bottomrule)\b"
+)
+# Any LaTeX macro applied to an argument, e.g. \foo{...} — catches custom macros
+# (\newcommand) that pandoc could not expand, not just the curated list above.
+# Requiring a trailing brace keeps backslashed file paths from matching.
+GENERIC_LATEX_MACRO_PATTERN = re.compile(r"\\[a-zA-Z]+\s*\{")
+# pandoc citeproc leftovers, e.g. [@smith2020] — citations were never resolved.
+CITEPROC_LEFTOVER_PATTERN = re.compile(r"\[@[\w:.\-]+(?:\s*;\s*@[\w:.\-]+)*\]")
+# Inline math left as raw LaTeX. Either a `$...$` span with a backslash macro,
+# or a tight `$...$` subscript/superscript with no spaces (e.g. $x_i$, $x^2$).
+# Currency like "$5 ... file_name ... $10" needs spaces, so it is not matched.
+RAW_MATH_PATTERN = re.compile(
+    r"\$[^$\n]*\\[a-zA-Z]+[^$\n]*\$|\$[^$\n\s]*[_^][^$\n\s]*\$"
+)
+# pandoc-crossref renders unresolved \ref/\eqref as a literal "[?]".
+BROKEN_CROSSREF = "[?]"
+
+# LaTeX bibliography styles that produce numbered [1] citations. If the source
+# uses one of these but the docx rendered author-date (citeproc's default), the
+# Word citations silently diverge from the compiled PDF.
+NUMERIC_BIB_STYLES = frozenset({
+    "plain", "unsrt", "abbrv", "ieeetr", "ieee", "ieeetran", "acm", "siam", "vancouver",
+})
+BIBSTYLE_PATTERN = re.compile(r"\\bibliographystyle\{([^}]+)\}")
+NUMERIC_CITE_PATTERN = re.compile(r"\[\d+(?:\s*[,–-]\s*\d+)*\]")
+AUTHOR_DATE_CITE_PATTERN = re.compile(r"\([A-Z][A-Za-z'’.-]+(?:\s+et al\.?)?,?\s+\d{4}[a-z]?\)")
+
+
+def citation_style_finding(docx_text: str, source_tex: str) -> str | None:
+    """Warn when a numeric \\bibliographystyle renders as author-date in Word.
+
+    citeproc defaults to author-date, so a numeric LaTeX style needs an explicit
+    numeric CSL (e.g. --csl=ieee.csl) or the docx citations will not match the
+    PDF's [1] style. Conservative: only fires when the source is numeric AND the
+    docx clearly shows author-date citations with no numbered ones.
+    """
+    if not source_tex:
+        return None
+    match = BIBSTYLE_PATTERN.search(source_tex)
+    if not match or match.group(1).strip().lower() not in NUMERIC_BIB_STYLES:
+        return None
+    if AUTHOR_DATE_CITE_PATTERN.search(docx_text) and not NUMERIC_CITE_PATTERN.search(docx_text):
+        return (
+            f"Citation style mismatch: source uses numeric \\bibliographystyle{{{match.group(1).strip()}}} "
+            "but the Word citations render author-date. Pass a numeric CSL "
+            "(e.g. --csl=ieee.csl) so Word matches the PDF's [1] style."
+        )
+    return None
 
 
 @dataclass
@@ -53,7 +106,7 @@ def extract_text(document_xml: bytes) -> tuple[str, int]:
     return "\n".join(paragraphs), len(paragraphs)
 
 
-def check_docx(path: Path, min_chars: int) -> WordGuardResult:
+def check_docx(path: Path, min_chars: int, source_tex: str = "") -> WordGuardResult:
     findings: list[str] = []
     text = ""
     paragraph_count = 0
@@ -93,6 +146,33 @@ def check_docx(path: Path, min_chars: int) -> WordGuardResult:
         if re.search(pattern, text, flags=re.IGNORECASE):
             findings.append(f"unresolved placeholder pattern found: {pattern}")
 
+    # Formatting correctness: raw LaTeX must not leak into the rendered docx.
+    latex_tokens: set[str] = {m.group(0) for m in LATEX_COMMAND_PATTERN.finditer(text)}
+    latex_tokens.update(m.group(0).rstrip("{").strip() for m in GENERIC_LATEX_MACRO_PATTERN.finditer(text))
+    if latex_tokens:
+        sample = ", ".join(sorted(latex_tokens)[:6])
+        findings.append(
+            f"Unrendered LaTeX commands in text (e.g. {sample}) — pandoc emitted raw source "
+            "instead of rendered output. Flatten \\input/\\include and expand custom macros "
+            "(\\newcommand) before conversion."
+        )
+    if BROKEN_CROSSREF in text:
+        findings.append(
+            "Broken cross-references '[?]' — \\ref/\\eqref did not resolve. "
+            "Add `--filter pandoc-crossref` (and matching \\label definitions)."
+        )
+    citeproc_hits = CITEPROC_LEFTOVER_PATTERN.findall(text)
+    if citeproc_hits:
+        findings.append(
+            f"Unresolved citation markers found ({len(citeproc_hits)}, e.g. {citeproc_hits[0]}). "
+            "Run pandoc with --citeproc and --bibliography=references.bib so citations render."
+        )
+    if RAW_MATH_PATTERN.search(text):
+        findings.append(
+            "Raw inline LaTeX math (e.g. `$\\alpha$`) survived into the docx — math was not "
+            "converted to Word equations. Verify the source compiles and pandoc handled the math."
+        )
+
     # Chinese encoding checks: detect garbled text / mojibake
     has_chinese = bool(re.search(r"[一-鿿]", text))
     if has_chinese:
@@ -103,6 +183,10 @@ def check_docx(path: Path, min_chars: int) -> WordGuardResult:
         corruption = re.findall(r"鍚堛[劧渚佃繚閫嗘]", text)  # common gbk-decoded-as-utf8 pattern
         if corruption:
             findings.append("Chinese encoding corruption detected: GBK text decoded as UTF-8. Re-export with proper encoding.")
+
+    style_finding = citation_style_finding(text, source_tex)
+    if style_finding:
+        findings.append(style_finding)
 
     return WordGuardResult(str(path), not findings, len(text), paragraph_count, findings)
 
@@ -129,7 +213,12 @@ def to_markdown(result: WordGuardResult) -> str:
 
 def main() -> int:
     args = parse_args()
-    result = check_docx(Path(args.docx_path), args.min_chars)
+    docx_path = Path(args.docx_path)
+    source_tex = ""
+    sibling_tex = docx_path.parent / "main.tex"
+    if sibling_tex.exists():
+        source_tex = sibling_tex.read_text(encoding="utf-8", errors="ignore")
+    result = check_docx(docx_path, args.min_chars, source_tex)
     markdown = to_markdown(result)
 
     if args.output:

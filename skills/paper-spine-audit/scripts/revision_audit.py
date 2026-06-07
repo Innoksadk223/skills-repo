@@ -10,15 +10,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from dataclasses import asdict, dataclass
-from difflib import SequenceMatcher
 from pathlib import Path
 
 from _paper_spine_utils import (
     CanonParagraph,
-    canonical,
     make_canon,
     normalize_markdown,
     normalize_tex,
@@ -26,7 +23,6 @@ from _paper_spine_utils import (
     read_text,
     similarity_canon,
     split_paragraphs,
-    strip_tex_comments,
 )
 
 

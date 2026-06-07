@@ -1,6 +1,6 @@
 ---
 name: paper-spine-translate
-description: Produces the complete translation_zh/ package with row-by-row translation of all required artifacts and full-paper translation.
+description: Produces the complete translation_zh/ package with row-by-row translation of all required artifacts and full-paper translation. (internal /paperspine step)
 ---
 
 # PaperSpine Translate

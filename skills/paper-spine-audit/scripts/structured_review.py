@@ -17,7 +17,6 @@ import json
 import re
 import sys
 from dataclasses import dataclass, field
-from difflib import SequenceMatcher
 from pathlib import Path
 
 from _paper_spine_utils import (
@@ -27,7 +26,6 @@ from _paper_spine_utils import (
     read_text,
     similarity_canon,
     split_paragraphs,
-    table_rows,
 )
 
 SECTION_RE = re.compile(r"\\(?:section|subsection|subsubsection)\*?\{([^{}]+)\}", re.IGNORECASE)
@@ -356,7 +354,7 @@ def validate_independence(review_dir: Path) -> dict:
 
     # Check for cross-reference contamination
     role_names = [r.replace("_reviewer.md", "") for r in roles]
-    for i, (role_file, role_key) in enumerate(zip(roles, role_names)):
+    for i, role_file in enumerate(roles):
         other_names = [n for j, n in enumerate(role_names) if j != i]
         for other in other_names:
             if other in texts[role_file]:
@@ -367,7 +365,7 @@ def validate_independence(review_dir: Path) -> dict:
         "ok": not findings,
         "findings": findings,
         "independence_score": round(1.0 - avg_sim, 2),
-        "pairwise_similarities": {f"{a} vs {b}": round(s, 4) for (a, b), s in zip(pairs, scores)},
+        "pairwise_similarities": {f"{a} vs {b}": round(s, 4) for (a, b), s in zip(pairs, scores, strict=False)},
     }
 
 
@@ -460,13 +458,13 @@ def dispatch_review(out_dir: Path, manuscript_path: Path) -> dict:
         "Each agent reads only its own prompt file and the manuscript — "
         "they must NOT see each other's outputs or the other prompts.\n\n"
         "### Agent 1: Methods Reviewer\n"
-        f"Read `review_prompts/methods_reviewer.md` and produce `review_prompts/methods_review_output.md`\n\n"
+        "Read `review_prompts/methods_reviewer.md` and produce `review_prompts/methods_review_output.md`\n\n"
         "### Agent 2: Contribution Reviewer\n"
-        f"Read `review_prompts/contribution_reviewer.md` and produce `review_prompts/contribution_review_output.md`\n\n"
+        "Read `review_prompts/contribution_reviewer.md` and produce `review_prompts/contribution_review_output.md`\n\n"
         "### Agent 3: Clarity Reviewer\n"
-        f"Read `review_prompts/clarity_reviewer.md` and produce `review_prompts/clarity_review_output.md`\n\n"
+        "Read `review_prompts/clarity_reviewer.md` and produce `review_prompts/clarity_review_output.md`\n\n"
         "### After all three complete:\n"
-        f"Run `python scripts/structured_review.py paper_rewriting_output --validate review_prompts` "
+        "Run `python scripts/structured_review.py paper_rewriting_output --validate review_prompts` "
         "to check independence. Then produce the Editor Synthesis.\n"
     )
     (prompts_dir / "dispatch.md").write_text(dispatch_md, encoding="utf-8")

@@ -11,14 +11,12 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
 
-from _paper_spine_utils import markdown_tables, table_rows
+from _paper_spine_utils import table_rows
 
 USER_AGENT = "PaperSpine/3.0 (citation-zh; https://github.com/WUBING2023/PaperSpine)"
 DOI_RE = re.compile(r"(?:doi\s*[:=]\s*|https?://doi\.org/)?(10\.\d{4,}/[^\s,;)]+)", re.IGNORECASE)

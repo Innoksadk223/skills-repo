@@ -22,9 +22,8 @@ from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from pathlib import Path
 from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
 
-from _paper_spine_utils import split_table_line, table_rows
+from _paper_spine_utils import table_rows
 
 DOI_RE = re.compile(
     r"\b(?:doi\s*[:=]\s*|https?://doi\.org/|https?://dx\.doi\.org/)?(10\.\d{4,}/[^\s,;)\]]+)",
@@ -424,7 +423,7 @@ def to_markdown(report: CitationQualityReport) -> str:
     if report.gap_analysis:
         lines.append("## Citation Diversity Gaps")
         lines.append("")
-        for ctype, analysis in report.gap_analysis.items():
+        for analysis in report.gap_analysis.values():
             lines.append(analysis)
             lines.append("")
         lines.append("")

@@ -20,13 +20,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from _paper_spine_utils import (
-    is_separator_row,
     markdown_tables,
-    read_text,
-    split_table_line,
-    table_rows,
 )
-
 
 # ---------------------------------------------------------------------------
 # data types
@@ -149,7 +144,7 @@ def audit_artifacts(out_dir: Path, config: dict) -> AuditDimension:
                            f"Do not hand-write this file — the owning skill produces it from research data.",
                 downstream_impact=f"Without {artifact} ({desc}), downstream writing stages lack the input they need "
                                   "to make informed decisions. LaTeX assembly should not proceed.",
-                teaching_note=f"Each PaperSpine artifact is a checkpoint. When one is missing, it usually means "
+                teaching_note="Each PaperSpine artifact is a checkpoint. When one is missing, it usually means "
                               "an upstream step was skipped. Fix the step, not the gap.",
             ))
     if not dim.findings:
@@ -196,10 +191,6 @@ def audit_reasoning_depth(out_dir: Path, _config: dict) -> AuditDimension:
         return dim
 
     rows = tables[0]
-    header_text = " ".join(cell.lower() for cell in rows[0])
-    has_motivation = "motivation" in header_text
-    has_evidence = "evidence" in header_text
-
     # Check first data row depth (whole-work framework)
     if len(rows) > 1:
         first_row_text = " ".join(rows[1])
@@ -273,7 +264,7 @@ def audit_evidence_chain(out_dir: Path, config: dict) -> AuditDimension:
             if tables:
                 rows = tables[0]
                 unsupported = 0
-                for i, row in enumerate(rows[1:], start=1):
+                for row in rows[1:]:
                     joined = " ".join(row).lower()
                     if any(m in joined for m in ("unsupported", "no evidence", "[verify]", "tbd", "todo")):
                         unsupported += 1

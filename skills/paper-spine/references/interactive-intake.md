@@ -27,13 +27,24 @@ the `/paperspine` command when installed, or launch the PowerShell wrapper so
 the wizard runs in a real interactive terminal window:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/launch_paperspine_ui.ps1 -OutputDir paper_rewriting_output
+# Pass the ABSOLUTE path to the installed launcher. Codex/Claude run from the
+# user's project folder, where `scripts/` does not exist, so a relative path is
+# the most common reason the UI window never opens. Resolve the install dir:
+$launcher = @(
+  "$env:USERPROFILE\.codex\skills\paper-spine-ui\scripts\launch_paperspine_ui.ps1",
+  "$env:USERPROFILE\.claude\skills\paper-spine-ui\scripts\launch_paperspine_ui.ps1",
+  "$env:USERPROFILE\.codex\skills\paper-spine-intake\scripts\launch_paperspine_ui.ps1",
+  "$env:USERPROFILE\.claude\skills\paper-spine-intake\scripts\launch_paperspine_ui.ps1"
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $launcher -OutputDir paper_rewriting_output
 ```
 
 For a user-run terminal, the direct wizard command is:
 
 ```bash
-python scripts/intake_wizard.py --output-dir paper_rewriting_output
+WIZARD="$HOME/.codex/skills/paper-spine-ui/scripts/intake_wizard.py"
+[ -f "$WIZARD" ] || WIZARD="$HOME/.claude/skills/paper-spine-ui/scripts/intake_wizard.py"
+python "$WIZARD" --output-dir paper_rewriting_output
 ```
 
 Do not run the direct Python wizard inside a hidden agent Bash/tool execution
@@ -44,7 +55,9 @@ screen, and an edit loop before writing config files.
 For first-time setup or changing interface language:
 
 ```bash
-python scripts/intake_wizard.py --setup-global --output-dir paper_rewriting_output
+WIZARD="$HOME/.codex/skills/paper-spine-ui/scripts/intake_wizard.py"
+[ -f "$WIZARD" ] || WIZARD="$HOME/.claude/skills/paper-spine-ui/scripts/intake_wizard.py"
+python "$WIZARD" --setup-global --output-dir paper_rewriting_output
 ```
 
 Use native structured questions only when the host exposes them reliably in the

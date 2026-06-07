@@ -1,6 +1,6 @@
 ---
 name: paper-spine-research
-description: Researches target requirements, downloads reference materials, learns strong examples, and prepares motivation options.
+description: Researches target requirements, downloads reference materials, learns strong examples, and prepares motivation options. (internal /paperspine step)
 ---
 
 # PaperSpine Research

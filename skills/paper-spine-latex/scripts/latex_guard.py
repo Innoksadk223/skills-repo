@@ -15,7 +15,6 @@ import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-
 GRAPHIC_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg", ".eps", ".tif", ".tiff"]
 
 

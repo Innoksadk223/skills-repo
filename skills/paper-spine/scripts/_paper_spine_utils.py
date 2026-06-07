@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from difflib import SequenceMatcher
 from pathlib import Path
 
-
 # — file reading ————————————————————————————————————————————————————————————
 
 def read_text(path: Path) -> str:

@@ -1,6 +1,6 @@
 ---
 name: paper-spine-intake
-description: Collects PaperSpine workflow options and writes config for flash/pro, scene, language, and inputs.
+description: Collects PaperSpine workflow options and writes config for flash/pro, scene, language, and inputs. (internal /paperspine step)
 ---
 
 # PaperSpine Intake
@@ -57,24 +57,35 @@ When a real terminal is available, route through `paper-spine-ui` and use the
 bundled external terminal wizard; do not downgrade to asking the user to
 hand-write JSON or type every option in chat.
 
-In Claude Code, do not run `python scripts/intake_wizard.py` directly from an
+In Claude Code, do not run the intake wizard directly from an
 agent Bash/tool call. That execution surface may not expose stdin and can hang.
 Use `/paperspine` for normal work; it launches this intake UI automatically
 when configuration is missing. The UI is a real terminal TUI with Up/Down option switching,
 Left/Right field switching, Enter edit/confirm, and `S` save. Claude Code does
 not currently expose a public third-party skill API for embedding this custom
 keyboard UI inside the chat input box itself. If needed, run the launcher
-relative to this skill directory:
+by its absolute installed path (never a path relative to the project directory):
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/launch_paperspine_ui.ps1 -OutputDir paper_rewriting_output
+# Pass the ABSOLUTE path to the installed launcher. Codex/Claude run from the
+# user's project folder, where `scripts/` does not exist, so a relative path is
+# the most common reason the UI window never opens. Resolve the install dir:
+$launcher = @(
+  "$env:USERPROFILE\.codex\skills\paper-spine-ui\scripts\launch_paperspine_ui.ps1",
+  "$env:USERPROFILE\.claude\skills\paper-spine-ui\scripts\launch_paperspine_ui.ps1",
+  "$env:USERPROFILE\.codex\skills\paper-spine-intake\scripts\launch_paperspine_ui.ps1",
+  "$env:USERPROFILE\.claude\skills\paper-spine-intake\scripts\launch_paperspine_ui.ps1"
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $launcher -OutputDir paper_rewriting_output
 ```
 
 This opens a separate interactive PowerShell window. For a user-run terminal,
 this direct command is also supported:
 
 ```bash
-python scripts/intake_wizard.py --output-dir paper_rewriting_output
+WIZARD="$HOME/.codex/skills/paper-spine-ui/scripts/intake_wizard.py"
+[ -f "$WIZARD" ] || WIZARD="$HOME/.claude/skills/paper-spine-ui/scripts/intake_wizard.py"
+python "$WIZARD" --output-dir paper_rewriting_output
 ```
 
 The wizard provides arrow-key menus in a real terminal, falls back to numbered
@@ -110,7 +121,9 @@ On first setup, or when the user asks to change PaperSpine interface language,
 run the wizard in global setup mode:
 
 ```bash
-python scripts/intake_wizard.py --setup-global --output-dir paper_rewriting_output
+WIZARD="$HOME/.codex/skills/paper-spine-ui/scripts/intake_wizard.py"
+[ -f "$WIZARD" ] || WIZARD="$HOME/.claude/skills/paper-spine-ui/scripts/intake_wizard.py"
+python "$WIZARD" --setup-global --output-dir paper_rewriting_output
 ```
 
 Use the wizard's terminal UI for all config fields. Prefer the arrow-key UI in a
