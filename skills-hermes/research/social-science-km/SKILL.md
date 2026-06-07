@@ -57,7 +57,7 @@ Procedure:
 2. Check the active Python environment with `python -m markitdown --version`; install `markitdown` and needed optional dependencies only if missing and only for non-PDF conversion.
 3. Recursively scan the source folder for convertible files such as PDF, DOCX, PPTX, XLSX, HTML, TXT, Markdown, and common document formats.
 4. Route conversions by file type:
-   - **PDF (`.pdf`) → MinerU first**. Do not use MarkItDown as the default PDF path. Real test case: a 37-page scanned classical-text PDF (`荀子集解（王先谦） 天论篇.pdf`) produced empty/near-empty MarkItDown output because there was no text layer, while MinerU OCR extracted usable Markdown. MinerU preserves layouts, tables, formulas, OCR, and scanned/影印 content better.
+   - **PDF (`.pdf`) → MinerU first**. Do not use MarkItDown as the default PDF path. MinerU is preferred for scanned/影印 PDFs, papers, tables, formulas, and complex layouts because it provides OCR and stronger document-structure extraction.
    - **Non-PDF → MarkItDown first** when the format is supported and the output looks usable.
    - **MarkItDown fallback → MinerU** when MarkItDown fails, returns empty/near-empty output, or produces obvious乱码/garbled text.
 5. Convert each file to `<知识库>/wiki/raw/<source-folder-name>/...` while preserving the relative directory structure when possible. Keep the output extension as `.md`.
