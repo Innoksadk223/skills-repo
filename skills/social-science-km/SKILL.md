@@ -1,13 +1,13 @@
 ---
 name: social-science-km
-description: Coordinate a social-science paper knowledge-management workflow. Use when users want to turn source PDFs or documents into a MarkItDown-processed `raw/` folder, compile them into a `wiki/` knowledge base with karpathy-wiki, and build/query a local RAG index with SiliconFlow-rag.
+description: Coordinate a social-science paper knowledge-management workflow. Use when users want to turn source documents into a processed `raw/` folder using MinerU for PDFs and MarkItDown for other formats, compile them into a `wiki/` knowledge base with karpathy-wiki, and build/query a local RAG index with SiliconFlow-rag.
 ---
 
 # Social Science Knowledge Management
 
 Use this skill as the coordinator for a three-step social-science paper knowledge system:
 
-1. Convert source documents to Markdown with `markitdown`, writing the processed Markdown into the knowledge-base wiki's `raw/` directory.
+1. Convert source documents to Markdown in the knowledge-base wiki's `raw/` directory: use MinerU for PDF files; use `markitdown` for non-PDF sources; if MarkItDown fails, returns empty output, or produces obvious乱码/garbled text, retry that file with MinerU.
 2. Compile that `raw/` into a persistent, graph-readable `wiki/` knowledge base with `karpathy-wiki`, including `claims/` argument nodes when the corpus contains thesis, theory, objections, limitations, or evidence logic.
 3. Build and query two local RAG indexes with `SiliconFlow-rag`: `检索索引/raw` for source evidence and `检索索引/wiki` for wiki-first recall expansion.
 
@@ -26,7 +26,7 @@ Use this fixed directory contract:
 │   ├── SCHEMA.md                     ← karpathy-wiki 初始化生成的结构与规范
 │   ├── index.md                      ← 知识库内容目录
 │   ├── log.md                        ← 操作日志
-│   ├── raw/                          ← markitdown 输出的 Markdown 语料
+│   ├── raw/                          ← MinerU / MarkItDown 输出的 Markdown 语料
 │   │   ├── <topic>/                  ← 按原始主题/目录组织
 │   │   └── _主题索引.md              ← Step 1 生成的语料清单
 │   ├── claims/                       ← karpathy-wiki 编译的论证节点页
@@ -47,27 +47,52 @@ Do not place `raw/`, `wiki/`, or `检索索引/` beside the source folder's pare
 
 ## Step 1: Convert Sources To Raw Markdown
 
-Use the `markitdown` skill and Microsoft MarkItDown CLI.
+Use `mineru-document-extractor` for PDFs and any MarkItDown failure/fallback cases. Use the `markitdown` skill and Microsoft MarkItDown CLI for non-PDF sources that convert cleanly.
+
+Dependency note: this workflow requires both the MinerU skill and the MinerU MCP. The skill is already installed; the MinerU MCP still needs to be installed/configured from https://mineru.net/ecosystem so agents can call MinerU directly.
 
 Procedure:
 
-1. Check the active Python environment with `python -m markitdown --version`; install `markitdown` and needed optional dependencies such as `markitdown[pdf]` only if missing.
-2. Recursively scan the source folder for convertible files such as PDF, DOCX, PPTX, XLSX, HTML, TXT, and common document formats supported by MarkItDown.
-3. Convert each file to `<知识库>/wiki/raw/<source-folder-name>/...` while preserving the relative directory structure when possible.
-4. Existing Markdown sources may be copied into `<知识库>/wiki/raw/<source-folder-name>/...` as processed Markdown without changing their content.
-5. Do not overwrite original files.
-6. If conversion fails or output is empty, record the source path, target path, and error in `wiki/raw/_conversion_failures.md` and tell the user.
-7. Generate or update `wiki/raw/_主题索引.md` with a concise file list and rough topic grouping when enough filenames or headings are available.
+1. Load/read both relevant skills when needed: `mineru-document-extractor` for PDFs and fallback extraction; `markitdown` for non-PDF document conversion.
+2. Check the active Python environment with `python -m markitdown --version`; install `markitdown` and needed optional dependencies only if missing and only for non-PDF conversion.
+3. Recursively scan the source folder for convertible files such as PDF, DOCX, PPTX, XLSX, HTML, TXT, Markdown, and common document formats.
+4. Route conversions by file type:
+   - **PDF (`.pdf`) → MinerU first**. Do not use MarkItDown as the default PDF path, because MinerU preserves layouts, tables, formulas, OCR, and scanned-paper content better.
+   - **Non-PDF → MarkItDown first** when the format is supported and the output looks usable.
+   - **MarkItDown fallback → MinerU** when MarkItDown fails, returns empty/near-empty output, or produces obvious乱码/garbled text.
+5. Convert each file to `<知识库>/wiki/raw/<source-folder-name>/...` while preserving the relative directory structure when possible. Keep the output extension as `.md`.
+6. Existing Markdown sources may be copied into `<知识库>/wiki/raw/<source-folder-name>/...` as processed Markdown without changing their content.
+7. Do not overwrite original files.
+8. When MinerU is available through MCP, prefer the MinerU MCP tools. Use the MinerU CLI only when MCP is unavailable, the user explicitly asks for CLI usage, or the MCP tool cannot satisfy the workflow.
+9. Detect unusable MarkItDown output before accepting it. Treat these as fallback triggers: empty output, only boilerplate/page markers, widespread replacement characters (`�`), mojibake patterns, or mostly unreadable text compared with the source language.
+10. If both primary conversion and MinerU fallback fail, record the source path, target path, attempted tools, and errors in `wiki/raw/_conversion_failures.md` and tell the user.
+11. Generate or update `wiki/raw/_主题索引.md` with a concise file list and rough topic grouping when enough filenames or headings are available.
+
+### Batch Source Conversion With Subagents
+
+For large source folders, source conversion may be split across subagents by directory, file type, or topic batch. This is especially useful when many PDFs need MinerU processing or when mixed formats may require MarkItDown → MinerU fallback checks.
+
+Use subagents for **independent conversion batches only**:
+
+- Assign each subagent a non-overlapping file list and a matching output subtree under `wiki/raw/`.
+- Each subagent may run MinerU/MarkItDown for its assigned files and write only its own raw Markdown outputs plus a small per-batch conversion report.
+- The parent agent owns shared files: merge per-batch reports into `wiki/raw/_conversion_failures.md`, generate/update `wiki/raw/_主题索引.md`, and verify final coverage.
+- Do not let multiple subagents edit `_主题索引.md`, `_conversion_failures.md`, wiki pages, navigation, or RAG indexes concurrently.
+- After all batches finish, the parent must check for missing source files, duplicate outputs, failed conversions, and MarkItDown outputs that still look garbled before moving to Step 2.
+
+Validation: every source file is either represented by one `.md` output under `wiki/raw/` or listed in `_conversion_failures.md` with the attempted tools and error.
 
 Validation:
 
 - `wiki/raw/` exists.
 - At least one `.md` file exists under `wiki/raw/`, unless all conversions failed.
-- `wiki/raw/_conversion_failures.md` exists when any file failed.
+- PDF entries in `wiki/raw/` were produced by MinerU unless explicitly noted otherwise.
+- Any MarkItDown failure/乱码 fallback is either successfully replaced by MinerU output or recorded in `wiki/raw/_conversion_failures.md`.
+- `wiki/raw/_conversion_failures.md` exists when any file failed after all fallback attempts.
 
 ## Step 2: Build Wiki
 
-Use `karpathy-wiki`. Set `WIKI_PATH` to `<知识库>/wiki/` before running it. Its source layer is `wiki/raw/`, which in this workflow already contains MarkItDown-processed Markdown.
+Use `karpathy-wiki`. Set `WIKI_PATH` to `<知识库>/wiki/` before running it. Its source layer is `wiki/raw/`, which in this workflow already contains Markdown processed by MinerU and/or MarkItDown.
 
 Procedure:
 
