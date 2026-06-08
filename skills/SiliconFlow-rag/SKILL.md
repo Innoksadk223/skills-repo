@@ -198,7 +198,11 @@ Command-line flags override config values.
 The skill implements a lightweight variant of the RAG retrieval norm internally:
 - **Dual Retrieval**: Parallel Vector Similarity (Embedding) + BM25 Lexical search to avoid missing exact matches.
 - **RRF (Reciprocal Rank Fusion)**: Both paths are ranked independently and fused using `1/(k+rank)`.
-- **Multi-Query (Default On)**: The skill automatically asks an LLM (Qwen2.5-7B-Instruct) to generate 3 additional sub-queries before searching. The retrieval runs all queries against both Vector and BM25, returning the max score for each chunk before RRF fusion. Use `--no-multi-query` to disable.
+- **Multi-Query (Default On)**: The skill automatically asks an LLM (Qwen2.5-7B-Instruct) to generate 3 additional sub-queries before searching. 
+  - **机制**: 在拿到用户问题后，先调用大模型进行意图重写和同义扩充（例如把“吃什么水果能美白”拓展为“富含维生素C的水果”、“抑制黑色素的食物”）。
+  - **作用**: 极大地解决大模型的“词汇鸿沟”与“语义盲区”问题，显著提升在表述多样、专业性强的语料中的**召回率（Recall）**。
+  - **计算方式**: 4 组 Query（1个原问题+3个扩写问题）会同时在 Vector 和 BM25 双路中计算匹配度，任何一段文本都会取这 4 次匹配的**最高分**参与最终融合。
+  - **开关**: 默认开启，代价是增加 1-2 秒改写耗时。如果已知需要精确查找极高明确度的术语，可以通过传参 `--no-multi-query` 关闭此特性。
 - **Rerank (Optional)**: Set `--rerank` to refine the RRF Top-K candidates using Qwen3-Reranker-8B. The final output is bounded by `--top-k`.
 
 ## Index Maintenance
