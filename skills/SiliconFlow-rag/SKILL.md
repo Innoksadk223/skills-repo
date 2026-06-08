@@ -172,7 +172,8 @@ Reusable non-secret parameters can go into `rag_config.json`:
     "wiki_top_k": 5,
     "timeout": 60,
     "expand_context": true,
-    "context_window": 1
+    "context_window": 1,
+    "multi_query": false
   }
 }
 ```
@@ -191,6 +192,14 @@ Command-line flags override config values.
 - Optional rerank model: `Qwen/Qwen3-Reranker-8B`
 - Default retrieval: top 6 local vector matches
 - Optional rerank retrieval: local candidate top 12, reranked top 6
+
+## Multi-路召回架构 (RAG Norm)
+
+The skill implements a lightweight variant of the RAG retrieval norm internally:
+- **Dual Retrieval**: Parallel Vector Similarity (Embedding) + BM25 Lexical search to avoid missing exact matches.
+- **RRF (Reciprocal Rank Fusion)**: Both paths are ranked independently and fused using `1/(k+rank)`.
+- **Multi-Query (Optional)**: If `--multi-query` is passed, the skill asks an LLM (Qwen2.5-7B-Instruct) to generate 3 additional sub-queries. The retrieval runs all queries against both Vector and BM25, returning the max score for each chunk before RRF fusion.
+- **Rerank (Optional)**: Set `--rerank` to refine the RRF Top-K candidates using Qwen3-Reranker-8B. The final output is bounded by `--top-k`.
 
 ## Index Maintenance
 

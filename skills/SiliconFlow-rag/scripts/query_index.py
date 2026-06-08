@@ -31,6 +31,7 @@ QUERY_DEFAULTS = {
     "raw_index_dir": None,
     "wiki_top_k": 5,
     "wiki_first": False,
+    "multi_query": False,
 }
 CONFIG_SECTIONS = {"build", "query"}
 BUILD_CONFIG_FIELDS = {"md_dir", "model", "chunk_size", "overlap", "batch_size", "sleep"}
@@ -153,6 +154,42 @@ def cosine(a: list[float], b: list[float]) -> float:
     return dot / (na * nb)
 
 
+def bm25_tokenize(text: str) -> list[str]:
+    """Simple bi-gram tokenizer for fallback BM25."""
+    import re
+    text = text.lower()
+    text = re.sub(r'[^\w\u4e00-\u9fa5]', ' ', text)
+    tokens = [w for w in text.split() if w]
+    # Create bi-grams for Chinese characters (simple approximation)
+    bigrams = []
+    for t in tokens:
+        if re.search(r'[\u4e00-\u9fa5]', t) and len(t) > 1:
+            for i in range(len(t) - 1):
+                bigrams.append(t[i:i+2])
+        bigrams.append(t)
+    return bigrams
+
+def bm25_score(query_tokens: list[str], doc_tokens: list[str], avgdl: float, idf: dict[str, float], k1: float = 1.5, b: float = 0.75) -> float:
+    if not doc_tokens: return 0.0
+    from collections import Counter
+    doc_len = len(doc_tokens)
+    doc_tf = Counter(doc_tokens)
+    score = 0.0
+    for token in query_tokens:
+        if token not in doc_tf: continue
+        tf = doc_tf[token]
+        numerator = tf * (k1 + 1)
+        denominator = tf + k1 * (1 - b + b * (doc_len / avgdl))
+        score += idf.get(token, 0.0) * (numerator / denominator)
+    return score
+
+def compute_rrf(rank1: int, rank2: int, k: int = 60) -> float:
+    score = 0.0
+    if rank1 > 0: score += 1.0 / (k + rank1)
+    if rank2 > 0: score += 1.0 / (k + rank2)
+    return score
+
+
 def siliconflow_embedding(text: str, model: str, api_key: str, timeout: int) -> list[float]:
     payload = json.dumps({
         "model": model,
@@ -212,6 +249,34 @@ def siliconflow_rerank(query: str, documents: list[str], model: str, api_key: st
     if not isinstance(results, list):
         raise RuntimeError(f"Unexpected rerank response: {body}")
     return results
+
+
+def siliconflow_multi_query(question: str, api_key: str, timeout: int) -> list[str]:
+    """Generate 3 varied search queries using an LLM."""
+    payload = json.dumps({
+        "model": "Qwen/Qwen2.5-7B-Instruct",
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant. Expand the given question into 3 different search queries to improve retrieval recall. Output ONLY the 3 queries, one per line. Do not include numbering, bullets, or intro text."},
+            {"role": "user", "content": question}
+        ]
+    }, ensure_ascii=False).encode("utf-8")
+    request = urllib.request.Request(
+        "https://api.siliconflow.cn/v1/chat/completions",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            body = json.loads(response.read().decode("utf-8"))
+            content = body["choices"][0]["message"]["content"]
+            queries = [q.strip().strip("-*1234567890. ") for q in content.splitlines() if q.strip()]
+            return queries[:3] if queries else [question]
+    except Exception:
+        return [question]
 
 
 
@@ -315,7 +380,9 @@ def retrieve_from_index(args: argparse.Namespace, index_dir_value: str, question
 
     mock = bool(manifest.get("mock")) or args.mock
     if mock:
-        query_vector = mock_embedding(question)
+        api_key = ""
+        queries = [question]
+        query_vectors = [mock_embedding(q) for q in queries]
     else:
         api_key = load_api_key(args.api_key_env, args.api_key_file)
         if not api_key:
@@ -323,23 +390,67 @@ def retrieve_from_index(args: argparse.Namespace, index_dir_value: str, question
                 f"Missing {args.api_key_env}. Set it in the environment or save a local private config at "
                 f"{DEFAULT_CONFIG_PATH}."
             )
-        query_vector = siliconflow_embedding(question, manifest.get("embedding_model") or args.embedding_model, api_key, args.timeout)
+        queries = [question]
+        if getattr(args, "multi_query", False):
+            expanded = siliconflow_multi_query(question, api_key, args.timeout)
+            if expanded:
+                queries.extend([q for q in expanded if q != question])
+        query_vectors = [siliconflow_embedding(q, manifest.get("embedding_model") or args.embedding_model, api_key, args.timeout) for q in queries]
 
-    scored = []
     intent = infer_query_intent(question)
     is_wiki_index = manifest.get("metadata_mode") == "wiki"
+    
+    doc_tokens_list = [bm25_tokenize(row["text"]) for row in rows]
+    avgdl = sum(len(dt) for dt in doc_tokens_list) / max(1, len(rows))
+    from collections import Counter
+    df = Counter()
+    for dt in doc_tokens_list:
+        df.update(set(dt))
+    N = len(rows)
+    idf = {t: math.log(1 + (N - f + 0.5) / (f + 0.5)) for t, f in df.items()}
+    
+    item_scores = {}
     for row in rows:
         item = dict(row)
-        base_similarity = cosine(query_vector, row["embedding"])
+        item_id = item["id"]
         boost = semantic_type_boost(intent, row_page_type(row)) if is_wiki_index else 0.0
-        item["similarity"] = base_similarity + boost
-        if boost:
-            item["similarity_base"] = base_similarity
+        
+        max_vec = 0.0
+        for qv in query_vectors:
+            sim = cosine(qv, row["embedding"])
+            if sim > max_vec: max_vec = sim
+            
+        max_bm25 = 0.0
+        for q in queries:
+            qt = bm25_tokenize(q)
+            score = bm25_score(qt, doc_tokens_list[rows.index(row)], avgdl, idf)
+            if score > max_bm25: max_bm25 = score
+            
+        max_vec += boost
+        
+        item.pop("embedding", None)
+        if boost > 0:
             item["semantic_type_boost"] = boost
             item["query_intent"] = intent
-        item.pop("embedding", None)
+        item_scores[item_id] = {"item": item, "vec": max_vec, "bm25": max_bm25}
+        
+    vec_ranked = sorted(item_scores.values(), key=lambda x: x["vec"], reverse=True)
+    bm25_ranked = sorted(item_scores.values(), key=lambda x: x["bm25"], reverse=True)
+    
+    for rank, score_dict in enumerate(vec_ranked, start=1):
+        score_dict["vec_rank"] = rank
+    for rank, score_dict in enumerate(bm25_ranked, start=1):
+        score_dict["bm25_rank"] = rank
+        
+    scored = []
+    for score_dict in item_scores.values():
+        item = score_dict["item"]
+        item["similarity"] = score_dict["vec"]
+        item["bm25_score"] = score_dict["bm25"]
+        item["rrf_score"] = compute_rrf(score_dict.get("vec_rank", 0), score_dict.get("bm25_rank", 0))
         scored.append(item)
-    scored.sort(key=lambda item: item["similarity"], reverse=True)
+        
+    scored.sort(key=lambda item: item["rrf_score"], reverse=True)
 
     use_rerank = args.rerank if rerank is None else rerank
     rerank_note = None
@@ -643,6 +754,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--mock", action="store_true", help="Use mock query embedding for tests")
     parser.add_argument("--expand-context", action="store_true", default=None, help="Include adjacent chunks from the same source for each result")
     parser.add_argument("--context-window", type=int, default=None, help="Number of adjacent chunks on each side (default: 1)")
+    parser.add_argument("--multi-query", action="store_true", default=None, help="Use LLM to rewrite question into multiple search queries")
     parser.add_argument("--stats", action="store_true", help="Print index statistics instead of querying")
     return apply_query_config(parser.parse_args())
 
