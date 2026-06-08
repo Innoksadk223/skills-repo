@@ -173,7 +173,7 @@ Reusable non-secret parameters can go into `rag_config.json`:
     "timeout": 60,
     "expand_context": true,
     "context_window": 1,
-    "multi_query": false
+    "multi_query": true
   }
 }
 ```
@@ -198,7 +198,7 @@ Command-line flags override config values.
 The skill implements a lightweight variant of the RAG retrieval norm internally:
 - **Dual Retrieval**: Parallel Vector Similarity (Embedding) + BM25 Lexical search to avoid missing exact matches.
 - **RRF (Reciprocal Rank Fusion)**: Both paths are ranked independently and fused using `1/(k+rank)`.
-- **Multi-Query (Optional)**: If `--multi-query` is passed, the skill asks an LLM (Qwen2.5-7B-Instruct) to generate 3 additional sub-queries. The retrieval runs all queries against both Vector and BM25, returning the max score for each chunk before RRF fusion.
+- **Multi-Query (Default On)**: The skill automatically asks an LLM (Qwen2.5-7B-Instruct) to generate 3 additional sub-queries before searching. The retrieval runs all queries against both Vector and BM25, returning the max score for each chunk before RRF fusion. Use `--no-multi-query` to disable.
 - **Rerank (Optional)**: Set `--rerank` to refine the RRF Top-K candidates using Qwen3-Reranker-8B. The final output is bounded by `--top-k`.
 
 ## Index Maintenance

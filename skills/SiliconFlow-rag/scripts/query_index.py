@@ -31,7 +31,7 @@ QUERY_DEFAULTS = {
     "raw_index_dir": None,
     "wiki_top_k": 5,
     "wiki_first": False,
-    "multi_query": False,
+    "multi_query": True,
 }
 CONFIG_SECTIONS = {"build", "query"}
 BUILD_CONFIG_FIELDS = {"md_dir", "model", "chunk_size", "overlap", "batch_size", "sleep"}
@@ -754,7 +754,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--mock", action="store_true", help="Use mock query embedding for tests")
     parser.add_argument("--expand-context", action="store_true", default=None, help="Include adjacent chunks from the same source for each result")
     parser.add_argument("--context-window", type=int, default=None, help="Number of adjacent chunks on each side (default: 1)")
-    parser.add_argument("--multi-query", action="store_true", default=None, help="Use LLM to rewrite question into multiple search queries")
+    parser.add_argument("--multi-query", action="store_true", default=None, help="Use LLM to rewrite question into multiple search queries (default: true)")
+    parser.add_argument("--no-multi-query", action="store_false", dest="multi_query", help="Disable LLM query rewrite")
     parser.add_argument("--stats", action="store_true", help="Print index statistics instead of querying")
     return apply_query_config(parser.parse_args())
 
