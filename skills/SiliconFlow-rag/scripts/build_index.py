@@ -265,6 +265,7 @@ def wiki_retrieval_text(text: str, rel_path: str) -> str:
         value = frontmatter.get(key)
         if value not in (None, "", []):
             items = as_list(value)
+            items = [item.removeprefix("[[") .removesuffix("]]").strip() for item in items]
             fields.append(f"{label}：{'、'.join(items) if items else value}")
     proposition = extract_section(body, "命题")
     if proposition:

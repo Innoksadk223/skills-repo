@@ -539,7 +539,7 @@ def extract_expansion_terms(wiki_hits: list[dict], limit: int = 30) -> list[str]
                 if line.startswith(label):
                     value = line[len(label):].strip()
                     for part in value.replace("，", "、").split("、"):
-                        term = part.strip()
+                        term = part.strip().removeprefix("[[").removesuffix("]]")
                         if term and len(term) <= 80 and term not in terms:
                             terms.append(term)
         if len(terms) >= limit:
