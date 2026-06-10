@@ -24,6 +24,14 @@ def run(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
     return result
 
 
+def run_expect_failure(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+    result = subprocess.run(command, cwd=cwd, text=True, capture_output=True, encoding="utf-8", errors="replace")
+    if result.returncode == 0:
+        print(result.stdout)
+        raise SystemExit("Command unexpectedly succeeded: " + " ".join(command))
+    return result
+
+
 def main() -> None:
     temp_dir = Path(tempfile.mkdtemp(prefix="SiliconFlow-rag-test-"))
     try:
@@ -86,6 +94,57 @@ def main() -> None:
         if missing:
             print(output)
             raise SystemExit(f"Self-test failed; missing output markers: {missing}")
+
+        # --- Query config default: multi-query should stay off unless explicitly enabled ---
+        defaults_config_path = temp_dir / "rag_defaults_config.json"
+        defaults_config_path.write_text(
+            """{
+  "build": {
+    "chunk_size": 80,
+    "overlap": 10,
+    "batch_size": 2
+  },
+  "query": {
+    "top_k": 2,
+    "candidates": 3
+  }
+}
+""",
+            encoding="utf-8",
+        )
+        result = run([
+            sys.executable,
+            str(QUERY),
+            "--config",
+            str(defaults_config_path),
+            "--index-dir",
+            str(index_dir),
+            "--question",
+            "What shapes housing inequality?",
+            "--mock",
+        ], ROOT)
+        if "# RAG Evidence" not in result.stdout:
+            print(result.stdout)
+            raise SystemExit("Default multi-query smoke test failed")
+
+        # --- Unknown config keys should fail loudly ---
+        bad_config_path = temp_dir / "rag_bad_config.json"
+        bad_config_path.write_text('{"query": {"not_a_valid_key": true}}', encoding="utf-8")
+        result = run_expect_failure([
+            sys.executable,
+            str(QUERY),
+            "--config",
+            str(bad_config_path),
+            "--index-dir",
+            str(index_dir),
+            "--question",
+            "What shapes housing inequality?",
+            "--mock",
+        ], ROOT)
+        if "Unknown query config keys" not in (result.stdout + result.stderr):
+            print(result.stdout)
+            print(result.stderr, file=sys.stderr)
+            raise SystemExit("Unknown config key test failed")
 
         # --- Incremental test: add a new file ---
         (md_dir / "urban-studies" / "rent.md").write_text(
@@ -200,7 +259,7 @@ def main() -> None:
         ], ROOT)
 
         stats_output = result.stdout
-        for marker in ["Index Statistics", "Files:", "Chunks:", "Format:"]:
+        for marker in ["Index Statistics", "Files:", "Chunks:", "Embeddings:", "Metadata mode:", "Health", "Status: OK", "Format:"]:
             if marker not in stats_output:
                 print(stats_output)
                 raise SystemExit(f"Stats test failed: missing '{marker}' in output")
@@ -311,6 +370,30 @@ sources: [Cline]
         if "Transit" in chunks_text:
             print(chunks_text)
             raise SystemExit("Wiki include/exclude test failed: raw content appeared in wiki index")
+
+        # --- Evidence path normalization should handle raw/, ./raw/, and wiki/raw/ forms ---
+        (claims_dir / "孝的道德基础是良好照料.md").write_text(
+            (claims_dir / "孝的道德基础是良好照料.md").read_text(encoding="utf-8").replace(
+                "证据位置：`raw/care.md:1-2`",
+                "证据位置：`wiki/raw/care.md:1-2`",
+            ),
+            encoding="utf-8",
+        )
+        run([
+            sys.executable,
+            str(BUILD),
+            "--md-dir",
+            str(wiki_root),
+            "--index-dir",
+            str(wiki_index),
+            "--include-dirs",
+            "claims,concepts",
+            "--exclude-dirs",
+            "raw,_archive",
+            "--metadata-mode",
+            "wiki",
+            "--mock",
+        ], ROOT)
 
         result = run([
             sys.executable,

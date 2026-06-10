@@ -9,6 +9,8 @@ import json
 import math
 import os
 import re
+import stat
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -17,7 +19,9 @@ from pathlib import Path
 
 API_URL = "https://api.siliconflow.cn/v1/embeddings"
 DEFAULT_MODEL = "BAAI/bge-m3"
-DEFAULT_CONFIG_PATH = Path.home() / ".codex" / "SiliconFlow-rag" / "config.json"
+HERMES_CONFIG_PATH = Path.home() / ".hermes" / "private" / "SiliconFlow-rag" / "config.json"
+LEGACY_CONFIG_PATH = Path.home() / ".codex" / "SiliconFlow-rag" / "config.json"
+DEFAULT_CONFIG_PATH = HERMES_CONFIG_PATH
 BUILD_DEFAULTS = {
     "md_dir": "raw",
     "index_dir": "检索索引",
@@ -450,14 +454,41 @@ def siliconflow_embeddings(texts: list[str], model: str, api_key: str, timeout: 
     return [item["embedding"] for item in ordered]
 
 
+def warn_if_private_config_too_open(config_path: Path) -> None:
+    """Warn on POSIX systems if a private key file is group/world-readable."""
+    if os.name != "posix":
+        return
+    try:
+        mode = config_path.stat().st_mode
+    except OSError:
+        return
+    if mode & (stat.S_IRWXG | stat.S_IRWXO):
+        print(
+            f"Warning: API key config is readable by group/others: {config_path}. "
+            "Consider chmod 600.",
+            file=sys.stderr,
+        )
+
+
+def candidate_api_key_paths(api_key_file: str | None) -> list[Path]:
+    if api_key_file:
+        return [Path(api_key_file).expanduser()]
+    return [HERMES_CONFIG_PATH, LEGACY_CONFIG_PATH]
+
+
 def load_api_key(api_key_env: str, api_key_file: str | None) -> str:
     env_value = os.environ.get(api_key_env)
     if env_value:
         return env_value
 
-    config_path = Path(api_key_file).expanduser() if api_key_file else DEFAULT_CONFIG_PATH
-    if not config_path.exists():
+    config_path = None
+    for path in candidate_api_key_paths(api_key_file):
+        if path.exists():
+            config_path = path
+            break
+    if config_path is None:
         return ""
+    warn_if_private_config_too_open(config_path)
     try:
         data = json.loads(config_path.read_text(encoding="utf-8-sig"))
     except Exception as exc:
@@ -479,7 +510,7 @@ def embed_batches(texts: list[str], args: argparse.Namespace) -> list[list[float
     if not api_key:
         raise SystemExit(
             f"Missing {args.api_key_env}. Set it in the environment or save a local private config at "
-            f"{DEFAULT_CONFIG_PATH}, or use --mock for tests."
+            f"{HERMES_CONFIG_PATH} (preferred) or {LEGACY_CONFIG_PATH} (legacy), or use --mock for tests."
         )
 
     embeddings: list[list[float]] = []

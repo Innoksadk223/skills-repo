@@ -8,6 +8,8 @@ import hashlib
 import json
 import math
 import os
+import stat
+import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -15,7 +17,9 @@ from pathlib import Path
 EMBEDDING_API_URL = "https://api.siliconflow.cn/v1/embeddings"
 RERANK_API_URL = "https://api.siliconflow.cn/v1/rerank"
 DEFAULT_RERANK_MODEL = "Qwen/Qwen3-Reranker-8B"
-DEFAULT_CONFIG_PATH = Path.home() / ".codex" / "SiliconFlow-rag" / "config.json"
+HERMES_CONFIG_PATH = Path.home() / ".hermes" / "private" / "SiliconFlow-rag" / "config.json"
+LEGACY_CONFIG_PATH = Path.home() / ".codex" / "SiliconFlow-rag" / "config.json"
+DEFAULT_CONFIG_PATH = HERMES_CONFIG_PATH
 QUERY_DEFAULTS = {
     "index_dir": "检索索引",
     "top_k": 6,
@@ -31,7 +35,7 @@ QUERY_DEFAULTS = {
     "raw_index_dir": None,
     "wiki_top_k": 5,
     "wiki_first": False,
-    "multi_query": True,
+    "multi_query": False,
 }
 CONFIG_SECTIONS = {"build", "query"}
 BUILD_CONFIG_FIELDS = {"md_dir", "model", "chunk_size", "overlap", "batch_size", "sleep"}
@@ -327,14 +331,41 @@ def semantic_type_boost(intent: str, page_type: str) -> float:
     }
     return table.get(intent, {}).get(page_type, 0.0)
 
+def warn_if_private_config_too_open(config_path: Path) -> None:
+    """Warn on POSIX systems if a private key file is group/world-readable."""
+    if os.name != "posix":
+        return
+    try:
+        mode = config_path.stat().st_mode
+    except OSError:
+        return
+    if mode & (stat.S_IRWXG | stat.S_IRWXO):
+        print(
+            f"Warning: API key config is readable by group/others: {config_path}. "
+            "Consider chmod 600.",
+            file=sys.stderr,
+        )
+
+
+def candidate_api_key_paths(api_key_file: str | None) -> list[Path]:
+    if api_key_file:
+        return [Path(api_key_file).expanduser()]
+    return [HERMES_CONFIG_PATH, LEGACY_CONFIG_PATH]
+
+
 def load_api_key(api_key_env: str, api_key_file: str | None) -> str:
     env_value = os.environ.get(api_key_env)
     if env_value:
         return env_value
 
-    config_path = Path(api_key_file).expanduser() if api_key_file else DEFAULT_CONFIG_PATH
-    if not config_path.exists():
+    config_path = None
+    for path in candidate_api_key_paths(api_key_file):
+        if path.exists():
+            config_path = path
+            break
+    if config_path is None:
         return ""
+    warn_if_private_config_too_open(config_path)
     try:
         data = json.loads(config_path.read_text(encoding="utf-8-sig"))
     except Exception as exc:
@@ -388,7 +419,7 @@ def retrieve_from_index(args: argparse.Namespace, index_dir_value: str, question
         if not api_key:
             raise SystemExit(
                 f"Missing {args.api_key_env}. Set it in the environment or save a local private config at "
-                f"{DEFAULT_CONFIG_PATH}."
+                f"{HERMES_CONFIG_PATH} (preferred) or {LEGACY_CONFIG_PATH} (legacy)."
             )
         queries = [question]
         if getattr(args, "multi_query", False):
@@ -410,7 +441,7 @@ def retrieve_from_index(args: argparse.Namespace, index_dir_value: str, question
     idf = {t: math.log(1 + (N - f + 0.5) / (f + 0.5)) for t, f in df.items()}
     
     item_scores = {}
-    for row in rows:
+    for row, doc_tokens in zip(rows, doc_tokens_list):
         item = dict(row)
         item_id = item["id"]
         boost = semantic_type_boost(intent, row_page_type(row)) if is_wiki_index else 0.0
@@ -423,7 +454,7 @@ def retrieve_from_index(args: argparse.Namespace, index_dir_value: str, question
         max_bm25 = 0.0
         for q in queries:
             qt = bm25_tokenize(q)
-            score = bm25_score(qt, doc_tokens_list[rows.index(row)], avgdl, idf)
+            score = bm25_score(qt, doc_tokens, avgdl, idf)
             if score > max_bm25: max_bm25 = score
             
         max_vec += boost
@@ -567,7 +598,7 @@ def extract_raw_evidence_paths(wiki_hits: list[dict]) -> list[str]:
 
 def normalize_evidence_path(path: str) -> str:
     cleaned = path.split(":", 1)[0].strip().removeprefix("./")
-    return cleaned.removeprefix("raw/")
+    return cleaned.removeprefix("wiki/raw/").removeprefix("raw/")
 
 
 def add_wiki_evidence_hits(raw_hits: list[dict], raw_rows: list[dict], evidence_paths: list[str]) -> list[dict]:
@@ -644,34 +675,92 @@ def print_stats(args: argparse.Namespace) -> None:
     index_dir = Path(args.index_dir).resolve()
     manifest_path = index_dir / "manifest.json"
     chunks_path = index_dir / "chunks.jsonl"
+    embeddings_path = index_dir / "embeddings.jsonl"
 
     if not manifest_path.exists():
         raise SystemExit(f"Index not found: {manifest_path}")
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     chunks = read_jsonl(chunks_path) if chunks_path.exists() else []
+    embeddings = read_jsonl(embeddings_path) if embeddings_path.exists() else []
 
     # Per-file chunk counts
     file_counts: dict[str, int] = {}
+    duplicate_chunk_ids: set[str] = set()
+    seen_chunk_ids: set[str] = set()
+    missing_text = 0
+    semantic_metadata_count = 0
+    embedding_text_count = 0
     for c in chunks:
         sp = c.get("source_path", "?")
         file_counts[sp] = file_counts.get(sp, 0) + 1
+        chunk_id = str(c.get("id", ""))
+        if chunk_id in seen_chunk_ids:
+            duplicate_chunk_ids.add(chunk_id)
+        if chunk_id:
+            seen_chunk_ids.add(chunk_id)
+        if not str(c.get("text", "")).strip():
+            missing_text += 1
+        if c.get("semantic_metadata"):
+            semantic_metadata_count += 1
+        if c.get("embedding_text"):
+            embedding_text_count += 1
 
+    embedding_ids = [str(e.get("id", "")) for e in embeddings if e.get("id")]
+    embedding_id_set = set(embedding_ids)
+    duplicate_embedding_ids = {eid for eid, count in Counter(embedding_ids).items() if count > 1}
+    chunk_ids = {str(c.get("id", "")) for c in chunks if c.get("id")}
+    missing_embeddings = sorted(chunk_ids - embedding_id_set)
+    orphan_embeddings = sorted(embedding_id_set - chunk_ids)
+    manifest_chunk_count = manifest.get("chunk_count")
+    manifest_file_count = manifest.get("file_count")
+    file_hashes = manifest.get("file_hashes") or {}
     top_files = sorted(file_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+
+    health_issues: list[str] = []
+    if not chunks_path.exists():
+        health_issues.append(f"missing chunks file: {chunks_path}")
+    if not embeddings_path.exists():
+        health_issues.append(f"missing embeddings file: {embeddings_path}")
+    if manifest_chunk_count != len(chunks):
+        health_issues.append(f"manifest chunk_count={manifest_chunk_count} but chunks.jsonl has {len(chunks)}")
+    if embeddings and len(embeddings) != len(chunks):
+        health_issues.append(f"embeddings.jsonl has {len(embeddings)} rows but chunks.jsonl has {len(chunks)}")
+    if manifest_file_count != len(file_counts):
+        health_issues.append(f"manifest file_count={manifest_file_count} but chunks cover {len(file_counts)} source files")
+    if file_hashes and len(file_hashes) != manifest_file_count:
+        health_issues.append(f"file_hashes tracks {len(file_hashes)} files but manifest file_count={manifest_file_count}")
+    if missing_embeddings:
+        health_issues.append(f"{len(missing_embeddings)} chunk id(s) missing embeddings")
+    if orphan_embeddings:
+        health_issues.append(f"{len(orphan_embeddings)} embedding id(s) have no chunk")
+    if duplicate_chunk_ids:
+        health_issues.append(f"{len(duplicate_chunk_ids)} duplicate chunk id(s)")
+    if duplicate_embedding_ids:
+        health_issues.append(f"{len(duplicate_embedding_ids)} duplicate embedding id(s)")
+    if missing_text:
+        health_issues.append(f"{missing_text} chunk(s) have empty text")
 
     print("# Index Statistics")
     print()
-    print(f"  Files:         {manifest.get('file_count', '?')}")
-    print(f"  Chunks:        {manifest.get('chunk_count', len(chunks))}")
-    print(f"  Embedding:     {manifest.get('embedding_model', '?')}")
-    print(f"  Built:         {manifest.get('created_at', '?')}")
-    print(f"  Format:        v{manifest.get('format_version', '?')}")
-    print(f"  Mock:          {manifest.get('mock', False)}")
-    print(f"  Chunk size:    {manifest.get('chunk_size', '?')} chars")
-    print(f"  Overlap:       {manifest.get('overlap', '?')} chars")
+    print(f"  Files:           {manifest_file_count if manifest_file_count is not None else '?'}")
+    print(f"  Chunks:          {manifest_chunk_count if manifest_chunk_count is not None else len(chunks)}")
+    print(f"  Embeddings:      {len(embeddings)}")
+    print(f"  Embedding:       {manifest.get('embedding_model', '?')}")
+    print(f"  Built:           {manifest.get('created_at', '?')}")
+    print(f"  Format:          v{manifest.get('format_version', '?')}")
+    print(f"  Mock:            {manifest.get('mock', False)}")
+    print(f"  Metadata mode:   {manifest.get('metadata_mode', '?')}")
+    print(f"  Include dirs:    {manifest.get('include_dirs') or 'none'}")
+    print(f"  Exclude dirs:    {manifest.get('exclude_dirs') or 'none'}")
+    print(f"  Chunk size:      {manifest.get('chunk_size', '?')} chars")
+    print(f"  Overlap:         {manifest.get('overlap', '?')} chars")
     if file_counts:
         avg = sum(file_counts.values()) / len(file_counts)
         print(f"  Avg chunks/file: {avg:.1f}")
+    if semantic_metadata_count or embedding_text_count:
+        print(f"  Semantic tags:   {semantic_metadata_count} chunk(s)")
+        print(f"  Embedding text:  {embedding_text_count} chunk(s)")
     print()
 
     if top_files:
@@ -679,11 +768,19 @@ def print_stats(args: argparse.Namespace) -> None:
         for path, count in top_files:
             print(f"  {count:4d}  {path}")
 
+    print()
+    print("## Health")
+    if health_issues:
+        print("  Status: WARN")
+        for issue in health_issues:
+            print(f"  - {issue}")
+    else:
+        print("  Status: OK")
+
     # Hash coverage
-    hashes = manifest.get("file_hashes")
-    if hashes:
+    if file_hashes:
         print()
-        print(f"  Files tracked by hash: {len(hashes)}")
+        print(f"  Files tracked by hash: {len(file_hashes)}")
     else:
         print()
         print("  (No file_hashes — index was built with format v1; rebuild for incremental support)")
@@ -754,7 +851,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--mock", action="store_true", help="Use mock query embedding for tests")
     parser.add_argument("--expand-context", action="store_true", default=None, help="Include adjacent chunks from the same source for each result")
     parser.add_argument("--context-window", type=int, default=None, help="Number of adjacent chunks on each side (default: 1)")
-    parser.add_argument("--multi-query", action="store_true", default=None, help="Use LLM to rewrite question into multiple search queries (default: true)")
+    parser.add_argument("--multi-query", action="store_true", default=None, help="Use LLM to rewrite question into multiple search queries (default: false)")
     parser.add_argument("--no-multi-query", action="store_false", dest="multi_query", help="Disable LLM query rewrite")
     parser.add_argument("--stats", action="store_true", help="Print index statistics instead of querying")
     return apply_query_config(parser.parse_args())
