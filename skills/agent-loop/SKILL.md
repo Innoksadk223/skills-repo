@@ -1,6 +1,6 @@
 ---
 name: agent-loop
-description: 在 Hermes 中构建结构化 agent 迭代循环——计划、执行、自检验收、最多 3 轮修正。适用于代码生成/修复、研究写作、复杂多步骤任务。Use when user asks to build an agent loop, iterative workflow, multi-step autonomous task, or "让 agent 自己循环完成任务"。
+description: Use when undertaking any multi-step task with verifiable outcomes — code generation/fix, research, writing, or complex workflows (3+ steps). Encodes a Plan → Act → Check → Revise → Deliver loop with structured self-verification, max 3 rounds, and automatic stagnation detection.
 ---
 
 # Agent Loop
