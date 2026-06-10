@@ -13,7 +13,7 @@ echo ""
 HERMES_MAP=(
     "browser-use:browser-use,remote-browser,cloud,x402,open-source"
     "paperspine:paper-spine,paper-spine-audit,paper-spine-build,paper-spine-citation,paper-spine-humanize,paper-spine-intake,paper-spine-latex,paper-spine-research,paper-spine-rewrite,paper-spine-translate,paper-spine-ui,paper-spine-update"
-    "minimax:minimax-docx,minimax-pdf,minimax-xlsx,pptx-generator"
+    "minimax:minimax-docx,minimax-pdf,minimax-xlsx"
     "research:karpathy-wiki,SiliconFlow-rag,social-science-km"
     "productivity:mineru-document-extractor"
     "creative:ppt-agent-skill"
@@ -97,7 +97,7 @@ skill_group() {
     case "$1" in
         browser-use|remote-browser|cloud|x402|open-source) echo "browser" ;;
         paper-spine|paper-spine-*)                         echo "paperspine" ;;
-        minimax-*|pptx-generator)                          echo "minimax" ;;
+        minimax-*)                                         echo "minimax" ;;
         anysearch)                                           echo "search" ;;
         karpathy-wiki|academic-search|academic-paper-review|SiliconFlow-rag|social-science-km) echo "academic" ;;
         mineru-document-extractor)                          echo "productivity" ;;

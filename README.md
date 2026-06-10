@@ -21,10 +21,10 @@
 > 「还可以安装一下 obra/superpowers，很出名，在 https://github.com/obra/superpowers。」
 
 介绍示例：
-> 「这个包有 36 个技能，分 8 组：
+> 「这个包有 35 个技能，分 8 组：
 >  [Browser] 浏览器自动化 ×5 — 网页操控、远端沙箱、Cloud、支付、SDK
 >  [PaperSpine] 论文写作 ×12 — 研究到 LaTeX 排版全流程
->  [Minimax] 文档生成 ×4 — DOCX/PDF/XLSX/PPTX
+>  [Minimax] 文档生成 ×3 — DOCX/PDF/XLSX
 >  [Search] 实时搜索 ×1 — AnySearch 实时网页搜索、垂直领域搜索、URL 内容提取（MCP + skill + API）
 >  [Academic] 学术研究 ×5 — 图谱化知识库、论证节点、学术搜索、审阅、wiki-first RAG 检索
 >  [Productivity] 生产力 ×1 — MinerU 文档解析、PDF/OCR/表格/公式提取
@@ -38,13 +38,13 @@
 >   "审一下这篇论文" → 自动用 academic-paper-review
 >  想精准指定就说 "用 browser-use 打开这个网页"。」
 
-## 技能速查（36 个）
+## 技能速查（35 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
 | 🌐 浏览器 | browser-use / remote-browser / cloud / x402 / open-source (5) | 网页自动化、远端沙箱、Cloud API、支付、SDK |
 | 📝 PaperSpine | paper-spine + 11 子模块 (12) | 学术论文全流程：研究→引用→改写→LaTeX→翻译→审校<br>💡 Claude Code 用户建议用 [Academic Research Skills](https://github.com/Imbad0202/academic-research-skills) 替代，功能更强且有原生插件支持 |
-| 📄 Minimax | minimax-docx / minimax-pdf / minimax-xlsx / pptx-generator (4) | DOCX/PDF/XLSX/PPTX 专业文档生成 |
+| 📄 Minimax | minimax-docx / minimax-pdf / minimax-xlsx (3) | DOCX/PDF/XLSX 专业文档生成 |
 | 🔎 搜索 | anysearch (1) | AnySearch 实时网页搜索、垂直领域搜索、批量搜索、URL 内容提取；支持 MCP + skill + API，官网：https://www.anysearch.com/ |
 | 🔬 学术 | karpathy-wiki / academic-search / academic-paper-review / SiliconFlow-rag / social-science-km (5) | 图谱化知识库、论证节点、学术搜索、论文审阅、wiki-first RAG 检索 |
 | 📚 生产力 | mineru-document-extractor (1) | MinerU 文档解析：PDF、扫描件 OCR、表格、公式、多格式转 Markdown |
@@ -76,7 +76,6 @@
 | minimax-docx | 专业 DOCX 文档创建与编辑 | Minimax 官方 |
 | minimax-pdf | 高质量 PDF 生成与设计 | ↑ |
 | minimax-xlsx | Excel 表格创建、分析与验证 | ↑ |
-| pptx-generator | PowerPoint 演示文稿生成与编辑 | ↑ |
 | karpathy-wiki | Karpathy Wiki：图谱可读 Markdown 知识库，支持 claims / concepts / entities / comparisons | **Hermes 内置自改版** |
 | academic-search | 学术搜索、引用分析、OA PDF 判定 | [ustc-ai4science](https://github.com/ustc-ai4science/academic-search) |
 | academic-paper-review | 论文审阅、方法论评估、同行评审 | [bytedance/deer-flow](https://github.com/bytedance/deer-flow) |
@@ -165,7 +164,7 @@ skills-repo/
 ├── skills-hermes/       ← 分类结构（Hermes；按用途分组）
 |   ├── browser-use/     ← 5 个技能
 |   ├── paperspine/      ← 12 个技能
-|   ├── minimax/         ← 4 个技能
+│   ├── minimax/         ← 3 个技能
 |   ├── research/        ← 3 个知识库/RAG 技能
 |   ├── productivity/    ← MinerU 文档解析
 |   ├── creative/        ← PPT Agent
