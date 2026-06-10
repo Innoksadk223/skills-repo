@@ -5,153 +5,200 @@ description: Use when undertaking any multi-step task with verifiable outcomes �
 
 # Agent Loop
 
-结构化 agent 迭代循环。支持两种执行模式：**单 agent 模式**（默认，token 最优）和**多 agent 并行模式**（无依赖步骤可用 `delegate_task` batch 并发）。
+四角色分离的迭代循环。主 agent（Orchestrator）不执行也不验收——消除自评偏差。Worker、Evaluator、Troubleshooter 均为独立 `delegate_task` spawn。
 
-## 设计原则
+## 四个角色
 
-1. **单 agent 优先，多 agent 按需** — 默认在主 session 内完成所有步骤。当 PLAN 阶段识别出 ≥2 个**无依赖**步骤且每步工作量足够大（独立的研究/编码/分析任务），使用 `delegate_task` batch 模式并行执行。
-2. **流程纪律由 Skill 定义** — 不等 LLM 自己"记得"要自检、要遵守轮数上限。Skill 注入结构。
-3. **Token 效率 = 上下文纯度 + 并行收益** — 每多一个子 agent 多一次 LLM 调用，但并行执行可减少总轮数。判断标准：并行省下的时间 ≥ 额外的 token 代价。
+| 角色 | 谁 | 做什么 | delegate? |
+|------|-----|------|:---:|
+| **Orchestrator** | 主 agent（你） | PLAN + 最终 DELIVER + 资源调配 | — |
+| **Worker(s)** | `delegate_task` spawn | ACT：执行步骤，返回产出 | ✅ |
+| **Evaluator** | `delegate_task` spawn | CHECK：对照 checklist 逐项打分 | ✅ |
+| **Troubleshooter** | `delegate_task` spawn | REVISE：诊断 FAIL + 写修正 prompt | ✅ |
 
-## 四阶段循环
+**核心原则**：干活的不打分，打分的不干活。同一个 agent 对同一批产出只能担任一个角色。
+
+## 完整流程
 
 ```
-PLAN → ACT → CHECK → (不达标?) → 诊断 → 修正 prompt → ACT → CHECK → ... → DELIVER
+Orchestrator: PLAN
+      ↓
+Orchestrator: spawn Worker(s) → ACT
+      ↓
+Orchestrator: spawn Evaluator → CHECK
+      ↓
+   ALL PASS? ────→ Orchestrator: DELIVER
+      ↓ NO
+Orchestrator: spawn Troubleshooter → 诊断 + 修正 prompt
+      ↓
+Orchestrator: 拿到修正 prompt → 回到 ACT（仅重跑失败步骤）
+      ↓
+      重复 CHECK → ... → 触发终止 → DELIVER
 ```
 
-### 1. PLAN（计划阶段）
+---
 
-**必须输出以下格式的计划块，再开始任何执行动作：**
+## Phase 1: PLAN（Orchestrator）
+
+**必须输出以下计划块，再开始任何执行动作：**
 
 ```markdown
 ## Plan（第 N 轮）
 ### 步骤
-1. [步骤名称] — 做什么
+1. [步骤名称] — [做什么]
 ### 边界条件
 - 不在范围内：...
 - 前置假设：...
 ### 验收 Checklist
-- [ ] 标准 1（可量化、二元判断）
-- [ ] 标准 2
+- [ ] 标准（可量化、二元判断，附证据要求）
+### 执行策略
+- 模式：[单 worker 串行 / 多 worker 并行（≤3）]
+- 每 worker toolsets：[...]
 ```
 
 规则：
-- Checklist 每项 = 可量化、二元判断。❌ "代码整洁" / ✅ "所有测试通过 + lint 零告警"
+- Checklist 每项 = 可量化、二元，附证据要求（"测试通过，提供 pytest 输出"而非"代码正确"）
 - 每个步骤 → ≥1 个 checklist 项
-- 简单任务（≤3 步）：计划 ≤ 5 行。复杂任务：允许详细，但计划不消耗循环轮次
-- 第 2 轮起的计划只输出**变更部分**（delta），不复述全部
+- 第 2 轮起计划只输出**变更部分**（delta）
+- 执行策略：分析步骤依赖图。无依赖 → parallel batch；有依赖 → 单 worker 串行
 
-### 2. ACT（执行阶段）
+---
 
-**执行前判断：单 agent 还是多 agent？**
+## Phase 2: ACT（Worker agent）
 
-- **单 agent 模式（默认）**：步骤有依赖关系，或总工作量在单 session 内可控。直接用工具执行。
-- **多 agent 模式（触发条件）**：PLAN 中有 ≥2 个**无相互依赖**的步骤，且每步是独立的大任务（如"搜索论文 A 的引用"和"搜索论文 B 的引用"各自需要多轮检索+阅读）。
+Orchestrator **不亲自执行**。通过 `delegate_task` spawn Worker：
 
-**多 agent 部署方式：**
+**单 worker 串行：**
+```python
+delegate_task(
+    goal="[完整步骤描述 + 输出格式要求]",
+    toolsets=["web", "terminal", "file", ...],
+    context="原始需求：[用户原始需求全文]。验收标准：[checklist]。只做分配给你的步骤。"
+)
+```
 
+**多 worker 并行（batch）：**
 ```python
 delegate_task(tasks=[
-    {"goal": "步骤 1 的完整任务描述", "toolsets": ["web", "terminal", "file"]},
-    {"goal": "步骤 2 的完整任务描述", "toolsets": ["web", "terminal"]},
-], context="全局：你正在参与一个 [任务概要]。只做分配给你的步骤，完成后返回摘要。")
+    {"goal": "步骤 1 的完整任务描述", "toolsets": [...]},
+    {"goal": "步骤 2 的完整任务描述", "toolsets": [...]},
+], context="原始需求：[全文]。验收标准：[checklist]。你只负责分配的步骤，完成后返回产出 + 证据。")
 ```
 
 规则：
-- 最多 3 个并行 worker（`delegation.max_concurrent_children` 默认值）
-- 每个 worker 只给必要 toolsets（不给 delegate_task 权限，防止嵌套）
-- Worker 角色 = `leaf`（默认），不可再 spawn 子 agent
-- Worker 返回摘要 → 主 agent 在 CHECK 阶段统一验收
+- 最多 3 个并行 worker
+- Worker 角色 = `leaf`，toolsets 不含 `delegate_task`
+- Worker 返回：**产出 + 针对每个 checklist 项的证据**（文件路径/输出摘要）
+- Worker 失败时 Orchestrator 不要自行修正——交给 Troubleshooter
 
-**执行纪律：**
-- **每完成一个步骤，在原计划中标记 `[x]`**。步骤失败时立即诊断，不盲跑下一步
+---
 
-### 3. CHECK（验收阶段）
+## Phase 3: CHECK（Evaluator agent）
 
-**不另起 agent 做裁判。不依赖 LLM 主观判断。**
+Orchestrator **不亲自打分**。spawn 独立 Evaluator：
 
-执行步骤：
-1. 对照 checklist 逐项自检
-2. **必须输出以下格式的自检报告：**
+```python
+delegate_task(
+    goal="""你是独立验收员。严格对照 checklist 逐项打分。Worker 会尽量让产出看起来合格——你的职责是找出差距。
+
+输入：
+- 原始需求：[用户原始需求]
+- 验收 Checklist：[checklist 全文]
+- Worker 产出 + 证据：[worker 返回的完整内容]
+
+要求：
+1. 逐项判定 PASS/FAIL，附具体偏差说明
+2. 计算通过率、较上轮提升%
+3. 输出判定：PASS（全部达标）/ REVISE（需修正）/ STAGNATE（连续 2 轮提升 < 10%）
+4. 如果 FAIL，为每个失败项提供具体的问题描述，供 Troubleshooter 使用""",
+    toolsets=[],
+    context="你是独立验收员。你的评分直接影响任务走向。宽松=浪费所有人的 token。"
+)
+```
+
+输出格式（Evaluator 必须遵守）：
 
 ```markdown
-## Self-Check（第 N 轮）
-- [x] 标准 1 — PASS（证据：[文件/输出/URL]）
-- [ ] 标准 2 — FAIL（偏差：[具体差距]）
+## Evaluation（第 N 轮）
+- [x] 标准 1 — PASS（证据有效：[...]）
+- [ ] 标准 2 — FAIL（偏差：[具体差距]。Worker 声称...但实际...）
 
 ### 结果
 - 通过：X/Y
-- 较上轮提升：+Z%（首轮记 N/A）
-- 判定：[继续修正 / 交付]
+- 较上轮提升：+Z%（首轮 N/A）
+- 判定：PASS / REVISE / STAGNATE
+- 失败项问题描述：[供 Troubleshooter 使用的具体诊断]
 ```
 
-3. 证据必须具体（文件路径、测试输出、URL），不得写"已完成"这种无据判断
-4. 第 2 轮起必须计算较上一轮的 checklist 通过率提升百分比
+---
 
-### 4. 循环控制
+## Phase 4: REVISE（Troubleshooter agent）
 
-**终止条件（满足任一即停止）：**
+当 Evaluator 判定为 REVISE 时，Orchestrator spawn Troubleshooter：
+
+```python
+delegate_task(
+    goal="""你是问题诊断和修正专家。基于以下信息，诊断失败根因并输出修正后的执行 prompt。
+
+输入：
+- 原始计划：[Orchestrator 的 PLAN]
+- 失败项：[Evaluator 报告中所有 FAIL 项及其问题描述]
+- Worker 原始产出：[worker 输出]
+
+输出：
+1. 根因诊断（每个失败项一行：哪里出了问题，为什么）
+2. 修正后的执行描述（仅针对失败步骤，精炼、具体、可操作）
+3. 如有必要，更新 checklist 项（原来标准不合理时）""",
+    toolsets=["file", "read"],
+    context="你是 Troubleshooter。只做诊断和修正，不执行任务。"
+)
+```
+
+Orchestrator 拿到 Troubleshooter 输出后 → 回到 Phase 2，仅重跑失败步骤。
+
+---
+
+## 终止条件（任一触发即停止）
 
 | 条件 | 说明 |
 |------|------|
-| 达标 | checklist 全部 `[✓]` |
-| 3 轮上限 | 第 3 轮执行后不论结果都交付 |
-| 价值衰减 | 连续 2 轮 checklist 通过率提升 < 10%，提前终止 |
+| Evaluator 判定 PASS | 全部 checklist 达标 → DELIVER |
+| 累计 3 轮 | 第 3 轮 Evaluator 结果不论 → DELIVER |
+| Evaluator 判定 STAGNATE | 连续 2 轮提升 < 10% → DELIVER |
 
-**不达标时的修正流程（由主 agent 在同一 session 内完成）：**
-1. 诊断：定位未达标项的根因
-2. 重写执行 prompt：基于诊断结果调整指令
-3. 回到 ACT 阶段，仅重跑未达标部分（不重跑全部）
+## DELIVER（Orchestrator）
 
-**交付格式（达到终止条件时）：**
 - 最终输出
-- 最后一轮的 checklist 自检报告
+- 最后一轮 Evaluation 报告
 - 未达标项清单（如有）
+- 如果非 PASS 交付：标注"以下标准未达标：..."
 
-## Token 经济学
+---
 
-| 优化点 | 规则 |
-|--------|------|
-| 单 agent | 默认，无额外开销 |
-| 多 agent | 仅当 ≥2 步无依赖且每步独立时触发，最大 3 并发 |
-| Worker 权限 | 最小 toolsets，leaf 角色，不传 delegate 权限 |
-| 计划开销 | 计划最多占单轮总 token 的 30%，超了就切换粗规划模式 |
-| 验收开销 | checklist 自检，不另起 LLM 做裁判 |
-| 重跑范围 | 只重跑未达标步骤，不全部重来 |
+## Token 经济学（每轮）
 
-## 适用场景
+| 调用 | 何时 | 说明 |
+|------|------|------|
+| Orchestrator PLAN | 每轮 1 次 | 首轮完整，后续 delta |
+| Worker ACT | 每轮 1-3 次 | 并行 ≤3 worker |
+| Evaluator CHECK | 每轮 1 次 | 仅读 checklist + 产出，不给 tools |
+| Troubleshooter | 仅 REVISE 时 1 次 | 不达标才调 |
 
-- 代码生成/修复（可自动验证）
-- 研究/写作（主观质量，靠 checklist 约束）
-- 复杂多步骤任务（≥3 个环节，如运维部署、数据处理流水线）
+首轮 PASS 总调数：1(PLAN) + 1~3(ACT) + 1(CHECK) = 3~5 次 LLM 调用。
+每加一轮修正：+1(Troubleshooter) + 1~3(ACT) + 1(CHECK) = 3~5 次。
 
-## 不适用场景
+## 适用 / 不适用
 
-- 简单单步任务（一个 LLM 调用 + 工具就能解决）
-- 需要实时人工介入的任务
-- 验收标准完全无法量化的开放探索
-
-## 执行模式选择
-
-| | 单 agent（默认） | 多 agent（batch） |
-|---|---|---|
-| 何时用 | 步骤有依赖 / 工作量小 | ≥2 个无依赖独立大任务 |
-| 并发 | 串行（工具级并发） | 并行（agent 级并发，≤3） |
-| Token 代价 | 低 | 每个 worker 一次 LLM 调用 |
-| 上下文 | 共享，agent 保持全局视野 | 隔离，worker 只看自己的任务 |
-| 验收 | 同一 session 内自检 | Worker 返回摘要 → 主 agent 审核 |
-| Worker 权限 | — | leaf 角色，不给 delegate 权限 |
-
-**选择逻辑**：PLAN 阶段完成后，检查步骤依赖图。无依赖边相连的步骤且单步足够独立 → 多 agent。有依赖 → 单 agent。
+**适用：** 代码生成/修复、研究/写作、复杂多步骤任务（≥3 步）
+**不适用：** 单步任务、需实时人工介入、验收标准无法量化
 
 ## 陷阱
 
-- **多 agent 滥用** — 不是所有能拆的步骤都值得并行。3 步独立小任务 → 单 agent 直接做比 spawn 3 个 worker 便宜。
-- **checklist 写成主观描述** — "文章质量好"不可验收。"论点覆盖 3 个维度 + 每个维度有 ≥1 个引用来源"可验收。
-- **重跑全部而非增量** — 第 2 轮只修未达标部分，不要从头执行。
-- **忘记轮数上限** — LLM 天然倾向于"再试一次"，没有硬上限就是 token 黑洞。
+- **Orchestrator 越权** — 不要亲自执行或打分。自评偏差是本 skill 要解决的核心问题。
+- **Evaluator 温和化** — 如果 Evaluator 连续 PASS，检查是否 prompt 不够严格。在 context 里强调"宽松 = 浪费所有人的 token"。
+- **Worker 不给证据** — Worker prompt 必须要求提供针对 checklist 的证据。无证据的 PASS 不可信。
+- **忘记轮数上限** — LLM 天然倾向"再试一次"，3 轮硬上限写在 skill 里不要破。
 
 ## 参考
 
-- `references/design-decisions.md` — 本 skill 的 grill-me 决策推导记录（8 个问题的逐层递进）
-- `references/testing-record.md` — 2026-06-10 小型任务测试实录，含完整的 Plan/Check/Deliver 输出样例
+- `references/design-decisions.md` — grill-me 决策推导
