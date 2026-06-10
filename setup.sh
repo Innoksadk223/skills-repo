@@ -18,7 +18,7 @@ HERMES_MAP=(
     "productivity:mineru-document-extractor"
     "creative:ppt-agent-skill"
 )
-HERMES_SOLO="academic-search academic-paper-review anysearch cleanup find-skills grill-me markitdown skill-creator skill-architecture capture-gotcha"
+HERMES_SOLO="academic-search academic-paper-review anysearch agent-loop cleanup find-skills grill-me markitdown skill-creator skill-architecture capture-gotcha"
 
 # ── 检测已安装的 agent ──
 AGENTS=()
@@ -70,7 +70,7 @@ GROUP_DESC=(
     "[Academic] karpathy-wiki, academic search, paper review, social-science RAG, knowledge management (5)"
     "[Productivity] MinerU document extraction: PDF, OCR, tables, formulas, Markdown (1)"
     "[Creative] PPT agent: professional presentation workflow (1)"
-    "[Tools] skill-creator, skill-architecture, cleanup, find-skills, grill-me, capture-gotcha, markitdown (7)"
+    "[Tools] skill-creator, skill-architecture, agent-loop, cleanup, find-skills, grill-me, capture-gotcha, markitdown (8)"
 )
 
 echo ""
@@ -102,7 +102,7 @@ skill_group() {
         karpathy-wiki|academic-search|academic-paper-review|SiliconFlow-rag|social-science-km) echo "academic" ;;
         mineru-document-extractor)                          echo "productivity" ;;
         ppt-agent-skill)                                      echo "creative" ;;
-        cleanup|find-skills|grill-me|markitdown|skill-creator|skill-architecture|capture-gotcha) echo "tools" ;;
+        cleanup|find-skills|grill-me|markitdown|skill-creator|skill-architecture|agent-loop|capture-gotcha) echo "tools" ;;
         *)                                                 echo "" ;;
     esac
 }
