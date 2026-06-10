@@ -5,13 +5,13 @@ description: Use when undertaking any multi-step task with verifiable outcomes �
 
 # Agent Loop
 
-Hermes 内的结构化单 agent 迭代循环。核心原则来自经典 ReAct loop 的原始定义——**一个 LLM 在一个上下文窗口内持续循环**——而非多 agent 编排。
+结构化 agent 迭代循环。支持两种执行模式：**单 agent 模式**（默认，token 最优）和**多 agent 并行模式**（无依赖步骤可用 `delegate_task` batch 并发）。
 
 ## 设计原则
 
-1. **单 agent 优先** — `delegate_task` 只在上下文隔离必要时用（需要读大量资料、worker 结果会淹没主 agent 全局判断）。否则所有执行在主 session 内完成。
+1. **单 agent 优先，多 agent 按需** — 默认在主 session 内完成所有步骤。当 PLAN 阶段识别出 ≥2 个**无依赖**步骤且每步工作量足够大（独立的研究/编码/分析任务），使用 `delegate_task` batch 模式并行执行。
 2. **流程纪律由 Skill 定义** — 不等 LLM 自己"记得"要自检、要遵守轮数上限。Skill 注入结构。
-3. **Token 效率 = 上下文纯度** — 每多一个子 agent 就多一次完整 LLM 调用。省 token 的第一原则是减少 agent 数量。
+3. **Token 效率 = 上下文纯度 + 并行收益** — 每多一个子 agent 多一次 LLM 调用，但并行执行可减少总轮数。判断标准：并行省下的时间 ≥ 额外的 token 代价。
 
 ## 四阶段循环
 
@@ -43,9 +43,27 @@ PLAN → ACT → CHECK → (不达标?) → 诊断 → 修正 prompt → ACT →
 
 ### 2. ACT（执行阶段）
 
-- 能在一个 session 内完成的，不做子 agent
-- 并行 vs 串行由 agent 根据步骤间依赖关系动态判断
-- `delegate_task` 触发条件：单步骤需要读取/处理的信息量 ≥ 当前上下文窗口的 40%
+**执行前判断：单 agent 还是多 agent？**
+
+- **单 agent 模式（默认）**：步骤有依赖关系，或总工作量在单 session 内可控。直接用工具执行。
+- **多 agent 模式（触发条件）**：PLAN 中有 ≥2 个**无相互依赖**的步骤，且每步是独立的大任务（如"搜索论文 A 的引用"和"搜索论文 B 的引用"各自需要多轮检索+阅读）。
+
+**多 agent 部署方式：**
+
+```python
+delegate_task(tasks=[
+    {"goal": "步骤 1 的完整任务描述", "toolsets": ["web", "terminal", "file"]},
+    {"goal": "步骤 2 的完整任务描述", "toolsets": ["web", "terminal"]},
+], context="全局：你正在参与一个 [任务概要]。只做分配给你的步骤，完成后返回摘要。")
+```
+
+规则：
+- 最多 3 个并行 worker（`delegation.max_concurrent_children` 默认值）
+- 每个 worker 只给必要 toolsets（不给 delegate_task 权限，防止嵌套）
+- Worker 角色 = `leaf`（默认），不可再 spawn 子 agent
+- Worker 返回摘要 → 主 agent 在 CHECK 阶段统一验收
+
+**执行纪律：**
 - **每完成一个步骤，在原计划中标记 `[x]`**。步骤失败时立即诊断，不盲跑下一步
 
 ### 3. CHECK（验收阶段）
@@ -94,10 +112,11 @@ PLAN → ACT → CHECK → (不达标?) → 诊断 → 修正 prompt → ACT →
 
 | 优化点 | 规则 |
 |--------|------|
-| 上下文隔离 | `delegate_task` 仅用于单步信息量 ≥ 40% 上下文窗口 |
+| 单 agent | 默认，无额外开销 |
+| 多 agent | 仅当 ≥2 步无依赖且每步独立时触发，最大 3 并发 |
+| Worker 权限 | 最小 toolsets，leaf 角色，不传 delegate 权限 |
 | 计划开销 | 计划最多占单轮总 token 的 30%，超了就切换粗规划模式 |
 | 验收开销 | checklist 自检，不另起 LLM 做裁判 |
-| 并行 | 无依赖步骤并行（`delegate_task` batch 模式或同 session 并发工具调用） |
 | 重跑范围 | 只重跑未达标步骤，不全部重来 |
 
 ## 适用场景
@@ -112,20 +131,22 @@ PLAN → ACT → CHECK → (不达标?) → 诊断 → 修正 prompt → ACT →
 - 需要实时人工介入的任务
 - 验收标准完全无法量化的开放探索
 
-## 与 delegate_task 的分工
+## 执行模式选择
 
-| | 单 agent loop（本 skill） | delegate_task |
-|---|--------------------------|---------------|
-| 何时用 | 默认 | 上下文隔离必需时 |
-| Token 开销 | 低 | 每次 spawn 多一次完整 LLM 调用 |
-| 上下文 | 共享，agent 保持全局视野 | 隔离，子 agent 看不到全局 |
-| 验收 | 同一 session 内自检 | 子 agent 返回摘要，主 agent 审核摘要 |
+| | 单 agent（默认） | 多 agent（batch） |
+|---|---|---|
+| 何时用 | 步骤有依赖 / 工作量小 | ≥2 个无依赖独立大任务 |
+| 并发 | 串行（工具级并发） | 并行（agent 级并发，≤3） |
+| Token 代价 | 低 | 每个 worker 一次 LLM 调用 |
+| 上下文 | 共享，agent 保持全局视野 | 隔离，worker 只看自己的任务 |
+| 验收 | 同一 session 内自检 | Worker 返回摘要 → 主 agent 审核 |
+| Worker 权限 | — | leaf 角色，不给 delegate 权限 |
 
-**规则**：能用本 skill 的 loop 完成，就不要 spawn 子 agent。spawn 是逃生阀，不是默认路径。
+**选择逻辑**：PLAN 阶段完成后，检查步骤依赖图。无依赖边相连的步骤且单步足够独立 → 多 agent。有依赖 → 单 agent。
 
 ## 陷阱
 
-- **最大的坑是把 loop 做成多 agent 架构** — 每加一个 agent 就多一份 token 开销和上下文传递损耗。经典 ReAct 就是单 agent，多 agent 是后来叠上去的优化，不是基础。
+- **多 agent 滥用** — 不是所有能拆的步骤都值得并行。3 步独立小任务 → 单 agent 直接做比 spawn 3 个 worker 便宜。
 - **checklist 写成主观描述** — "文章质量好"不可验收。"论点覆盖 3 个维度 + 每个维度有 ≥1 个引用来源"可验收。
 - **重跑全部而非增量** — 第 2 轮只修未达标部分，不要从头执行。
 - **忘记轮数上限** — LLM 天然倾向于"再试一次"，没有硬上限就是 token 黑洞。
