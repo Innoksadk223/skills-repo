@@ -30,11 +30,15 @@ description: Use when undertaking any multi-step task with verifiable outcomes �
 ## 流程
 
 ```
-PLAN（Orchestrator 输出计划块）
+PLAN（Orchestrator 输出计划块 + 每步 handoff 条件）
   ↓
-ACT（Orchestrator spawn Worker batch，≤3 并行）
+ACT — Step 1（Worker 执行 → 自检产出物存在 → handoff）
+  ↓ mini-check
+ACT — Step 2（依赖 Step 1 时串行，无依赖时并行）
+  ↓ mini-check
+ACT — Step N
   ↓
-CHECK（Orchestrator spawn Evaluator，独立打分）
+CHECK（Orchestrator spawn Evaluator，逐项打分）
   ↓
 ALL PASS? → DELIVER
   ↓ FAIL
@@ -48,7 +52,10 @@ Orchestrator 拿到修正 → 回到 ACT（仅重跑失败步骤）
 ```markdown
 ## Plan（第 N 轮）
 ### 步骤
-1. [步骤] — [做什么]
+1. [步骤] — [做什么 + 做到什么程度]
+   - handoff 条件：[产出物路径 / 验证命令 / 必须存在的文件]
+2. [步骤] — [做什么 + 做到什么程度]
+   - handoff 条件：[...]
 ### 边界条件
 - 不在范围：...
 ### 验收 Checklist
@@ -57,6 +64,14 @@ Orchestrator 拿到修正 → 回到 ACT（仅重跑失败步骤）
 - Worker 数：[1 / ≤3 并行]
 - Worker toolsets: [...]
 ```
+
+规则：
+- Checklist 每项 = 可量化、二元，附证据要求（"测试通过，提供 pytest 输出"而非"代码正确"）
+- 每个步骤 → ≥1 个 checklist 项
+- **handoff 条件 = 产出物必须存在且格式正确，下一步才能开始。** 形式：文件路径（`/path/to/output.json`）、验证命令（`grep "PASS" result.txt`）、或 Worker 自述（"已确认 X 存在"）。不等全跑完才检查——第 2 步错在第 3 步才发现的代价远大于 mini-check。
+- **步骤描述必须编码做什么 + 做到什么程度。** ❌ "写共识与分歧" / ✅ "分析 ≥3 组分歧，每组含双方代表论文、核心论据、实践后果，每组 ≥200 字"。结构标签不是深度规格。
+- 第 2 轮起计划只输出**变更部分**（delta）
+- 执行策略：分析步骤依赖图。无依赖 → parallel batch；有依赖 → 单 worker 串行
 
 ## ACT — spawn Worker
 
@@ -67,7 +82,17 @@ delegate_task(tasks=[
 ], context="原始需求：[全文]。验收标准：[checklist]。只做分配的步骤，返回产出+证据。")
 ```
 
-Worker 规则：leaf 角色、不给 delegate 权限、≤3 并行、必须返回针对 checklist 的证据。
+Worker 规则：leaf 角色、不给 delegate 权限、≤3 并行。
+
+**Worker 必须做的事：**
+1. 执行分配的步骤
+2. 返回产出 + 证据
+3. **自检 handoff 条件**：确认产出物存在且格式正确，在返回中明确写"handoff check: [产出物路径] 已验证存在"。不通过时不交棒——Worker 应自行修复或报告失败。
+
+**Orchestrator 在每步后做的事：**
+- 检查 Worker 是否报告了 handoff 条件通过
+- 通过 → 启动下一步 Worker（或等待并行 batch 全部完成）
+- 不通过 → 暂停，不跑后续步骤。将失败信息交给 Troubleshooter
 
 ## CHECK — spawn Evaluator
 
@@ -119,6 +144,7 @@ Orchestrator 拿到修正后回到 ACT，仅重跑失败步骤。
 ## 陷阱
 
 - **Orchestrator 越权** — 亲自执行或打分 = 自评偏差。这是本 skill 要消除的核心问题。
+- **PLAN 步骤太粗** — "写共识与分歧"不告诉 Worker 写到什么深度。步骤描述 = 做什么 + 做到什么程度 + 输出格式。
 - **Evaluator 放水** — Evaluator prompt 必须强调"严格"。连续两轮全部 PASS 但交付质量差 → 调高 Evaluator 的严格度。
 - **Worker 不给证据** — Worker prompt 必须要求输出针对每个 checklist 项的证据（文件路径、输出摘要）。无证据的 PASS 不可信。
 - **忘掉终止条件** — 3 轮硬上限和停滞检测是安全网，不做"再试最后一次"的判断。
