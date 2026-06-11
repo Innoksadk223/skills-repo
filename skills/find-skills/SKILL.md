@@ -160,11 +160,10 @@ for d in ../../.agents/skills/*/; do
 done
 ```
 
-### Browser Use skills
+### Browser Use skill
 
-This local skill library keeps the Browser Use ecosystem split into two active
-skills: `browser-use` for CLI automation and `open-source` for Python library
-reference material.
+This local skill library keeps `browser-use` as the active Browser Use skill
+for CLI automation.
 
 ## Pitfalls & Troubleshooting
 

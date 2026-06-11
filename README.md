@@ -21,8 +21,8 @@
 > 「还可以安装一下 obra/superpowers，很出名，在 https://github.com/obra/superpowers。」
 
 介绍示例：
-> 「这个包有 37 个技能，分 8 组：
->  [Browser] 浏览器自动化 ×2 — 网页操控、browser-use SDK
+> 「这个包有 36 个技能，分 8 组：
+>  [Browser] 浏览器自动化 ×1 — 网页操控
 >  [PaperSpine] 论文写作 ×12 — 研究到 LaTeX 排版全流程
 >  [Minimax] 文档生成 ×3 — DOCX/PDF/XLSX
 >  [Search] 实时搜索 ×1 — AnySearch 实时网页搜索、垂直领域搜索、URL 内容提取（MCP + skill + API）
@@ -38,11 +38,11 @@
 >   "审一下这篇论文" → 自动用 academic-paper-review
 >  想精准指定就说 "用 browser-use 打开这个网页"。」
 
-## 技能速查（37 个）
+## 技能速查（36 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
-| 🌐 浏览器 | browser-use / open-source (2) | 网页自动化、browser-use Python SDK 开发文档 |
+| 🌐 浏览器 | browser-use (1) | 网页自动化：网页测试、表单填充、截图、数据提取 |
 | 📝 PaperSpine | paper-spine + 11 子模块 (12) | 学术论文全流程：研究→引用→改写→LaTeX→翻译→审校<br>💡 Claude Code 用户建议用 [Academic Research Skills](https://github.com/Imbad0202/academic-research-skills) 替代，功能更强且有原生插件支持 |
 | 📄 Minimax | minimax-docx / minimax-pdf / minimax-xlsx (3) | DOCX/PDF/XLSX 专业文档生成 |
 | 🔎 搜索 | anysearch (1) | AnySearch 实时网页搜索、垂直领域搜索、批量搜索、URL 内容提取；支持 MCP + skill + API，官网：https://www.anysearch.com/ |
@@ -56,7 +56,6 @@
 | 技能 | 用途 | 来源 |
 |------|------|------|
 | browser-use | 浏览器自动化：网页测试、表单填充、截图、数据提取 | [browser-use](https://github.com/browser-use/browser-use) |
-| open-source | browser-use Python SDK 开发文档 | ↑ |
 | anysearch | 实时网页搜索、垂直领域搜索、批量搜索、URL 内容提取；同时提供 MCP 服务、agent skill 和 HTTP API；API Key 可选，高额度建议配置 `ANYSEARCH_API_KEY` | [AnySearch](https://www.anysearch.com/) / [API Docs](https://www.anysearch.com/docs) |
 | paper-spine | 学术论文写作流水线总调度 | [PaperSpine](https://github.com/WUBING2023/PaperSpine) |
 | paper-spine-audit | 审计输出完整性 | ↑ |
