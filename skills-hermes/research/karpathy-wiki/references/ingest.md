@@ -12,7 +12,7 @@ When the user provides a source (URL, file, paste), integrate it into the wiki.
 - **Local file** (MD, DOCX, EPUB, TXT) → copy to `raw/articles/` or `raw/papers/` using `terminal` (cp / shell copy). DOCX/EPUB files may need conversion to markdown first — use `pandoc` if available, or `ocr-and-documents` skill for PDFs. If no conversion tool is available, read what you can with `read_file` and note limitations. Name the file descriptively.
 - **Pasted text** → save to appropriate `raw/` subdirectory
 - Name the file descriptively: `raw/articles/karpathy-wiki-2026.md`
-- **Add raw frontmatter** with `ingested`, `sha256` of the body. Use `source_url` for web-sourced files only (omit for local files). On re-ingest: recompute sha256, compare to stored value — skip if identical, flag drift if different.
+- **Add raw frontmatter** with `ingested`, `sha256` of the body. Compute the hash over the body after the closing `---`, ignoring blank lines immediately after frontmatter. Use `source_url` for web-sourced files only (omit for local files). On re-ingest: recompute sha256, compare to stored value — skip if identical, flag drift if different.
 
 ### ② Discuss takeaways
 

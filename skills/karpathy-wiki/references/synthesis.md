@@ -24,6 +24,12 @@ Use for: 论文论证地图、理论框架、核心争议、章节论证路线�
 
 This **must** create or update related `claims/` pages. The synthesis page remains a route map; the argument structure lives in `claims/`.
 
+### 3. Literature-review matrix
+
+Use for: 社科文献综述、开题报告、毕业论文阅读整理。
+
+The matrix maps sources to research questions, methods, contributions, limits, claims, debates, and writing positions. It lives in `synthesis/` because it is a route map. Reusable propositions still belong in `claims/`; durable controversies belong in `debates/` or debate-style `comparisons/`.
+
 ## Procedure
 
 1. **Identify scope** — be specific: not “AI”, but “LLM 对齐研究（2023-2024）” or “孝为仁之本的跨学科论证”.

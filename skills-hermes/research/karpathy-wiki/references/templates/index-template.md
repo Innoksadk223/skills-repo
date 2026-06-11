@@ -22,7 +22,13 @@
 
 ## 辨析（Comparisons）
 
+## 争议谱系（Debates）
+> 可选。小型争议可继续放在 `comparisons/`；成熟社科争议再放入 `debates/`。
+
 ## 查询存档（Queries）
 
 ## 综述入口（Synthesis）
 > 轻量入口页 / 路线图；不要作为主要知识结构。
+
+### 文献综述矩阵
+> 文献到写作的路线图；可链接到 claims、concepts、debates，但不要变成证据银行。

@@ -12,8 +12,8 @@ GROUP_DESC=(
     "[Search] AnySearch real-time web/vertical search"
     "[Academic] academic search, paper review, wiki/RAG knowledge management"
     "[Productivity] MinerU document extraction"
-    "[Creative] PPT agent"
-    "[Tools] agent-loop, cleanup, skill tools, markitdown"
+    "[Creative] PPT agent and frontend/UI design skills"
+    "[Tools] agent-loop, skill-planner, cleanup, skill tools, markitdown"
 )
 
 RECOMMENDED_SKILLS=(
@@ -23,6 +23,7 @@ RECOMMENDED_SKILLS=(
     find-skills
     skill-creator
     skill-architecture
+    skill-planner
     capture-gotcha
     markitdown
     academic-search
@@ -35,9 +36,9 @@ HERMES_MAP=(
     "minimax:minimax-docx,minimax-pdf,minimax-xlsx"
     "research:karpathy-wiki,SiliconFlow-rag,social-science-km"
     "productivity:mineru-document-extractor"
-    "creative:ppt-agent-skill"
+    "creative:ppt-agent,frontend-design,taste-skill,ui-ux-pro-max"
 )
-HERMES_SOLO="academic-search academic-paper-review anysearch agent-loop cleanup find-skills grill-me markitdown skill-creator skill-architecture capture-gotcha"
+HERMES_SOLO="academic-search academic-paper-review anysearch agent-loop cleanup find-skills grill-me markitdown skill-creator skill-architecture skill-planner capture-gotcha"
 
 PRESET=""
 TARGET_ARG=""
@@ -152,8 +153,8 @@ skill_group() {
         anysearch) echo "search" ;;
         karpathy-wiki|academic-search|academic-paper-review|SiliconFlow-rag|social-science-km) echo "academic" ;;
         mineru-document-extractor) echo "productivity" ;;
-        ppt-agent-skill) echo "creative" ;;
-        cleanup|find-skills|grill-me|markitdown|skill-creator|skill-architecture|agent-loop|capture-gotcha) echo "tools" ;;
+        ppt-agent|frontend-design|taste-skill|ui-ux-pro-max) echo "creative" ;;
+        cleanup|find-skills|grill-me|markitdown|skill-creator|skill-architecture|skill-planner|agent-loop|capture-gotcha) echo "tools" ;;
         *) echo "" ;;
     esac
 }

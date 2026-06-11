@@ -1,6 +1,6 @@
 ---
 name: agent-loop
-description: Use when a concrete task has any of: three or more steps, verifiable outcomes, reusable skills, independent quality gates, or unclear acceptance criteria that can be clarified; including code changes, bug fixes, research reports, structured writing, and complex workflows. Use as the outer workflow even when other skills also apply. Do not use for single-step requests or open-ended exploration with no concrete deliverable.
+description: "Use when a concrete task has any of: three or more steps, verifiable outcomes, reusable skills, independent quality gates, or unclear acceptance criteria that can be clarified; including code changes, bug fixes, research reports, structured writing, and complex workflows. Use as the outer workflow even when other skills also apply. Do not use for single-step requests or open-ended exploration with no concrete deliverable."
 ---
 
 # Agent Loop

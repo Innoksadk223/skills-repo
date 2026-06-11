@@ -26,6 +26,7 @@ Obsidian Graph can group notes by folder path. Use path-based groups to visually
 | Concepts | `path:concepts/` | 概念节点 |
 | Entities | `path:entities/` | 人物/组织/文本 |
 | Comparisons | `path:comparisons/` | 辨析节点 |
+| Debates | `path:debates/` | 社科争议谱系（可选） |
 | Queries | `path:queries/` | 查询存档 |
 | Synthesis | `path:synthesis/` | 轻量入口页 |
 
@@ -70,6 +71,23 @@ Stub claims needing evidence:
 TABLE claim_type, related_concepts
 FROM "claims"
 WHERE status = "stub" OR confidence = "low"
+```
+
+Debate hubs:
+
+```dataview
+TABLE status, positions, related_claims
+FROM "debates"
+SORT file.name ASC
+```
+
+Literature-review matrices:
+
+```dataview
+TABLE updated, sources
+FROM "synthesis"
+WHERE contains(file.name, "文献综述矩阵")
+SORT updated DESC
 ```
 
 If using the Obsidian skill alongside this one, set `OBSIDIAN_VAULT_PATH` to the same directory as the wiki path.

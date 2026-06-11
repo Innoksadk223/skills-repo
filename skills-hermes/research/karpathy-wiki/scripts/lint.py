@@ -16,15 +16,16 @@ RAW = os.path.join(WIKI, "raw")
 ENTITIES = os.path.join(WIKI, "entities")
 CONCEPTS = os.path.join(WIKI, "concepts")
 COMPARISONS = os.path.join(WIKI, "comparisons")
+DEBATES = os.path.join(WIKI, "debates")
 CLAIMS = os.path.join(WIKI, "claims")
 QUERIES = os.path.join(WIKI, "queries")
+SYNTHESIS = os.path.join(WIKI, "synthesis")
 ARCHIVE = os.path.join(WIKI, "_archive")
 INDEX = os.path.join(WIKI, "index.md")
 SCHEMA = os.path.join(WIKI, "SCHEMA.md")
 LOG = os.path.join(WIKI, "log.md")
 
-WIKI_DIRS = [ENTITIES, CONCEPTS, COMPARISONS, CLAIMS, QUERIES]
-RAW_DIRS = [os.path.join(RAW, d) for d in ["articles", "papers", "transcripts"]]
+WIKI_DIRS = [ENTITIES, CONCEPTS, COMPARISONS, DEBATES, CLAIMS, QUERIES, SYNTHESIS]
 
 def read_frontmatter(filepath):
     """Extract YAML frontmatter as dict. Returns (dict, body_start_line)."""
@@ -81,15 +82,15 @@ def extract_wikilinks(filepath):
 def scan_raw_files():
     """Return list of raw file paths with their frontmatter."""
     files = []
-    for d in RAW_DIRS:
-        if not os.path.isdir(d):
-            continue
-        for root, _, fnames in os.walk(d):
-            for fname in fnames:
-                if fname.endswith(".md"):
-                    abspath = os.path.join(root, fname)
-                    fm, body_start = read_frontmatter(abspath)
-                    files.append((os.path.relpath(abspath, WIKI), abspath, fm, body_start))
+    if not os.path.isdir(RAW):
+        return files
+    for root, dirs, fnames in os.walk(RAW):
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d != "assets"]
+        for fname in fnames:
+            if fname.endswith(".md"):
+                abspath = os.path.join(root, fname)
+                fm, body_start = read_frontmatter(abspath)
+                files.append((os.path.relpath(abspath, WIKI), abspath, fm, body_start))
     return files
 
 def read_index_entries():
@@ -128,21 +129,41 @@ def check_broken_links(pages):
     return {k: list(v) for k, v in broken.items()}
 
 def check_index_completeness(pages):
-    """③ Pages not in index.md, and index entries with no page."""
+    """③ Pages not in index.md, and index entries with no page.
+
+    Ordinary claims are intentionally discoverable through the graph and claims/
+    folder; only core claims must appear in index.md.
+    """
     indexed = read_index_entries()
     page_names = {p[2] for p in pages}
-    not_in_index = sorted(page_names - indexed)
+    required_names = set()
+    for relpath, abspath, name, fm in pages:
+        is_claim = relpath.startswith("claims/") or (fm and fm.get("type") == "claim")
+        if is_claim:
+            if str((fm or {}).get("core", "")).lower() == "true":
+                required_names.add(name)
+            continue
+        required_names.add(name)
+    not_in_index = sorted(required_names - indexed)
     index_orphans = sorted(indexed - page_names)
     return not_in_index, index_orphans
 
 def check_frontmatter(pages, taxonomy_tags):
-    """④ Validate required fields: title, created, updated, type, tags, sources. Tags in taxonomy."""
+    """④ Validate required fields and taxonomy tags.
+
+    Claim-specific fields are validated by check_claim_structure(). Claim pages
+    do not require tags because the claim template does not use them.
+    """
     issues = []
-    required = ["title", "created", "updated", "type", "tags", "sources"]
+    base_required = ["title", "created", "updated", "type", "sources"]
     for relpath, abspath, name, fm in pages:
         if fm is None:
             issues.append({"page": relpath, "issue": "unreadable file"})
             continue
+        is_claim = relpath.startswith("claims/") or (fm and fm.get("type") == "claim")
+        required = list(base_required)
+        if not is_claim:
+            required.append("tags")
         missing = [f for f in required if f not in fm]
         if missing:
             issues.append({"page": relpath, "issue": f"missing fields: {missing}"})
@@ -173,12 +194,12 @@ def check_stale_content(pages, raw_files):
     return stale
 
 def check_contradictions(pages):
-    """⑥ Pages with contested: true or contradictions: field."""
+    """⑥ Pages with contested markers or contested claim status."""
     issues = []
     for relpath, abspath, name, fm in pages:
         if not fm:
             continue
-        if fm.get("contested") in [True, "true", "True"]:
+        if fm.get("contested") in [True, "true", "True"] or fm.get("status") == "contested":
             issues.append({"page": relpath, "issue": "marked contested"})
         contradictions = fm.get("contradictions", [])
         if isinstance(contradictions, str):
@@ -212,10 +233,14 @@ def check_source_drift(raw_files):
         stored = fm["sha256"]
         try:
             with open(abspath, "r", encoding="utf-8") as f:
-                lines = f.readlines()
+                content = f.read()
         except Exception:
             continue
-        body = "".join(lines[body_start:]) if body_start > 1 else "".join(lines)
+        if content.startswith("---"):
+            parts = content.split("---", 2)
+            body = parts[2].lstrip("\n") if len(parts) >= 3 else content
+        else:
+            body = content
         current = hashlib.sha256(body.encode()).hexdigest()
         if stored != current:
             drifts.append({"file": relpath, "stored": stored[:12], "current": current[:12]})
@@ -320,23 +345,27 @@ def load_taxonomy():
             content = f.read()
     except Exception:
         return set()
-    # Find tag taxonomy section — lines after '## Tag Taxonomy' until next '## '
+    # Find taxonomy section — English template or Chinese project schema.
     tags = set()
     in_taxonomy = False
     for line in content.split("\n"):
-        if line.startswith("## Tag Taxonomy"):
+        if line.startswith("## ") and ("Tag Taxonomy" in line or "标签体系" in line):
             in_taxonomy = True
             continue
-        if in_taxonomy and line.startswith("## ") and "Tag Taxonomy" not in line:
+        if in_taxonomy and line.startswith("## ") and "Tag Taxonomy" not in line and "标签体系" not in line:
             break
         if in_taxonomy:
             # Match `tag` patterns
             found = re.findall(r"`([^`]+)`", line)
             for t in found:
-                # Handle "标签（English）" → extract Chinese part
-                tag = t.split("（")[0].strip()
-                if tag and not tag.startswith("e.g.") and not tag.startswith("[Define"):
-                    tags.add(tag)
+                full_tag = t.strip()
+                if not full_tag or full_tag.startswith("e.g.") or full_tag.startswith("[Define"):
+                    continue
+                tags.add(full_tag)
+                # Also accept the Chinese base form for bilingual taxonomy entries.
+                base_tag = full_tag.split("（")[0].strip()
+                if base_tag:
+                    tags.add(base_tag)
     return tags
 
 def check_claim_structure(pages):

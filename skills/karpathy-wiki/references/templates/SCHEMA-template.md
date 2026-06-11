@@ -22,7 +22,7 @@
   title: 页面标题（English Title if needed）
   created: YYYY-MM-DD
   updated: YYYY-MM-DD
-  type: entity | concept | comparison | query | synthesis | claim
+  type: entity | concept | comparison | debate | query | synthesis | claim
   tags: [from taxonomy below]
   sources: [raw/articles/source-name.md or wiki page names]
   # Optional quality signals:
@@ -49,8 +49,8 @@ sha256: <hex digest of the raw content below the frontmatter>
 ```
 
 The `sha256:` lets a future re-ingest of the same URL skip processing when content is unchanged,
-and flag drift when it has changed. Compute over the body only (everything after the closing
-`---`), not the frontmatter itself.
+and flag drift when it has changed. Compute over the body only, not the frontmatter itself. If
+there are blank lines immediately after the closing `---`, ignore those leading blank lines.
 
 ## Tag Taxonomy
 [Define 10-20 top-level tags for the domain. Add new tags here BEFORE using them.]
@@ -87,6 +87,12 @@ One page per concept or topic. Include:
 - Current state of knowledge
 - Open questions or debates
 - Related concepts ([[wikilinks]])
+
+For social-science projects, important concepts may also include:
+- terms, translations, aliases, and abbreviations;
+- definition history or competing definitions by author/school;
+- operationalization, measurement, or coding when used empirically;
+- this wiki's working definition and why adjacent definitions are not used.
 
 ## Stub Pages
 For concepts/entities that are [[wikilinked]] but lack enough source material for a full page.
@@ -155,3 +161,17 @@ Side-by-side analysis, distinction, or clarification between concepts/entities. 
 - **对比维度** — 表格格式（适用时）
 - **结论或综合**
 - **来源**
+
+## 争议谱系页（Debate）
+Use `debates/` for mature social-science controversies, or keep smaller controversy pages in
+`comparisons/`. Include:
+- **争议问题** — what research question is disputed;
+- **主要立场** — positions, representative authors, and claims;
+- **证据与反证** — evidence type, source, strength, and limitation;
+- **方法边界** — what cannot be inferred from the evidence;
+- **写作用途** — how the debate helps literature review, theory framing, discussion, or defense.
+
+## 文献综述矩阵
+Use `synthesis/文献综述矩阵-主题.md` for source-to-writing route maps. A matrix may summarize
+authors, methods, contributions, limits, and thesis use, but durable propositions still belong
+in `claims/`.

@@ -1,11 +1,6 @@
 ---
 name: karpathy-wiki
 description: "Build and maintain a persistent, graph-readable wiki as interlinked markdown files. Use when the user asks to create/start a wiki, ingest/add/process sources, query a wiki, lint/audit/health-check a wiki, create synthesis/claims, or work with a research knowledge base/Obsidian graph."
-version: 2.6.0
-metadata:
-  tags: [wiki, knowledge-base, research, notes, markdown, obsidian, graph]
-  category: research
-  related_skills: [obsidian, arxiv]
 ---
 
 # Karpathy's Wiki
@@ -42,6 +37,7 @@ wiki/
 ├── entities/           # Layer 2: people, authors, orgs, products, texts
 ├── concepts/           # Layer 2: concepts/topics
 ├── comparisons/        # Layer 2: 辨析页（comparison/distinction）
+├── debates/            # Layer 2: durable social-science controversies (optional)
 ├── claims/             # Layer 2: graph-visible argument nodes
 ├── queries/            # Layer 2: filed query results worth keeping
 ├── synthesis/          # Layer 2: lightweight human entry pages only
@@ -50,6 +46,7 @@ wiki/
 
 - **raw/**: Immutable. Read but do not modify except during source capture/re-ingest. Do not make raw files graph nodes.
 - **concepts/entities/comparisons/**: Knowledge nodes.
+- **debates/**: Optional controversy hubs for mature social-science wikis; use `comparisons/` for simple distinctions.
 - **claims/**: Argument nodes — propositions that can be supported, opposed, limited, or depended on.
 - **synthesis/**: Lightweight entry pages / route maps. Do not store the main argument structure or detailed evidence bank here.
 - **SCHEMA.md**: Domain rules, frontmatter, tag taxonomy, thresholds.
@@ -85,7 +82,7 @@ read_file "$WIKI/log.md" offset=<last 30 lines>
 When creating a wiki:
 
 1. Determine wiki path from `$WIKI_PATH` or ask; default `~/wiki`.
-2. Create the directory structure above, including `claims/` and `synthesis/`.
+2. Create the directory structure above, including `claims/`, optional `debates/`, and `synthesis/`.
 3. Ask what domain the wiki covers.
 4. Write `SCHEMA.md` from `references/templates/SCHEMA-template.md`, customized to the domain.
 5. Write `index.md` from `references/templates/index-template.md`. When any section exceeds 50 entries, split by pinyin first letter; when index exceeds 200 entries total, create `_meta/主题地图.md`.
@@ -100,10 +97,27 @@ When creating a wiki:
 | 摄入来源 (ingest) | `references/ingest.md` | 单个来源 → wiki 页面 + 交叉引用 + 导航更新 |
 | 查询知识 (query) | `references/query.md` | 检索 → 综合回答 → 有价值的存档 |
 | 论证节点 (claims) | `references/claims.md` | 将论文/理论论证拆成图谱可见的小型论证卡片 |
+| 社科增强 (social science) | `references/social-science.md` | 社科论文、理论框架、概念界定、方法边界和证据类型 |
+| 争议谱系 (debates) | `references/debates.md` | 多立场理论争议、反方回应、导师追问和研究缺口 |
+| 文献综述矩阵 | `references/literature-review.md` | 将一批文献整理成 thesis-ready matrix |
 | 健康检查 (lint) | `references/lint.md` | 运行 `scripts/lint.py` → 解析 JSON → 汇报 + 研究建议 |
 | 批量摄入 (bulk) | `references/bulk-ingest.md` | 5+ 来源的并行/顺序策略 |
 | 综述/入口 (synthesis) | `references/synthesis.md` | 轻量入口页；论证型 synthesis 必须抽取 claims |
 | Obsidian 集成 | `references/obsidian-setup.md` | 图谱路径分组、Dataview、raw 排除 |
+
+## Bundled Resources
+
+Load only the files needed for the current operation:
+
+| Resource | When to read |
+|---|---|
+| `references/social-science.md` | Social-science thesis, literature review, theory framework, methods, or evidence boundaries |
+| `references/debates.md` + `references/templates/debate-template.md` | Durable controversies, competing positions, objections, or advisor-defense questions |
+| `references/literature-review.md` + `references/templates/literature-review-template.md` | Turning a source batch into a thesis-ready literature review matrix |
+| `references/templates/SCHEMA-template.md` | Initializing or refreshing wiki conventions |
+| `references/templates/claim-template.md` | Creating or upgrading claim pages |
+| `references/templates/index-template.md`, `references/templates/log-template.md` | Initializing navigation and logs |
+| `scripts/lint.py`, `scripts/lint_self_test.py` | Health checks or script changes |
 
 ## Searching
 
@@ -127,6 +141,8 @@ Use `claims/` for:
 
 Use `synthesis/` only for lightweight entry pages: route maps, reading order, current state, key links, and gaps. Do not generate a standalone long evidence bank; evidence belongs inside the claim it supports.
 
+For social-science projects, load `references/social-science.md` before building claims or synthesis. Use debate pages for durable controversies and literature-review matrices for source-to-writing route maps.
+
 ## Archiving
 
 When content is fully superseded or domain scope changes:
@@ -146,6 +162,7 @@ When content is fully superseded or domain scope changes:
 - **Don't create graph-dead pages** — every page should link to at least 2 other pages; create stubs for dead wikilinks.
 - **Don't bury arguments in synthesis** — if it is a proposition with support/opposition/limits, make a claim page.
 - **Don't keep evidence banks as durable products** — evidence belongs under the relevant claim; raw locations are plain-text paths, not wikilinks.
+- **Don't flatten social-science disputes** — preserve competing definitions, methods, positions, and evidence limits.
 - **Frontmatter is required** — it enables filtering, linting, and staleness detection.
 - **Tags must come from the taxonomy** — add new tags to SCHEMA.md first.
 - **Keep pages scannable** — split pages over ~200 lines.
@@ -158,6 +175,7 @@ When content is fully superseded or domain scope changes:
 - [ ] New/updated pages have required frontmatter and Chinese wikilinks.
 - [ ] `claims/` exists when the wiki contains argument-oriented material.
 - [ ] Core claims are listed in `index.md`; non-core claims are discoverable through links.
+- [ ] Social-science projects used `references/social-science.md` for concepts, evidence types, debates, and method boundaries.
 - [ ] Claim pages include `## 命题` and `## 关系` so Obsidian graph edges are visible.
 - [ ] No `raw/` file is wikilinked as a graph node; raw evidence locations are plain-text paths.
 - [ ] `index.md` and `log.md` were updated.

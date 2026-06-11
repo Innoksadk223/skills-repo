@@ -89,6 +89,8 @@ Core claims must:
 4. link to related concepts/entities/comparisons in the body;
 5. add backlinks from core related concept/entity/comparison pages when appropriate.
 
+For social-science thesis work, core claims should also include `## 论证位置`, `## 前提与推理`, `## 证据矩阵`, and `## 方法边界` when the claim will be used in writing. These are body sections, not required frontmatter fields, so older claim pages remain valid.
+
 Ordinary claims may be `core: false`, may stay `status: stub`, and do not need to be listed in `index.md`.
 
 ## Body Template
@@ -112,12 +114,30 @@ Minimum body structure:
 ## 支撑理由
 ...
 
+## 论证位置
+- 研究问题：
+- 论文位置：
+- 可回应的问题：
+
+## 前提与推理
+1. 前提一。
+2. 前提二。
+3. 因此，本命题成立或在某个范围内成立。
+
+## 证据矩阵
+| 证据类型 | 来源 | 位置 | 支持力度 | 限制 |
+|---|---|---|---|---|
+| theory_text | [[Philip J. Ivanhoe（艾文贺）]] | `raw/02-学术研究/Filial Piety as a Virtue.md:31-33` | 中 | 只能支持概念修正，不能直接证明经验普遍性 |
+
 ## 关键证据
 - [[Philip J. Ivanhoe（艾文贺）]]：反对把孝建立在单纯生育事实上。
   - 证据位置：`raw/02-学术研究/Filial Piety as a Virtue.md:31-33`
 
 ## 反驳与限制
 ...
+
+## 方法边界
+说明本 claim 依赖的证据能证明什么，不能证明什么。
 
 ## 写作用途
 可用于回应“孝是否只是血缘义务”的质疑。
@@ -154,6 +174,16 @@ Claim evidence links to wiki pages, not raw files. Raw source locations are writ
 ```
 
 Do not write `[[raw/...]]`.
+
+For social-science projects, prefer a lightweight evidence matrix over a long evidence bank:
+
+| field | meaning |
+|---|---|
+| 证据类型 | `theory_text`, `classic_text`, `quantitative`, `qualitative`, `mixed_methods`, `review`, `policy_context`, `counterevidence`, `method_limit` |
+| 来源 | wiki page link, author page, concept page, or source name |
+| 位置 | plain-text raw path with page/line/section if known |
+| 支持力度 | high / medium / low, or a short Chinese note |
+| 限制 | what this evidence cannot prove |
 
 ## Objections and Responses
 

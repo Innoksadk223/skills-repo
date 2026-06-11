@@ -31,6 +31,24 @@ Translate JSON findings into a human-readable report:
 
 Append to log.md: `## [YYYY-MM-DD] lint | N issues found`
 
+## What The Script Scans
+
+- Wiki pages under `entities/`, `concepts/`, `comparisons/`, optional `debates/`, `claims/`, `queries/`, and `synthesis/`.
+- Raw Markdown files recursively under `raw/`, excluding hidden directories and `raw/assets/`.
+- `index.md` entries against real wiki pages.
+
+Index rule: non-claim pages should be listed in `index.md`; only `core: true` claims are required in `index.md`. Ordinary claims are discoverable through `claims/` and graph links.
+
+## Self-Test
+
+After changing `scripts/lint.py`, run:
+
+```bash
+python3 scripts/lint_self_test.py
+```
+
+The self-test covers recursive raw scanning, `synthesis/` scanning, ordinary claim index rules, bilingual taxonomy tags, contested claim status, and source drift.
+
 ## Research Leads
 
 After presenting findings, review the JSON for research opportunities. The Obsidian graph view already surfaces these signals visually — you are naming them explicitly:

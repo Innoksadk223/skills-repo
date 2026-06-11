@@ -11,18 +11,18 @@ When ingesting multiple sources at once, batch the updates.
 5. Update index.md once at the end
 6. Write a single log entry covering the batch
 
-## Parallel workflow (5+ independent sources — use delegate_task)
+## Parallel workflow (5+ independent sources — use agentloop/subagents)
 
 When you have many sources that don't cross-reference each other heavily, parallelize the analysis phase to save time:
 
 1. Copy all source files to `raw/` first (one batch command).
-2. **Split sources into groups** of 2-4 files each (max 3 groups — limited by `max_concurrent_children`). Each group gets a `delegate_task` call.
+2. **Split sources into groups** of 2-4 files each. Each group gets a read-only `agentloop`/subagent task.
 3. Each subagent reads assigned files and returns structured summary with entities, concepts, key quotes, and cross-references *within that group*.
 4. **Collect all summaries** back in the parent session. Synthesize across groups — a person/idea may appear in files from different groups, and only the parent session can connect those dots.
 5. **Create/update wiki pages in the parent session only.** The parent uses the combined intelligence to write entity, concept, and 辨析 pages with cross-group cross-references that no single subagent could produce.
 6. Update `index.md` and `log.md` exclusively in the parent session.
 
-> ⚠️ **Subagent file-mutation hazard (critical pitfall):** `delegate_task` children share the parent's filesystem. A subagent that writes to `index.md` or creates wiki pages can:
+> ⚠️ **Subagent file-mutation hazard (critical pitfall):** agentloop/subagent workers may share or fork from the same filesystem context. A subagent that writes to `index.md` or creates wiki pages can:
 > - **Rename files** the parent is tracking (e.g. `log.md` → `log 2.md`)
 > - **Overwrite** pages the parent or another subagent created
 > - **Create orphans** — pages the subagent added to `index.md` but the parent doesn't know about
