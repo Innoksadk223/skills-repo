@@ -3,3 +3,4 @@ node_modules/
 ppt-output/
 __pycache__/
 *.pyc
+state/
