@@ -1,40 +1,42 @@
-# REVISE 阶段手册
+# FEEDBACK 阶段手册
 
-Orchestrator 在 Evaluator 判定 FAIL 后，分派 Troubleshooter subagent 并应用修正时加载。
+Orchestrator 在 Worker 完成后、或主 agent 验收 FAIL 后，分派 Feedbacker subagent 生成反馈和下一轮 prompt 时加载。
 
-## Troubleshooter agent 分派格式
+## Feedbacker agent 分派格式
 
-`delegate_task` / `spawn_agent` 是分派入口；被分派对象的身份是独立 Troubleshooter agent。
+使用当前宿主可用的 subagent / worker / thread / task 分派入口；被分派对象的身份是独立 Feedbacker agent。
 
 ```python
 delegate_task(
-    goal="你是独立诊断员。找出失败根因并输出修正方案。
+    goal="你是独立反馈员。审核 Worker 产出和主 agent 验收失败项，找出根因或提质空间，并写出下一轮可直接交给 Worker 执行的 prompt。
 
 输入：
 - 原始 PLAN（第 N 轮）
-- Evaluator 报告（含失败项问题描述）
-- Worker 产出文件（阅读 state/ 目录）
+- Worker 返回和产出文件（阅读 state/ 目录）
+- 主 agent 验收记录（若已有，含失败项、证据不足项或提质要求）
 
 输出以下结构化内容：
-1. 根因分析 — 不是描述现象，是找出为什么 Worker 做不到
-2. 修正后的步骤描述 — 可直接交给 Worker 执行
+1. 根因分析 — 不是描述现象，是找出为什么 Worker 没做到
+2. 下一轮 Worker prompt — 可直接复制给 Worker 执行
 3. 修正后的 handoff 条件（如有变化）
-4. 是否需要新增或替换 skill/reference",
+4. 是否需要新增、替换或强调 skill/reference
+5. 是否建议回到 ACT-FIX；若已无明显缺口，交给主 agent VERIFY",
     toolsets=["file"]
 )
 ```
 
-## Troubleshooter 输出 schema
+## Feedbacker 输出 schema
 
 ```json
 {
   "failed_checklist_items": ["标准 2", "标准 4"],
   "root_cause": "Worker 收到的步骤描述缺少输出格式约束，导致产出结构不完整",
   "failure_type": "prompt_gap | missing_skill | skipped_skill_gate | weak_validation | bad_state | budget_limit | external_blocker",
+  "decision": "rerun_workers | proceed_to_verify | stop_with_blocker",
   "revised_steps": [
     {
       "original_step_id": 3,
-      "revised_description": "分析 ≥3 组分歧...（完整步骤描述）",
+      "worker_prompt": "你负责步骤 3：分析 ≥3 组分歧...（完整、可执行的下一轮 prompt）",
       "revised_handoff": "state/step3_output.json 存在且含 'groups' 数组长度 ≥3",
       "required_skills_or_references": ["academic-search"],
       "change_rationale": "原描述缺少格式约束，补充了 JSON schema"
@@ -47,18 +49,21 @@ delegate_task(
 
 ## Orchestrator 应用修正的合并规则
 
-拿到 Troubleshooter 输出后：
+拿到 Feedbacker 输出后：
 
-1. **仅重跑失败步骤** — 已 PASS 的步骤不动，不重跑
+1. **先看 decision**：
+   - `rerun_workers` → 仅重跑失败步骤
+   - `proceed_to_verify` → 进入 VERIFY
+   - `stop_with_blocker` → 进入 DELIVER，标注阻塞原因
 2. **合并到 delta plan**：
    - 不变步骤 → 引用标记 "步骤 X 不变（第 N-1 轮已 PASS）"
-   - 修正步骤 → 用 Troubleshooter 的 `revised_description` + `revised_handoff`
+   - 修正步骤 → 用 Feedbacker 的 `worker_prompt` + `revised_handoff`
    - Skill 变更 → 加进 Loop Contract 的 `本轮 Skill/Reference`
    - 新增步骤 → 插入 `new_steps`，分配步骤编号
    - 删除步骤 → 标注 "原步骤 X 删除，原因：[rationale]"
-3. **更新 checklist** — 如果 Troubleshooter 修改了步骤，对应 checklist 项也需更新
-4. **保持已通过项目的 state/ 文件** — 不删除，下一轮 Evaluator 不用重验
-5. **如果 Troubleshooter 诊断无法操作**（根因模糊、修正不具体）→ 在 delta plan 中标注不确定性，但仍尝试执行一轮（最多 3 轮硬上限兜底）
+3. **更新 checklist** — 如果 Feedbacker 修改了步骤，对应 checklist 项也需更新
+4. **保持已通过项目的 state/ 文件** — 不删除，主 agent 下轮验收可复用
+5. **如果 Feedbacker 诊断无法操作**（根因模糊、修正不具体）→ 在 delta plan 中标注不确定性，但仍尝试执行一轮（最多 3 轮硬上限兜底）
 6. **如果根因是 weak_validation** → 优先加强 checklist 或证据要求，不只改 Worker 文案
 7. **如果根因是 skipped_skill_gate** → 不扩大 prompt；把对应 skill 的 hard gate 写进步骤描述、handoff 和 checklist，并仅重跑受影响步骤
 

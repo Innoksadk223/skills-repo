@@ -6,7 +6,7 @@ Orchestrator 做「继续/终止」决策或排查异常时加载。
 
 | 条件 | 触发动作 | 说明 |
 |------|---------|------|
-| Evaluator 判定 PASS | **DELIVER** | 全部达标，交付最终产出 |
+| Orchestrator 验收 PASS | **DELIVER** | 全部达标，交付最终产出 |
 | 累计 3 轮 | **DELIVER + 标注未达标项** | 硬上限，防止无限循环。交付时标注哪些 checklist 项未达标 |
 | STAGNATE（连续 2 轮提升 <10%） | **DELIVER** | 继续修正已无边际收益，交付当前最佳版本 |
 | BUDGET_STOP | **DELIVER + 标注预算耗尽** | 达到 PLAN 声明的 token、时间或费用上限 |
@@ -18,11 +18,11 @@ Orchestrator 做「继续/终止」决策或排查异常时加载。
 | 调用 | 次数 | 说明 |
 |------|:---:|------|
 | Orchestrator PLAN | 1 | 首轮完整，后续 delta |
-| Worker ACT | 1-N | 每批 ≤3 个 Worker agent |
-| Evaluator CHECK | 1 | toolsets=["file"]，独立读取 state/ |
-| Troubleshooter | 0-1 | 仅 REVISE 时分派 |
+| Worker ACT | 1-N | 并行度由依赖、预算和宿主能力决定 |
+| Feedbacker FEEDBACK | 1 | 读取 state/，写下一轮 Worker prompt / delta plan |
+| Orchestrator VERIFY | 1 | 主 agent 读取 state/ 并验收 |
 
-首轮 PASS：约 `N + 2` 次 LLM 调用（N = Worker agent 总数；每批 ≤3 并行）。每加一轮修正：失败 Worker 数 + Evaluator + 可选 Troubleshooter。
+首轮 PASS：约 `N + 2` 次 LLM 调用（N = Worker agent 总数）。每加一轮修正：失败 Worker 数 + Feedbacker + Orchestrator VERIFY。
 
 ## 预算护栏
 
@@ -31,7 +31,7 @@ PLAN 未声明预算时，默认护栏：
 | 类型 | 默认值 |
 |------|--------|
 | 轮数 | 3 轮 |
-| 并行 Worker | 每批 ≤3 |
+| 并行 Worker | 按依赖、预算和宿主能力决定 |
 | 时间 | 45 分钟 |
 | token/费用 | 无法计量时，在 DELIVER 中声明未计量 |
 
@@ -41,28 +41,28 @@ PLAN 未声明预算时，默认护栏：
 
 ### 1. Orchestrator 越权
 
-**问题**：Orchestrator 亲自执行步骤或替 Evaluator 打分 → 自评偏差。
-**对策**：所有执行交给 Worker agent，所有验收交给 Evaluator agent；`delegate_task` / `spawn_agent` 只是分派入口。Orchestrator 只做 PLAN + DELIVER + 资源调配。
+**问题**：Orchestrator 亲自执行步骤或替 Feedbacker 写修正 prompt → 主控和执行混在一起。
+**对策**：执行交给 Worker，反馈 prompt 交给 Feedbacker；分派入口只是入口，不是角色身份。Orchestrator 负责 PLAN + VERIFY + DELIVER + 资源调配。
 
 ### 2. PLAN 步骤描述太粗
 
 **问题**：写"生成测试"而非"为 src/auth.py 写 pytest，覆盖 3 条路径，断言 200/401/403"。Worker 没有深度规格。
 **对策**：见 references/plan.md → 步骤设计规则表。
 
-### 3. Evaluator 放水
+### 3. 主 agent 验收放水
 
-**问题**：连续全部 PASS 但质量差 → Evaluator prompt 严格度不足。
-**对策**：Evaluator prompt 中"宽松=浪费所有人的 token"不可删。怀疑放水时，在下一轮 Evaluator goal 中加"上一轮可能过于宽松，本轮必须对证据充分性零容忍"。
+**问题**：连续全部 PASS 但质量差 → 主 agent 验收标准或证据门槛不足。
+**对策**：在 VERIFY 阶段对证据充分性零容忍；发现 checklist 缺口时先更新 checklist，再交给 Feedbacker 写修正 prompt。
 
 ### 4. Worker 不给证据
 
-**问题**：Worker 声称完成但无文件路径、无命令输出 → Evaluator 无法核验。
+**问题**：Worker 声称完成但无文件路径、无命令输出 → Feedbacker / 主 agent 无法核验。
 **对策**：ACT 阶段 mini-check 必须看到 `handoff check: [文件路径]` 行才放行。无此行的 Worker 返回视为失败。
 
 ### 5. 忘掉终止条件
 
 **问题**：反复修正第 4、5 轮，"最后一次"变成"再来一次"。
-**对策**：3 轮硬上限是代码逻辑，不是建议。Orchestrator 在每轮 CHECK 后加载本文件核对。
+**对策**：3 轮硬上限是代码逻辑，不是建议。Orchestrator 在每轮 VERIFY 后加载本文件核对。
 
 ### 6. 把 Loop 当 Prompt 放大器
 
@@ -72,7 +72,7 @@ PLAN 未声明预算时，默认护栏：
 ### 7. 被其它 Skill 短路
 
 **问题**：任务同时触发 TDD、brainstorming、writing-plans 等 skill，于是跳过 agent-loop，或只说"参考 loop 思想"。
-**对策**：只要任务满足 agent-loop 触发条件，Loop 就是外层调度器。其它 skill 的 hard gate 进入 handoff/checklist；若不能分派 subagent，必须声明限制并本地模拟角色。
+**对策**：只要任务满足 agent-loop 触发条件，Loop 就是外层调度器。调用本 skill 即视为明确进入 Loop，并授权使用当前宿主可用的 subagent / worker / thread / task 分派能力。其它 skill 的 hard gate 进入 handoff/checklist；若不能分派，必须声明限制并本地模拟角色。
 
 ### 8. 验收标准模糊导致跳过 Loop
 

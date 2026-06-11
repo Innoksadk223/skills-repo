@@ -4,7 +4,7 @@ Orchestrator 分派 1-N 个 Worker subagent 和执行 mini-check 时加载。
 
 ## Worker agent 分派格式
 
-`delegate_task` / `spawn_agent` 是分派入口；被分派对象的身份是 Worker agent。若宿主支持批量 tasks，则每个 task 对应 1 个 Worker subagent；若只支持逐个分派，则为每个 task 单独启动 1 个 worker agent。
+使用当前宿主可用的 subagent / worker / thread / task 分派入口；被分派对象的身份是 Worker agent。若宿主支持批量 tasks，则每个 task 对应 1 个 Worker subagent；若只支持逐个分派，则为每个 task 单独启动 1 个 Worker。
 
 ```python
 # 批量分派示意：每个 task = 1 个 Worker agent
@@ -20,7 +20,7 @@ delegate_task(tasks=[
 ## Worker 约束
 
 - **leaf 角色** — 不给二次分派权限（防止 Worker 私自分派子 agent 做验收）
-- **≤3 并行** — 无依赖步骤 batch 分派，上限 3
+- **并行受控** — 无依赖步骤可并行；并行数量由宿主能力、任务依赖、预算和失败成本决定
 - **toolsets 最小集** — 只给完成当前步骤必要的工具，不给多余权限
 - **skill 优先** — Worker goal 中如指定 skill/reference，必须先加载并按其流程执行；不得临时重写一套长 Prompt 替代
 - **hard gate 不绕过** — 指定 skill 若要求用户确认、RED 测试、设计文档或验证命令，Worker 必须完成并返回证据，不能以"Loop 已经有计划/检查"为由跳过
@@ -53,13 +53,13 @@ handoff 不通过时——Worker 不应交棒，而是自行修复或报告失�
 ## 并行 batch 协调
 
 - 无文件依赖的步骤 → 一组 Worker agent 并行分派（如 `delegate_task(tasks=[...])`）
-- 所有 Worker 完成后统一进入 CHECK
-- batch 中某个 Worker 失败 → 等待全部完成（或超时），汇总后统一进入 Troubleshooter
-- 成功步骤的产出保留（state/ 文件不删），Troubleshooter 只处理失败项
+- 所有 Worker 完成后统一进入 FEEDBACK
+- batch 中某个 Worker 失败 → 等待全部完成（或超时），汇总后统一进入 Feedbacker
+- 成功步骤的产出保留（state/ 文件不删），Feedbacker 只处理失败项
 
 ## 产出物落盘
 
-Worker 产出应写入 `state/` 目录供 Evaluator 独立核验：
+Worker 产出应写入 `state/` 目录，供 Feedbacker 生成修正 prompt，也供主 agent 验收：
 
 ```
 state/
@@ -78,7 +78,7 @@ Orchestrator 在分派 Worker 时应在 goal 中指定输出路径，例如：
 
 | 信息 | 用途 |
 |------|------|
-| 产出路径 | Evaluator 独立读取 |
+| 产出路径 | Feedbacker / 主 agent 读取 |
 | 证据路径或命令输出摘要 | 防止口头 PASS |
 | skill/hard gate 证据 | 防止把 skill 降级成一次性 prompt |
 | 下一步建议 | 供 Orchestrator 判断是否需要调整后续 Worker goal |
