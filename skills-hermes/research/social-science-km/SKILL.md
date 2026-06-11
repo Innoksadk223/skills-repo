@@ -112,6 +112,7 @@ Procedure:
 4. Compile raw content into `wiki/claims/`, `wiki/concepts/`, `wiki/entities/`, `wiki/comparisons/`, and lightweight `wiki/synthesis/` per karpathy-wiki's workflow.
    - Use `claims/` for theses, support propositions, objections, limitations, and bridge claims.
    - Use `synthesis/` only as route maps, reading order, current state, and gaps; do not keep long durable evidence banks there.
+   - For large or mature corpora, optional GraphRAG-lite global entry pages may live under `wiki/synthesis/_global/`. These pages are only theme/community route maps: major debates, reading paths, topic clusters, and gaps. They must link to `claims/`, `concepts/`, `entities/`, or `comparisons/`; they must not become durable evidence banks.
 5. Update `wiki/index.md` and append to `wiki/log.md` after ingest.
 6. Preserve factual disagreements with source attribution instead of smoothing them away.
 
@@ -150,7 +151,8 @@ Build both indexes after `wiki/raw/` and graph-readable wiki pages are populated
 ```bash
 python skills/SiliconFlow-rag/scripts/build_index.py \
   --md-dir wiki/raw \
-  --index-dir 检索索引/raw
+  --index-dir 检索索引/raw \
+  --metadata-mode enriched_raw
 
 python skills/SiliconFlow-rag/scripts/build_index.py \
   --md-dir wiki \
@@ -159,6 +161,8 @@ python skills/SiliconFlow-rag/scripts/build_index.py \
   --exclude-dirs raw,_archive \
   --metadata-mode wiki
 ```
+
+`enriched_raw` is the default raw-index mode for this workflow once wiki pages exist. It adds retrieval-only labels from wiki claims/concepts/entities/comparisons to raw chunks, improving recall without changing the evidence boundary: the quoted/cited text is still the raw chunk, not the wiki label. If this is the very first build and the wiki layer is empty, a plain raw index is acceptable temporarily; after Step 2 creates wiki pages, rebuild or incrementally update the raw index with `--metadata-mode enriched_raw`.
 
 ### Proactive Index Status Check & Incremental Update (mandatory)
 
@@ -191,20 +195,22 @@ python check_rebuild_rag.py
 - Wiki index checks `wiki/claims`, `wiki/concepts`, `wiki/entities`, `wiki/comparisons`, `wiki/synthesis`, and `wiki/queries` against `检索索引/wiki/manifest.json`.
 - Content hashes are SHA256, not mtime.
 - Use `--incremental`; for ordinary new/changed files, describe the result as "增量更新 / 新增到索引". `SiliconFlow-rag` falls back to a full rebuild only if index settings changed; reserve "重建" for that case.
+- If the wiki index is stale, run `karpathy-wiki` lint before updating the wiki index when the lint script is available. Broken links, source drift, missing claim structure, and frontmatter issues should be reported before embedding the wiki layer. Do not block urgent raw-only queries on non-severe wiki lint findings.
 
 ### Query
 
-Default to wiki-first for conceptual, argumentative, cross-source, or thesis-writing questions:
+Default to routed querying rather than one expensive mode for every question. Use the cheapest mode that can answer the question well, then escalate only when retrieval quality is weak.
 
-```bash
-python skills/SiliconFlow-rag/scripts/query_index.py \
-  --wiki-first \
-  --wiki-index-dir 检索索引/wiki \
-  --raw-index-dir 检索索引/raw \
-  --question "用户的问题"
-```
+**Routing defaults:**
 
-Use raw-only only when the user explicitly wants direct source snippets without wiki expansion:
+- Direct source lookup ("原文", "出处", "哪一段", "引用", "证据", page/source/quote/passage) → raw-only.
+- Conceptual, argumentative, cross-source, comparison, or thesis-writing questions → wiki-first.
+- Broad wording, terminology mismatch, or the first pass returns fewer than 3 usable raw sources → add `--multi-query`.
+- Top hits are on-topic but poorly ordered, or the user is writing final prose / needs precise evidence ranking → add `--rerank`.
+- A hit is relevant but depends on the previous/next paragraph, pronouns, table context, or transitional wording → add `--expand-context --context-window 1` before changing chunk size.
+- Final citation checking or high-risk thesis claims → use deep mode: wiki-first + multi-query + rerank + context.
+
+Raw-only:
 
 ```bash
 python skills/SiliconFlow-rag/scripts/query_index.py \
@@ -212,7 +218,17 @@ python skills/SiliconFlow-rag/scripts/query_index.py \
   --question "用户的问题"
 ```
 
-Use rerank only when the user explicitly asks for better ordering, precise ranking, rerank mode, or use of the rerank model:
+Wiki-first:
+
+```bash
+python skills/SiliconFlow-rag/scripts/query_index.py \
+  --wiki-first \
+  --wiki-index-dir 检索索引/wiki \
+  --raw-index-dir 检索索引/raw \
+  --question "用户的问题"
+```
+
+Deep / writing mode:
 
 ```bash
 python skills/SiliconFlow-rag/scripts/query_index.py \
@@ -220,31 +236,54 @@ python skills/SiliconFlow-rag/scripts/query_index.py \
   --wiki-index-dir 检索索引/wiki \
   --raw-index-dir 检索索引/raw \
   --question "用户的问题" \
-  --rerank
+  --multi-query \
+  --rerank \
+  --candidates 20 \
+  --expand-context \
+  --context-window 1
 ```
 
 ### Unified Query (km_query.py)
 
-For daily use, `km_query.py` should combine dual-index staleness checks + wiki-first query into one command.
+For daily use, copy `skills/social-science-km/references/km_query.py` into the knowledge-base project root. It combines dual-index staleness checks, query routing, optional wiki lint, and query execution into one command.
 
 ```bash
 python km_query.py "亲亲与仁的关系"
 ```
 
 Behaviour:
-- **Staleness check**: checks both raw and wiki manifests; if either is stale, prints a warning and exits unless the user has confirmed an index update. Use "增量更新/新增到索引" wording for ordinary new/changed files; reserve "重建" for forced full rebuilds caused by settings/model/index-format changes.
-- **If current**: runs `query_index.py --wiki-first` and prints `# Wiki Hits`, `# Expanded Query`, and `# Raw Evidence`.
+- **Staleness check**: checks both raw and wiki manifests; if either is stale, prints a warning and exits unless the user uses `--skip-check`. Use "增量更新/新增到索引" wording for ordinary new/changed files; reserve "重建" for forced full rebuilds caused by settings/model/index-format changes.
+- **Mode routing**: direct source lookups use raw-only; conceptual/cross-source questions use wiki-first when a wiki index exists.
+- **If current**: raw-only prints `# RAG Evidence`; wiki-first prints `# Wiki Hits`, `# Expanded Query`, and `# Raw Evidence`.
 - `--raw-only`: run raw-only query against `检索索引/raw`.
 - `--skip-check`: skip staleness check, query with current indexes as-is.
 - `--rerank`: enable SiliconFlow rerank for raw evidence candidates.
+- `--multi-query`: enable LLM query rewriting when recall is weak.
+- `--deep`: use the high-quality writing mode: wiki-first + multi-query + rerank + context, with `candidates=20`.
 
 This is the recommended query entry point for agents and daily use — it prevents stale-index answers while using wiki structure for recall.
+
+### Lightweight RAG Evaluation (recommended P1)
+
+When changing `metadata_mode`, chunk size, overlap, include/exclude dirs, wiki structure rules, or query routing, run a small retrieval regression set before trusting the new behavior. Do not run a full evaluation for every new file; ordinary new/changed raw files only require stale-index checks and incremental updates.
+
+Start from `skills/social-science-km/references/rag_eval_set.example.jsonl`, then create `eval/rag_eval_set.jsonl` in the knowledge-base root with 10-20 high-value questions:
+
+```jsonl
+{"question":"孝为什么不能只基于生育事实？","mode":"wiki","expected_sources":["wiki/raw/...md"],"expected_terms":["照料","生育事实"],"notes":"核心论证召回"}
+{"question":"这段关于亲亲的原文出处在哪里？","mode":"raw","expected_sources":["wiki/raw/...md"],"expected_terms":["亲亲"],"notes":"直接证据查找"}
+```
+
+Minimum pass rule: expected source appears in the retrieved raw evidence and at least one expected term appears in the evidence text. LLM-judge/RAGAS-style faithfulness scoring is optional and should be used only for larger revisions or high-stakes writing.
 
 Validation:
 
 - `检索索引/raw/manifest.json`, `chunks.jsonl`, and `embeddings.jsonl` exist.
 - `检索索引/wiki/manifest.json`, `chunks.jsonl`, and `embeddings.jsonl` exist when wiki pages exist.
+- Raw index manifest uses `metadata_mode: enriched_raw` after the wiki layer exists.
+- Wiki index manifest uses `metadata_mode: wiki`.
 - Wiki-first query output contains `# Wiki Hits`, `# Expanded Query`, `# Raw Evidence`, source paths, and evidence snippets.
+- `python skills/social-science-km/references/km_query_self_test.py` passes in the skills repo after changing `km_query.py`.
 
 ## Answering Template
 
@@ -300,7 +339,7 @@ When answering a knowledge-base question, the agent MUST follow this structure. 
 
 - Explain progress in plain Chinese.
 - **Proactive RAG check**: every session where the knowledge base is involved, run `check_rebuild_rag.py --check` before any query or wiki work. If either raw or wiki index is stale, ask the user before updating the index. Say "新增到索引" or "增量更新" for ordinary new/changed files; say "重建" only for full rebuilds. Do NOT wait for the user to tell you to check.
-- **Prefer `km_query.py`** for queries: it auto-checks both indexes and uses wiki-first retrieval by default — one command instead of several.
+- **Prefer `km_query.py`** for queries: it auto-checks both indexes, routes source lookups to raw-only, and uses wiki-first for conceptual/cross-source questions — one command instead of several.
 - If any source file cannot be converted, explicitly list it or point to `wiki/raw/_conversion_failures.md`.
 - If `SILICONFLOW_API_KEY` and the local private key config are both missing, stop before real RAG indexing/querying and ask the user for the key; do not fake a real index.
 - For final answers over the knowledge base, follow the **Answering Template** above: cite source paths, keep evidence and interpretation separate, always flag uncertainties.

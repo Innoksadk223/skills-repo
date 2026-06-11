@@ -1,0 +1,3 @@
+{"question":"孝为什么不能只基于生育事实？","mode":"wiki","expected_sources":["wiki/raw/...md"],"expected_terms":["照料","生育事实"],"notes":"核心论证召回；把 ...md 换成真实 raw 文件路径"}
+{"question":"这段关于亲亲的原文出处在哪里？","mode":"raw","expected_sources":["wiki/raw/...md"],"expected_terms":["亲亲"],"notes":"直接证据查找；用于检查 raw-only 路由"}
+{"question":"亲亲与仁之间有哪些主要分歧？","mode":"deep","expected_sources":["wiki/raw/...md","wiki/raw/...md"],"expected_terms":["亲亲","仁","分歧"],"notes":"跨文献比较；适合 multi-query + rerank"}
