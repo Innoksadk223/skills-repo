@@ -6,7 +6,7 @@ SKILLS_FLAT="$REPO_DIR/skills"
 
 GROUP_KEYS=(browser paperspine minimax search academic productivity creative tools)
 GROUP_DESC=(
-    "[Browser] browser automation: browser-use, remote-browser, cloud, x402, open-source"
+    "[Browser] browser automation: browser-use, open-source"
     "[PaperSpine] paper writing pipeline: research, rewrite, LaTeX, translate"
     "[Minimax] document generation: DOCX, PDF, XLSX, PPTX"
     "[Search] AnySearch real-time web/vertical search"
@@ -31,7 +31,7 @@ RECOMMENDED_SKILLS=(
 )
 
 HERMES_MAP=(
-    "browser-use:browser-use,remote-browser,cloud,x402,open-source"
+    "browser-use:browser-use,open-source"
     "paperspine:paper-spine,paper-spine-audit,paper-spine-build,paper-spine-citation,paper-spine-humanize,paper-spine-intake,paper-spine-latex,paper-spine-research,paper-spine-rewrite,paper-spine-translate,paper-spine-ui,paper-spine-update"
     "minimax:minimax-docx,minimax-pdf,minimax-xlsx"
     "research:karpathy-wiki,SiliconFlow-rag,social-science-km"
@@ -147,7 +147,7 @@ detect_agents() {
 
 skill_group() {
     case "$1" in
-        browser-use|remote-browser|cloud|x402|open-source) echo "browser" ;;
+        browser-use|open-source) echo "browser" ;;
         paper-spine|paper-spine-*) echo "paperspine" ;;
         minimax-*|pptx) echo "minimax" ;;
         anysearch) echo "search" ;;

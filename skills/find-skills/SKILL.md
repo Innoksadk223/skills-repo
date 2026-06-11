@@ -160,11 +160,11 @@ for d in ../../.agents/skills/*/; do
 done
 ```
 
-### Knowledge from this session
+### Browser Use skills
 
-Skills installed via `npx skills add browser-use/browser-use -g -y` install 5 sub-skills:
-`browser-use`, `cloud`, `open-source`, `remote-browser`, `x402`. All 5 are part of
-the Browser Use ecosystem (core CLI, cloud API, open-source lib, remote sandbox, x402 crypto payments).
+This local skill library keeps the Browser Use ecosystem split into two active
+skills: `browser-use` for CLI automation and `open-source` for Python library
+reference material.
 
 ## Pitfalls & Troubleshooting
 

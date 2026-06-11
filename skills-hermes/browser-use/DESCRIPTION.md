@@ -1,3 +1,3 @@
 ---
-description: Browser automation skills for local, remote, cloud, open-source, and payment-enabled browser-use workflows.
+description: Browser automation skills for browser-use CLI and open-source library workflows.
 ---

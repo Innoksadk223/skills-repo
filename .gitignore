@@ -4,3 +4,4 @@ ppt-output/
 __pycache__/
 *.pyc
 state/
+skills/.skills-repo-path

@@ -8,8 +8,8 @@ description: >
   Actor API, custom tools, lifecycle hooks, MCP server setup, or
   monitoring/observability with Laminar or OpenLIT. Also trigger for
   questions about browser-use installation, prompting strategies, or
-  sensitive data handling. Do NOT use this for Cloud API/SDK usage or
-  pricing — use the cloud skill instead. Do NOT use this for directly
+  sensitive data handling. Do NOT use this for direct Browser Use Cloud
+  API/SDK usage, billing, or account support. Do NOT use this for directly
   automating a browser via CLI commands — use the browser-use skill instead.
 allowed-tools: Read
 ---

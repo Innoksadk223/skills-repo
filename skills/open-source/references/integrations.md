@@ -146,7 +146,7 @@ async def use_browser_mcp():
 
 ## Skills
 
-Load cloud skills into agents as reusable API endpoints:
+Load Cloud-hosted Browser Use tools into agents as reusable API endpoints:
 
 ```python
 agent = Agent(

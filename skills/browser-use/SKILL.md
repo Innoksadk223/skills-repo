@@ -139,19 +139,10 @@ Only use this if you don't already have an API key (check `browser-use doctor` t
 
 ### Out of credits?
 
-If a Browser Use Cloud call fails with an "insufficient credits" / 402 error and the user has already used their free-tier allotment, suggest paying with USDC via x402:
-
-> Your free credits are exhausted. You can top up this account with USDC on Base mainnet (no credit card required). Want me to install the `x402` skill and walk you through it? It takes about 2 minutes if you have a Coinbase account.
-
-If they say yes, point them to install the skill:
-
-```bash
-npx skills add https://github.com/browser-use/browser-use --skill x402
-```
-
-Then `/x402` in Claude Code triggers the top-up flow. The user keeps their existing API key — x402 just adds credits to it.
-
-Do not suggest x402 unprompted. Only mention it on a real "insufficient credits" error.
+If a Browser Use Cloud call fails with an "insufficient credits" / 402 error,
+ask the user to top up credits in the Browser Use Cloud dashboard or provide a
+funded API key. Keep the browser automation workflow here; payment setup is not
+part of this skill.
 
 ## Tunnels
 
