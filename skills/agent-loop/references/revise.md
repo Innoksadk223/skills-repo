@@ -30,7 +30,7 @@ delegate_task(
 {
   "failed_checklist_items": ["标准 2", "标准 4"],
   "root_cause": "Worker 收到的步骤描述缺少输出格式约束，导致产出结构不完整",
-  "failure_type": "prompt_gap | missing_skill | weak_validation | bad_state | budget_limit | external_blocker",
+  "failure_type": "prompt_gap | missing_skill | skipped_skill_gate | weak_validation | bad_state | budget_limit | external_blocker",
   "revised_steps": [
     {
       "original_step_id": 3,
@@ -60,6 +60,7 @@ delegate_task(
 4. **保持已通过项目的 state/ 文件** — 不删除，下一轮 Evaluator 不用重验
 5. **如果 Troubleshooter 诊断无法操作**（根因模糊、修正不具体）→ 在 delta plan 中标注不确定性，但仍尝试执行一轮（最多 3 轮硬上限兜底）
 6. **如果根因是 weak_validation** → 优先加强 checklist 或证据要求，不只改 Worker 文案
+7. **如果根因是 skipped_skill_gate** → 不扩大 prompt；把对应 skill 的 hard gate 写进步骤描述、handoff 和 checklist，并仅重跑受影响步骤
 
 ## 示例：合并后的 delta plan
 

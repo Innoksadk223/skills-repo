@@ -68,3 +68,18 @@ PLAN 未声明预算时，默认护栏：
 
 **问题**：每轮临时写更长 Prompt，不沉淀 Skill，不加强验证。
 **对策**：失败后优先问三件事：是否该调用已有 skill、是否该把重复步骤固化成 skill、是否该加强证据门槛。
+
+### 7. 被其它 Skill 短路
+
+**问题**：任务同时触发 TDD、brainstorming、writing-plans 等 skill，于是跳过 agent-loop，或只说"参考 loop 思想"。
+**对策**：只要任务满足 agent-loop 触发条件，Loop 就是外层调度器。其它 skill 的 hard gate 进入 handoff/checklist；若不能分派 subagent，必须声明限制并本地模拟角色。
+
+### 8. 验收标准模糊导致跳过 Loop
+
+**问题**：目标有具体产物，但 checklist 尚未明确，于是把任务当开放探索处理。
+**对策**：先进入 PLAN，用 brainstorming 或领域 skill 补齐可量化 checklist；只有没有具体产物的开放探索才不触发 Loop。
+
+### 9. 把 Prompt 放在 Skill 前面
+
+**问题**：已有匹配 skill，却写一次性长 prompt 让 Worker 临场发挥。
+**对策**：PLAN 先列 skill/reference，再写步骤。没有匹配 skill 时才允许一次性 prompt，并在 Loop Contract 标注原因。

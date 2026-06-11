@@ -23,13 +23,15 @@ delegate_task(tasks=[
 - **≤3 并行** — 无依赖步骤 batch 分派，上限 3
 - **toolsets 最小集** — 只给完成当前步骤必要的工具，不给多余权限
 - **skill 优先** — Worker goal 中如指定 skill/reference，必须先加载并按其流程执行；不得临时重写一套长 Prompt 替代
+- **hard gate 不绕过** — 指定 skill 若要求用户确认、RED 测试、设计文档或验证命令，Worker 必须完成并返回证据，不能以"Loop 已经有计划/检查"为由跳过
 
 ## Worker 必须做的事
 
 1. **执行分配的步骤** — 严格按 goal 描述的范围，不越界做其他步骤
 2. **读取状态** — 先检查相关 `state/` 文件，复用已通过产出，不重复执行已 PASS 的步骤
 3. **返回产出 + 证据** — 针对每个 checklist 项提供可核验的证据（文件路径、命令输出摘要）
-4. **自检 handoff 条件** — 确认产出物存在且格式正确，在返回中明确写：
+4. **返回 skill 遵循证据** — 如本步骤指定了 skill/reference，说明已加载哪个文件、完成了哪些 hard gate
+5. **自检 handoff 条件** — 确认产出物存在且格式正确，在返回中明确写：
 
 ```
 handoff check: [产出物路径] 已验证存在
@@ -78,6 +80,7 @@ Orchestrator 在分派 Worker 时应在 goal 中指定输出路径，例如：
 |------|------|
 | 产出路径 | Evaluator 独立读取 |
 | 证据路径或命令输出摘要 | 防止口头 PASS |
+| skill/hard gate 证据 | 防止把 skill 降级成一次性 prompt |
 | 下一步建议 | 供 Orchestrator 判断是否需要调整后续 Worker goal |
 
 Orchestrator 可以参考 Worker 的下一步建议，但不能把它当验收结论。

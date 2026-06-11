@@ -11,7 +11,8 @@ Orchestrator 制定和修订执行计划时加载。
 - 完成判定：[最终怎样才算完成，必须可验证]
 - 停止护栏：[最大轮数 / token 或费用上限 / 时间上限]
 - 状态目录：state/
-- 本轮 Skill/Reference：[要调用的 skill 或 reference，不写一次性大 Prompt]
+- 本轮 Skill/Reference：[要调用的 skill 或 reference；没有可复用 skill 时才写一次性 prompt]
+- Skill 优先级：[agent-loop 为外层调度器；列出其它 skill 的 hard gate 如何进入 handoff/checklist]
 ### 步骤
 1. [步骤名] — [做什么 + 做到什么程度]
    - handoff 条件：[产出物路径 / 验证命令 / 必须存在的文件]
@@ -41,6 +42,28 @@ Orchestrator 制定和修订执行计划时加载。
 **每个步骤 → ≥1 个 checklist 项。** 步骤和 checklist 交叉覆盖，不留盲区。
 
 **先选 Skill，再写步骤。** 如果某步是重复能力（搜索、代码审查、文档生成、调试、验证），优先指定已有 skill/reference；只有没有可复用单位时才写一次性执行描述。Loop 的资产是经过测试的 Skill，不是越写越长的 Prompt。
+
+## 多 Skill 组合规则
+
+**agent-loop 管流程，其它 skill 管专业动作。** 当任务同时触发 TDD、brainstorming、writing-plans、frontend-design、academic-search 等技能时，不在它们之间二选一；把它们放进 Loop Contract 和步骤里。
+
+| 场景 | PLAN 写法 |
+|------|-----------|
+| 其它 skill 有 hard gate | 把 gate 写成 handoff 条件或 checklist，例如"设计已获用户确认"、"RED 测试已失败" |
+| 其它 skill 要求先做计划/规格 | 该 skill 的计划/规格步骤成为 ACT 的前置步骤，未通过 mini-check 不进入实现 |
+| 其它 skill 与 Loop 都要求验证 | Loop 的 Evaluator 检查该 skill 的验证证据，而不是替它放行 |
+| brainstorming 已完成设计确认 | 回到 agent-loop 的 PLAN/ACT，不让 brainstorming 接管后续流程 |
+| 目标产物明确但验收标准模糊 | 在 PLAN 中先用 brainstorming 或领域 skill 补齐 checklist，再进入 ACT |
+| 无匹配 skill | 才写一次性 prompt，并在 Loop Contract 标注"无可复用 skill" |
+
+**禁止的降级：**
+- ❌ "这个任务也触发 TDD，所以不用 agent-loop"
+- ❌ "验收标准还不清楚，所以不用 agent-loop"
+- ❌ "brainstorming 已要求写 plan，所以由 writing-plans 接管 agent-loop"
+- ❌ "用户没显式要求 subagent，所以跳过 agent-loop"
+- ❌ "只参考 loop 思想，直接按 prompt 执行"
+
+正确做法：声明 agent-loop 已触发；若不能分派 subagent，说明限制，并在本地按 Worker/Evaluator/Troubleshooter 角色模拟。
 
 ## Handoff 条件设计
 

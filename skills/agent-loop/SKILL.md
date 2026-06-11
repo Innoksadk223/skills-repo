@@ -1,6 +1,6 @@
 ---
 name: agent-loop
-description: Use when undertaking tasks with three or more distinct steps, verifiable outcomes, reusable skills, or independent quality gates; including code changes, bug fixes, research reports, structured writing, and complex workflows. Do not use for single-step tasks, open-ended exploration, or work without measurable acceptance criteria.
+description: Use when a concrete task has any of: three or more steps, verifiable outcomes, reusable skills, independent quality gates, or unclear acceptance criteria that can be clarified; including code changes, bug fixes, research reports, structured writing, and complex workflows. Use as the outer workflow even when other skills also apply. Do not use for single-step requests or open-ended exploration with no concrete deliverable.
 ---
 
 # Agent Loop
@@ -13,6 +13,16 @@ description: Use when undertaking tasks with three or more distinct steps, verif
 - 可复用单位是 Skill，不是 Prompt；PLAN 阶段必须列出本轮要调用的 skill/reference。
 - 状态必须落盘到 `state/`，让 Evaluator 可独立核验，也让失败后能断点续跑。
 - 预算和终止条件是生产护栏：最大轮数、无进展检测、token/时间/费用上限缺一不可。
+
+## 优先级与组合规则
+
+- **触发判定用 OR**：三步以上、可验证结果、可复用 skill、独立质量门槛、或"有具体产物但验收标准模糊"任一满足，即先进入 Loop。
+- **Loop > Prompt**：只要任务命中本 skill 触发条件，必须先进入 Loop；不得只说"参考 loop 思想"后直接用一次性 prompt 开干。
+- **Loop 是外层调度器**：其它 skill/reference 不是竞争入口，而是 PLAN/ACT/CHECK 中被调用的能力单元。
+- **Skill > Prompt**：某步骤已有匹配 skill 时，PLAN 必须列出它，Worker goal 必须要求先加载并遵循它；只有没有可复用 skill 时才写一次性 prompt。
+- **Hard gate 兼容**：其它 skill 若有审批、设计、TDD、验证等硬门槛，Loop 不绕过；把这些门槛写进步骤 handoff 或 checklist。
+- **验收模糊也进 Loop**：目标有具体产物但标准不清时，在 PLAN 中调用 brainstorming 或相关 skill 补齐标准，而不是跳过 Loop。
+- **分派受限要明说**：若环境或权限不能分派 subagent，仍然声明 agent-loop 已触发，并用本地 Worker/Evaluator/Troubleshooter 角色模拟；不得静默降级为普通执行。
 
 ## 流程全貌
 
@@ -55,6 +65,7 @@ FAIL? → REVISE（Troubleshooter 诊断）→ 回到 ACT（仅重跑失败步�
 | 分派 Worker、执行 mini-check | `references/act.md` |
 | 启动 Evaluator 验收 | `references/check.md` |
 | Evaluator 判定 FAIL，需诊断修正 | `references/revise.md` |
+| 任务同时触发多个 skill、需处理 hard gate | `references/plan.md` + 对应 skill |
 | 判断终止/继续、排查异常 | `references/termination.md` |
 
 ## 参考

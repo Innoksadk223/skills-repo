@@ -13,10 +13,11 @@ delegate_task(
 输入：
 - 原始需求（完整）
 - Loop Contract（意图、完成判定、停止护栏、预算剩余）
+- 本轮 Skill/Reference 与各 skill hard gate
 - 验收 Checklist
 - Worker 产出（阅读 state/ 目录下的文件）
 
-输出：逐项 PASS/FAIL + 判定 + 失败项问题描述 + 证据充分性。",
+输出：逐项 PASS/FAIL + 判定 + 失败项问题描述 + 证据充分性 + skill 遵循情况。",
     toolsets=["file"]  # Evaluator 必须能独立读取 state/ 中的 Worker 产出
 )
 ```
@@ -32,6 +33,8 @@ delegate_task(
 - [x] 标准 3 — PASS（证据：pytest -v 输出 12 passed, 0 failed）
 ### 证据充分性
 - state/step1_output.json 可独立核验；state/step2_evidence.txt 缺失
+### Skill 遵循情况
+- 已核验 Worker 按 Loop Contract 加载指定 skill/reference；未提供 hard gate 证据的步骤不得 PASS
 ### 结果：2/3 | 提升：+20% | 判定：REVISE
 ```
 
@@ -48,6 +51,7 @@ delegate_task(
 
 - **默认严格** — Evaluator prompt 中的"宽松=浪费所有人的 token"是设计意图，不可删除
 - 证据不充分 → FAIL：Worker 说"测试通过"但未附 pytest 输出 → 不是 PASS
+- skill/hard gate 证据不充分 → FAIL：PLAN 指定 TDD 但没有 RED/GREEN 输出，或指定 brainstorming 但没有用户确认 → 不是 PASS
 - 只看 Orchestrator 摘要 → FAIL：Evaluator 必须打开 `state/` 中的产出和证据
 - 连续两轮全部 PASS 但交付质量差 → Evaluator 严格度不够，下一轮加强 prompt 中的严格措辞
 - Orchestrator 不应干预 Evaluator 的打分——如果对判定有异议，在 DELIVER 时标注分歧而非私下修改

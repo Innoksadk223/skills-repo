@@ -112,18 +112,35 @@
 
 ## 安装
 
+新手直接运行：
+
 ```bash
 git clone https://github.com/Innoksadk223/skills-repo.git ~/inno-skills
 cd ~/inno-skills
 bash setup.sh
 ```
 
+脚本会进入菜单，默认选择**推荐安装**：只装常用核心技能，避免第一次就装一大堆。
+
+常用高级命令：
+
+```bash
+bash setup.sh --dry-run                         # 先预览，不写文件
+bash setup.sh --preset all                      # 安装全部技能
+bash setup.sh --target codex --groups tools,search
+bash setup.sh --target codex --skills agent-loop,anysearch
+bash setup.sh --update-only                     # 只更新已有技能，不新增
+bash setup.sh --help                            # 查看完整选项
+```
+
 `setup.sh` 会：
 - 自动检测你装了哪些 agent（支持多选 / 全选）
-- **可选分组安装** — 默认全装，也可只选 browser / paperspine / minimax 等
+- **小白模式** — 默认推荐安装，也可预览后再安装
+- **自由选择** — 可按预设、分组或单个 skill 安装
 - 直接将技能文件复制到 agent 目录（非 symlink，独立可迁移）
 - Hermes 自动构建分类目录（browser-use/, paperspine/, minimax/, research/, creative/ 等）
 - 已有技能自动比较更新（`diff -rq`），不一致则覆盖
+- 不删除不在本仓库里的技能
 
 ## 给 Agent 的安装/更新指令
 
@@ -135,6 +152,12 @@ cd ~/inno-skills
 bash setup.sh
 ```
 
+如果用户要求“先看看会安装什么”，执行：
+
+```bash
+bash setup.sh --dry-run
+```
+
 当用户要求更新本技能库时：
 
 1. 先找安装路径：检查 `~/.{agent}/skills/.skills-repo-path` 获取 repo 位置
@@ -142,7 +165,7 @@ bash setup.sh
 ```bash
 cd $(cat ~/.claude/skills/.skills-repo-path)
 git pull
-bash setup.sh
+bash setup.sh --update-only
 ```
 
 执行规则：
