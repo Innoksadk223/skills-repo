@@ -4,7 +4,7 @@ set -e
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILLS_FLAT="$REPO_DIR/skills"
 
-GROUP_KEYS=(browser paperspine minimax search academic productivity creative tools)
+GROUP_KEYS=(browser paperspine minimax search academic productivity creative superpowers tools)
 GROUP_DESC=(
     "[Browser] browser automation: browser-use"
     "[PaperSpine] paper writing pipeline: research, rewrite, LaTeX, translate"
@@ -13,6 +13,7 @@ GROUP_DESC=(
     "[Academic] academic search, paper review, wiki/RAG/deep-reading knowledge management"
     "[Productivity] MinerU document extraction"
     "[Creative] PPT agent and frontend/UI design skills"
+    "[Superpowers] lightweight general methods: clarify, plan, debug, verify, delegate, review"
     "[Tools] agent-loop, skill-planner, cleanup, skill tools, markitdown"
 )
 
@@ -37,6 +38,7 @@ HERMES_MAP=(
     "research:karpathy-wiki,deep-reading-to-wiki,SiliconFlow-rag,social-science-km"
     "productivity:mineru-document-extractor"
     "creative:ppt-agent,frontend-design,taste-skill,ui-ux-pro-max"
+    "superpowers:using-superpowers,brainstorming,writing-plans,systematic-debugging,test-driven-development,verification-before-completion"
 )
 HERMES_SOLO="academic-search academic-paper-review anysearch agent-loop cleanup find-skills grill-me markitdown skill-creator skill-architecture skill-planner capture-gotcha"
 
@@ -154,6 +156,7 @@ skill_group() {
         karpathy-wiki|deep-reading-to-wiki|academic-search|academic-paper-review|SiliconFlow-rag|social-science-km) echo "academic" ;;
         mineru-document-extractor) echo "productivity" ;;
         ppt-agent|frontend-design|taste-skill|ui-ux-pro-max) echo "creative" ;;
+        using-superpowers|brainstorming|writing-plans|systematic-debugging|test-driven-development|verification-before-completion) echo "superpowers" ;;
         cleanup|find-skills|grill-me|markitdown|skill-creator|skill-architecture|skill-planner|agent-loop|capture-gotcha) echo "tools" ;;
         *) echo "" ;;
     esac

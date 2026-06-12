@@ -1,3 +1,3 @@
 ---
-description: Workflow and execution-discipline skills for planning, brainstorming, testing, debugging, parallel delegation, code review, and completion verification.
+description: Six general-purpose method skills with original-style strong triggers and lighter workflows for clarifying goals, planning/executing work, debugging, acceptance checks, verification, isolation, delegation, code review, and branch finishing.
 ---
