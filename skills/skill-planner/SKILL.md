@@ -12,11 +12,13 @@ description: Use when starting any user task before deciding which available ski
 1. 看用户真正要完成什么
 2. 扫描已注入的 skills / plugins / MCP 工具
 3. 只选择会改变执行方式的能力
-4. 按执行顺序输出路由，然后继续任务
+4. 按执行顺序输出路由，但不列出 `skill-planner` 自身，然后继续任务
 
 ## 输出格式
 
-需要专项能力：
+需要 `skill-planner` 之外的专项能力：
+
+`skill-planner` 是内部路由器：必须调用，但永远不作为“📋 任务路由”的条目展示；编号从第一个其它必要能力开始。
 
 ```
 📋 任务路由
@@ -24,7 +26,7 @@ description: Use when starting any user task before deciding which available ski
 ② skill-name → 本轮负责什么
 ```
 
-不需要专项能力：
+不需要 `skill-planner` 之外的专项能力：
 
 ```
 📋 任务路由
@@ -34,7 +36,8 @@ description: Use when starting any user task before deciding which available ski
 ## 核心规则
 
 - **少列**：只列必要项；“可能有用”不算必要。
-- **必列**：用户点名的 skill、任务硬门槛、文件类型/领域强相关工具。
+- **隐藏自身**：`skill-planner` 只负责生成路由，不列入用户可见路由；即使用户点名或任务对象是 `skill-planner`，也只列其它真正执行任务的能力。
+- **必列**：除 `skill-planner` 自身外，用户点名的 skill、任务硬门槛、文件类型/领域强相关工具。
 - **顺序**：外层流程先列，专业能力居中，验证/清理类放最后。
 - **不等确认**：路由后直接开始；用户可随时纠正。
 - **不展开解释**：必要项全部列出，每项一行；不为凑完整而补无关项。
@@ -48,4 +51,4 @@ description: Use when starting any user task before deciding which available ski
 
 ## 原则
 
-路由是开工前的导航，不是计划书。准确优先，简短其次；能不列就不列，关键项不能漏。
+路由是开工前的导航，不是计划书。准确优先，简短其次；能不列就不列，关键项不能漏。路由展示的是接下来要被调度的专项能力，不展示生成路由这一步本身。
