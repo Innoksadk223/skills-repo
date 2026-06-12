@@ -1,6 +1,6 @@
 ---
 name: SiliconFlow-rag
-description: Build, update, inspect, and query local JSONL RAG indexes for social-science Markdown collections using SiliconFlow embeddings. Use for local Markdown evidence retrieval, `检索索引/` maintenance, raw-only search, or wiki-first retrieval from karpathy-wiki pages; rerank and multi-query are optional explicit modes.
+description: Use when building, updating, inspecting, or querying local JSONL RAG indexes for social-science Markdown collections, including raw evidence retrieval, source discovery for wiki expansion, wiki-first recall from karpathy-wiki pages, and `检索索引/` maintenance.
 ---
 
 # SiliconFlow RAG
@@ -8,6 +8,8 @@ description: Build, update, inspect, and query local JSONL RAG indexes for socia
 Build local JSONL indexes from Markdown, query them for evidence snippets, and use raw source chunks as the citation basis.
 
 This skill does not convert source documents and does not build the wiki. Use `markitdown` for source conversion and `karpathy-wiki` for structured pages such as `claims/`, `concepts/`, `entities/`, and `comparisons/`.
+
+For user-directed wiki expansion, this skill's role is **source discovery**: return candidate `wiki/raw/` paths, why they matter, key terms, and retrieval limits. It does not create wiki nodes and does not treat wiki hits as proof.
 
 ## Load references when needed
 
@@ -67,6 +69,43 @@ python3 skills/SiliconFlow-rag/scripts/query_index.py \
   --question "用户的问题"
 ```
 
+### Source discovery for wiki expansion
+
+Use when the user names a direction they want to deepen, such as "补充儿童教育", and the next step is to find which raw files deserve `deep-reading-to-wiki`.
+
+Start from wiki-first if the direction is conceptual or argumentative:
+
+```bash
+python3 skills/SiliconFlow-rag/scripts/query_index.py \
+  --wiki-first \
+  --wiki-index-dir 检索索引/wiki \
+  --raw-index-dir 检索索引/raw \
+  --question "哪些原始资料可以补充儿童教育在孝、亲亲、修身中的作用？"
+```
+
+Then broaden with raw-only when source wording may differ from the wiki wording:
+
+```bash
+python3 skills/SiliconFlow-rag/scripts/query_index.py \
+  --index-dir 检索索引/raw \
+  --question "儿童教育 家庭教育 爱敬 积浸 身教 保傅 内则 小学" \
+  --multi-query \
+  --expand-context \
+  --context-window 1
+```
+
+Return a shortlist, not a final wiki answer:
+
+| Field | Meaning |
+|---|---|
+| source path | Candidate `wiki/raw/...md` file. |
+| why relevant | Which user intent or wiki gap it may address. |
+| key terms | Terms that made the source retrievable. |
+| next step | `deep-reading-to-wiki`, direct `karpathy-wiki`, or ignore for weak evidence. |
+| limits | Missing context, weak hit, stale index, or needs broader query. |
+
+If fewer than three usable raw sources appear, report that limitation and broaden the query or check index freshness before sending anything to deep reading.
+
 ### Optional query modes
 
 Use rerank only when the user asks for better ordering, precise ranking, rerank mode, or similar wording:
@@ -110,6 +149,7 @@ python3 skills/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引/w
 
 - Treat script output as evidence, not as the final answer.
 - In wiki-first mode, use `# Wiki Hits` to understand the conceptual/argument path and `# Raw Evidence` for citable evidence.
+- In source-discovery mode, answer with candidate raw files first; do not synthesize final claims before `deep-reading-to-wiki` or `karpathy-wiki`.
 - Cite source paths shown by the script.
 - Do not claim a paper says something unless raw evidence supports it.
 - If retrieval returns weak or empty evidence, say so and suggest updating the relevant index or broadening the question.
@@ -120,5 +160,6 @@ python3 skills/SiliconFlow-rag/scripts/query_index.py --index-dir 检索索引/w
 - Indexing only `wiki/raw/` when the user asks conceptual or argumentative questions. Build the wiki index too.
 - Mixing raw and wiki into one index too early. Prefer two indexes so wiki explains and raw proves.
 - Treating wiki hits as proof. Wiki pages guide recall; raw snippets provide evidence.
+- Sending a user's topic directly to wiki writing before locating raw sources.
 - Forgetting `--exclude-dirs raw,_archive` when building the wiki index.
 - Relying on rerank for recall. Rerank only reorders candidates; retrieval and wiki expansion decide what enters the candidate pool.

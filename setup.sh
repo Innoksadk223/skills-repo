@@ -10,7 +10,7 @@ GROUP_DESC=(
     "[PaperSpine] paper writing pipeline: research, rewrite, LaTeX, translate"
     "[Minimax] document generation: DOCX, PDF, XLSX, PPTX"
     "[Search] AnySearch real-time web/vertical search"
-    "[Academic] academic search, paper review, wiki/RAG knowledge management"
+    "[Academic] academic search, paper review, wiki/RAG/deep-reading knowledge management"
     "[Productivity] MinerU document extraction"
     "[Creative] PPT agent and frontend/UI design skills"
     "[Tools] agent-loop, skill-planner, cleanup, skill tools, markitdown"
@@ -34,7 +34,7 @@ HERMES_MAP=(
     "browser-use:browser-use"
     "paperspine:paper-spine,paper-spine-audit,paper-spine-build,paper-spine-citation,paper-spine-humanize,paper-spine-intake,paper-spine-latex,paper-spine-research,paper-spine-rewrite,paper-spine-translate,paper-spine-ui,paper-spine-update"
     "minimax:minimax-docx,minimax-pdf,minimax-xlsx"
-    "research:karpathy-wiki,SiliconFlow-rag,social-science-km"
+    "research:karpathy-wiki,deep-reading-to-wiki,SiliconFlow-rag,social-science-km"
     "productivity:mineru-document-extractor"
     "creative:ppt-agent,frontend-design,taste-skill,ui-ux-pro-max"
 )
@@ -151,7 +151,7 @@ skill_group() {
         paper-spine|paper-spine-*) echo "paperspine" ;;
         minimax-*|pptx) echo "minimax" ;;
         anysearch) echo "search" ;;
-        karpathy-wiki|academic-search|academic-paper-review|SiliconFlow-rag|social-science-km) echo "academic" ;;
+        karpathy-wiki|deep-reading-to-wiki|academic-search|academic-paper-review|SiliconFlow-rag|social-science-km) echo "academic" ;;
         mineru-document-extractor) echo "productivity" ;;
         ppt-agent|frontend-design|taste-skill|ui-ux-pro-max) echo "creative" ;;
         cleanup|find-skills|grill-me|markitdown|skill-creator|skill-architecture|skill-planner|agent-loop|capture-gotcha) echo "tools" ;;

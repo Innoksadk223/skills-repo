@@ -20,7 +20,7 @@
 3. 再问用户想重点了解哪一组。
 4. 对复杂组单独追问：
    - **PaperSpine 论文写作**：是否要了解研究、引用、改写、LaTeX、翻译、审校全流程。
-   - **知识库 / Obsidian / RAG**：是否要了解建库、看图谱、提问、SiliconFlow API Key。
+   - **知识库 / Obsidian / RAG**：是否要了解建库、长文深读、看图谱、提问、SiliconFlow API Key。
    - **文档生成**：问用户主要关心 Word、PDF、Excel、PPT，还是全部。
    - **浏览器自动化**：问用户是网页搜索、截图、填表，还是抓取数据。
    - **实时搜索 / AnySearch**：问用户是普通网页搜索、垂直领域搜索、批量搜索，还是提取网页正文；说明它是 MCP + skill + API，API Key 可选，官网：https://www.anysearch.com/。
@@ -87,7 +87,7 @@ AnySearch 是 MCP + skill + API 的组合：MCP 负责接入搜索工具，skill
 > 「把这几篇论文整理成 Obsidian 图谱」  
 > 「基于这个知识库回答：A 和 B 有什么区别？」
 
-知识库流程比较复杂，详细说明见 [`KB-GUIDE.md`](KB-GUIDE.md)。
+知识库流程会先把原文放进 `wiki/raw/`；长书、理论文献或补库候选源会先生成 `reading_dossiers/` 深读档案，再编译成 Obsidian 可看的 claims / concepts / entities / comparisons 图谱。详细说明见 [`KB-GUIDE.md`](KB-GUIDE.md)。
 
 ### 🛠 工具类
 

@@ -12,6 +12,8 @@ Core principle: **the wiki must be graph-readable, not just human-readable.** Hu
 
 **Division of labor:** The human curates sources and directs analysis. The agent captures sources, extracts concepts/entities/comparisons/claims, cross-links pages, maintains navigation, and keeps the graph healthy.
 
+When the user wants to enrich an existing area of the wiki (for example, "补充儿童教育"), treat it as **user-directed expansion**: orient to the current graph, identify the gap, find raw evidence, use any available `reading_dossiers/` deep-reading handoff, then compile formal wiki nodes. Do not start by writing pages from general memory.
+
 ## Wiki Location
 
 Set via `WIKI_PATH` environment variable (e.g. in `~/.hermes/.env`). If unset, default to `~/wiki`.
@@ -103,6 +105,7 @@ When creating a wiki:
 | 健康检查 (lint) | `references/lint.md` | 运行 `scripts/lint.py` → 解析 JSON → 汇报 + 研究建议 |
 | 批量摄入 (bulk) | `references/bulk-ingest.md` | 5+ 来源的并行/顺序策略 |
 | 综述/入口 (synthesis) | `references/synthesis.md` | 轻量入口页；论证型 synthesis 必须抽取 claims |
+| 用户意图补库 (user-directed expansion) | `references/query.md` + `references/ingest.md` + `references/claims.md` | 用户指出想补某一主题时，先找 raw 来源与 deep-reading dossier，再正式入图谱 |
 | Obsidian 集成 | `references/obsidian-setup.md` | 图谱路径分组、Dataview、raw 排除 |
 
 ## Bundled Resources
@@ -127,6 +130,20 @@ search_files "*.md" target="files" path="$WIKI"
 search_files "type: claim" path="$WIKI/claims" file_glob="*.md"
 read_file "$WIKI/log.md" offset=<last 20 lines>
 ```
+
+## User-Directed Expansion
+
+Use this when the user says they want to add, deepen, rebalance, or supplement an area already visible in the wiki, such as "我想补充儿童教育".
+
+1. Orient first: read `SCHEMA.md`, `index.md`, recent `log.md`, and search existing wiki pages for the user's topic.
+2. Identify the graph gap in plain language: missing concept, thin claim, missing objection, weak comparison, missing source, or shallow synthesis.
+3. Find raw evidence before writing: use available RAG/source-discovery workflow from `social-science-km` or `SiliconFlow-rag`; do not rely on wiki pages alone.
+4. If no usable raw source is found, stop and report the source-discovery gap; do not create placeholder claims from general knowledge.
+5. For long, theory-heavy, or thesis-critical raw sources, require a `deep-reading-to-wiki` dossier before formal wiki edits.
+6. When a dossier exists, verify its `source_raw`, `user_intent` when present, high-value context capsules, and raw anchors before compiling it.
+7. Compile only after evidence is located: create/update `concepts/`, `claims/`, `comparisons/`, `entities/`, and lightweight `synthesis/` according to existing rules.
+8. Preserve the user's stated inclination as a research direction, not as evidence. Raw sources support claims; the user's interest only chooses what to investigate.
+9. Update `index.md` and `log.md`; if the expansion touches 10+ existing pages, confirm scope before mass-editing.
 
 ## Argument Structure Rule
 
@@ -157,6 +174,8 @@ When content is fully superseded or domain scope changes:
 
 - **Never modify files in `raw/`** except source capture/re-ingest; corrections go in wiki pages.
 - **Always orient first** — read SCHEMA + index + recent log before working.
+- **Don't turn user inclination into claims** — use it to choose a search direction, then locate raw evidence.
+- **Don't compile a dossier blindly** — check that its raw anchors still support the proposed wiki nodes.
 - **Always update index.md and log.md** — skipping this makes the wiki degrade.
 - **Don't create pages outside the domain** — follow SCHEMA thresholds.
 - **Don't create graph-dead pages** — every page should link to at least 2 other pages; create stubs for dead wikilinks.
@@ -172,6 +191,8 @@ When content is fully superseded or domain scope changes:
 ## Verification Checklist
 
 - [ ] `SCHEMA.md`, `index.md`, and recent `log.md` were read before edits.
+- [ ] User-directed expansion found usable raw evidence before writing formal pages.
+- [ ] If a `reading_dossiers/` handoff was used, its raw anchors and context risks were checked.
 - [ ] New/updated pages have required frontmatter and Chinese wikilinks.
 - [ ] `claims/` exists when the wiki contains argument-oriented material.
 - [ ] Core claims are listed in `index.md`; non-core claims are discoverable through links.

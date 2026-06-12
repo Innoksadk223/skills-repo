@@ -21,12 +21,12 @@
 > 「还可以安装一下 obra/superpowers，很出名，在 https://github.com/obra/superpowers。」
 
 介绍示例：
-> 「这个包有 36 个技能，分 8 组：
+> 「这个包有 37 个技能，分 8 组：
 >  [Browser] 浏览器自动化 ×1 — 网页操控
 >  [PaperSpine] 论文写作 ×12 — 研究到 LaTeX 排版全流程
 >  [Minimax] 文档生成 ×3 — DOCX/PDF/XLSX
 >  [Search] 实时搜索 ×1 — AnySearch 实时网页搜索、垂直领域搜索、URL 内容提取（MCP + skill + API）
->  [Academic] 学术研究 ×5 — 图谱化知识库、论证节点、学术搜索、审阅、wiki-first RAG 检索
+>  [Academic] 学术研究 ×6 — 图谱化知识库、深读档案、论证节点、学术搜索、审阅、wiki-first RAG 检索
 >  [Productivity] 生产力 ×1 — MinerU 文档解析、PDF/OCR/表格/公式提取
 >  [Creative] 创作 ×4 — 专业 PPT 演示文稿、前端与 UI 设计
 >  [Tools] 工具 ×9 — 创建技能、架构设计、迭代循环、路由规划、清理、发现、质询、环境踩坑记录、文件转 Markdown」
@@ -38,7 +38,7 @@
 >   "审一下这篇论文" → 自动用 academic-paper-review
 >  想精准指定就说 "用 browser-use 打开这个网页"。」
 
-## 技能速查（36 个）
+## 技能速查（37 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
@@ -46,7 +46,7 @@
 | 📝 PaperSpine | paper-spine + 11 子模块 (12) | 学术论文全流程：研究→引用→改写→LaTeX→翻译→审校<br>💡 Claude Code 用户建议用 [Academic Research Skills](https://github.com/Imbad0202/academic-research-skills) 替代，功能更强且有原生插件支持 |
 | 📄 Minimax | minimax-docx / minimax-pdf / minimax-xlsx (3) | DOCX/PDF/XLSX 专业文档生成 |
 | 🔎 搜索 | anysearch (1) | AnySearch 实时网页搜索、垂直领域搜索、批量搜索、URL 内容提取；支持 MCP + skill + API，官网：https://www.anysearch.com/ |
-| 🔬 学术 | karpathy-wiki / academic-search / academic-paper-review / SiliconFlow-rag / social-science-km (5) | 图谱化知识库、论证节点、学术搜索、论文审阅、wiki-first RAG 检索 |
+| 🔬 学术 | karpathy-wiki / deep-reading-to-wiki / academic-search / academic-paper-review / SiliconFlow-rag / social-science-km (6) | 图谱化知识库、深读档案、论证节点、学术搜索、论文审阅、wiki-first RAG 检索 |
 | 📚 生产力 | mineru-document-extractor (1) | MinerU 文档解析：PDF、扫描件 OCR、表格、公式、多格式转 Markdown |
 | 🎨 创作 | ppt-agent / frontend-design / taste-skill / ui-ux-pro-max (4) | 专业 PPT 演示文稿、前端页面、UI/UX 设计与反模板化审美 |
 | 🛠 工具 | skill-creator / skill-architecture / skill-planner / agent-loop / cleanup / find-skills / grill-me / capture-gotcha / markitdown (9) | 技能创建、模块化架构、任务路由、四角色迭代循环、清理、发现、质询、环境踩坑记录、文件转 Markdown |
@@ -75,6 +75,7 @@
 | karpathy-wiki | Karpathy Wiki：图谱可读 Markdown 知识库，支持 claims / concepts / entities / comparisons | **Hermes 内置自改版** |
 | academic-search | 学术搜索、引用分析、OA PDF 判定 | [ustc-ai4science](https://github.com/ustc-ai4science/academic-search) |
 | academic-paper-review | 论文审阅、方法论评估、同行评审 | [bytedance/deer-flow](https://github.com/bytedance/deer-flow) |
+| deep-reading-to-wiki | 长书、章节、理论文献或补库候选源的深读档案层，先产出 `reading_dossiers/` 再交给 wiki 编译 | 本仓库 |
 | SiliconFlow-rag | 为 raw 原文与 wiki 结构建立双索引，支持 wiki-first 检索、硅基流动嵌入与可选重排 | 本仓库 |
 | social-science-km | 协调源文件转 Markdown、图谱 wiki、双索引 RAG 与论文知识库问答 | 本仓库 |
 | mineru-document-extractor | MinerU 文档解析：PDF、扫描件 OCR、表格、公式、多格式转 Markdown；配合 MinerU MCP 使用 | [OpenDataLab MinerU Ecosystem](https://mineru.net/ecosystem) |
@@ -92,17 +93,18 @@
 | taste-skill | 反模板化前端设计审美与落地检查 | 本仓库 |
 | ui-ux-pro-max | UI/UX 设计、配色、字体、布局与多技术栈界面实现参考 | 本仓库 |
 
-## 知识库构建（五技能联合）
+## 知识库构建（六技能联合）
 
-把一堆论文变成可搜索、可对话、可可视化的知识库，由五个技能接力完成：
+把一堆论文变成可搜索、可对话、可可视化的知识库，由六个技能接力完成：
 
 | 步骤 | 技能 | 做什么 |
 |------|------|--------|
 | 1 | **mineru-document-extractor** | PDF 优先入口；扫描件、古籍影印本、复杂表格/公式 → 高保真 Markdown |
 | 1b | **markitdown** | 非 PDF 文档的轻量转换；失败、空输出或乱码时交给 MinerU 兜底 |
-| 2 | **karpathy-wiki** | 文本 → claims 论证节点 + concepts/entities/comparisons 图谱页面 + 轻量 synthesis |
-| 3 | **SiliconFlow-rag** | raw 原文 + wiki 结构 → 双向量索引，查询默认 wiki-first |
-| 协调 | **social-science-km** | 调度以上步骤，一步到位 |
+| 2 | **deep-reading-to-wiki** | 长书、理论文献、补库候选源 → `reading_dossiers/` 深读档案，避免浅层总结直接入库 |
+| 3 | **karpathy-wiki** | raw + 深读档案 → claims 论证节点 + concepts/entities/comparisons 图谱页面 + 轻量 synthesis |
+| 4 | **SiliconFlow-rag** | raw 原文 + wiki 结构 → 双向量索引，查询默认 wiki-first |
+| 协调 | **social-science-km** | 调度以上步骤，一步到位；补库时先找 raw 证据，再深读，再入图谱 |
 
 > MinerU 需要 **skill + MCP** 两部分：`mineru-document-extractor` skill 已在本仓库；MinerU MCP 需要按 https://mineru.net/ecosystem 的说明安装/配置。
 
@@ -186,10 +188,10 @@ npx skills add -g browser-use    # browser-use 全系列
 skills-repo/
 ├── skills/              ← 扁平结构（Claude Code / Codex）
 ├── skills-hermes/       ← 分类结构（Hermes；按用途分组）
-|   ├── browser-use/     ← 5 个技能
+|   ├── browser-use/     ← 浏览器自动化
 |   ├── paperspine/      ← 12 个技能
 │   ├── minimax/         ← 3 个技能
-|   ├── research/        ← 3 个知识库/RAG 技能
+|   ├── research/        ← 4 个知识库/RAG/深读技能
 |   ├── productivity/    ← MinerU 文档解析
 │   ├── creative/        ← PPT Agent
 │   ├── anysearch         ← 实时搜索（solo symlink）
