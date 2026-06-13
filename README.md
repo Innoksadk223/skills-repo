@@ -38,6 +38,8 @@
 >   "生成一份周报 Word" → 自动用 minimax-docx
 >   "审一下这篇论文" → 自动用 academic-paper-review
 >  想精准指定就说 "用 browser-use 打开这个网页"。」
+>
+> 「更复杂的任务可以直接说结果，AI 会选择对应工作流入口，比如：资料建知识库、复杂任务循环推进、论文/报告从研究到成稿。」
 
 ## 技能速查（43 个）
 
@@ -51,7 +53,19 @@
 | 📚 生产力 | mineru-document-extractor (1) | MinerU 文档解析：PDF、扫描件 OCR、表格、公式、多格式转 Markdown |
 | 🎨 创作 | ppt-agent / frontend-design / taste-skill / ui-ux-pro-max (4) | 专业 PPT 演示文稿、前端页面、UI/UX 设计与反模板化审美 |
 | 🧭 Superpowers | using-superpowers / brainstorming / writing-plans / systematic-debugging / test-driven-development / verification-before-completion (6) | 轻量通用方法论：触发保留原工作流强度，6 个入口覆盖目标澄清、计划/执行、验收优先、排查、验证、隔离、委派、代码审查和分支收尾 |
-| 🛠 工具 | skill-creator / skill-architecture / skill-planner / agent-loop / cleanup / find-skills / grill-me / capture-gotcha / markitdown (9) | 技能创建、模块化架构、任务路由、四角色迭代循环、清理、发现、质询、环境踩坑记录、文件转 Markdown |
+| 🛠 工具 | skill-creator / skill-architecture / skill-planner / agent-loop / cleanup / find-skills / grill-me / capture-gotcha / markitdown (9) | 技能创建、模块化架构、任务路由、Agent 编排循环、清理、发现、质询、环境踩坑记录、文件转 Markdown |
+
+## 常用工作流入口
+
+这些不是要用户背下来的命令，而是给 Agent 的路由提示：用户只要说目标，AI 就按场景进入对应流程。
+
+| 场景 | 工作流入口 | 适合什么时候用 | 产物 |
+|------|----------|----------------|------|
+| 资料变知识库 | **social-science-km** 调度：**mineru-document-extractor / markitdown** → **deep-reading-to-wiki** → **karpathy-wiki** → **SiliconFlow-rag** | 手里有 PDF、Word、网页、长书或论文文件夹，想让 AI 能检索、问答和画知识图谱 | Markdown 原文、`reading_dossiers/` 深读档案、图谱化 wiki、可查询索引 |
+| 复杂任务循环推进 | **agent-loop** | 任务有多步、可验收、需要多个执行者或反馈者，或者验收标准还不够清楚 | `state/` 过程记录、Worker 产出、Feedbacker 反馈、主 Agent 验收结果 |
+| 论文/报告写作 | **paper-spine** 技能组 | 要写、改写或重建论文、综述、竞赛论文、研究报告，并输出 LaTeX/PDF/Word | 研究档案、引用支持库、写作矩阵、最终 LaTeX/PDF/Word、可选中文翻译包 |
+
+其中 `agent-loop` 和 `paper-spine` 本身就是工作流程入口，不是单个步骤；知识库链路的详细版见下面的六技能联合流程。
 
 ### 详细
 
@@ -84,10 +98,10 @@
 | skill-creator | 创建新的 AI 技能 | [clawhub.ai](https://clawhub.ai) |
 | skill-architecture | 模块化技能架构设计：松耦合、高内聚、断点续传 | 本仓库 |
 | skill-planner | 收到任务时规划应调用的 skill 组合与顺序 | 本仓库 |
-| agent-loop | 四角色分离迭代循环：Orchestrator 规划、Worker 执行、Evaluator 打分、Troubleshooter 诊断修正，消除自评偏差 | 本仓库 |
+| agent-loop | 反馈驱动的 Agent 编排循环：Orchestrator 规划与验收、Worker 执行、Feedbacker 审核并写修正提示 | 本仓库 |
 | cleanup | 任务完成后清理临时文件 | — |
-| find-skills | 发现和安装社区技能 | — |
-| grill-me | 深度质询你的方案/设计决策 | — |
+| find-skills | 发现和安装社区技能 | [vercel-labs/skills](https://github.com/vercel-labs/skills/tree/main/skills/find-skills) / Claude Code 社区生态 |
+| grill-me | 深度质询你的方案/设计决策 | [mattpocock/skills](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me) |
 | capture-gotcha | 记录跨任务复用的环境类踩坑经验 | 本仓库 |
 | markitdown | 使用 Microsoft MarkItDown 将 PDF、Office、HTML 等文件转换为 Markdown | [microsoft/markitdown](https://github.com/microsoft/markitdown) |
 | using-superpowers | 轻量选择方法论技能，避免把小任务流程化 | 本仓库，轻量改编自 [obra/superpowers](https://github.com/obra/superpowers) |
@@ -96,14 +110,14 @@
 | systematic-debugging | 对失败、异常行为或反复尝试无效的问题做根因排查 | ↑ |
 | test-driven-development | 先定义验收条件，再行动；代码场景可用红绿重构 | ↑ |
 | verification-before-completion | 完成前核验证据；内含代码审查、反馈处理和分支收尾能力 | ↑ |
-| ppt-agent | 专业 PPT 演示文稿全流程生成，输出 HTML/预览/PPTX 管线 | 本仓库 |
-| frontend-design | 创建高质量前端页面、组件和 Web App | 本仓库 |
-| taste-skill | 反模板化前端设计审美与落地检查 | 本仓库 |
-| ui-ux-pro-max | UI/UX 设计、配色、字体、布局与多技术栈界面实现参考 | 本仓库 |
+| ppt-agent | 专业 PPT 演示文稿全流程生成，输出 HTML/预览/PPTX 管线 | [Akxan/ppt-agent-skill](https://github.com/Akxan/ppt-agent-skill) |
+| frontend-design | 创建高质量前端页面、组件和 Web App | [Claude Code frontend-design](https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md) / Claude Code 社区生态 |
+| taste-skill | 反模板化前端设计审美与落地检查 | [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill) |
+| ui-ux-pro-max | UI/UX 设计、配色、字体、布局与多技术栈界面实现参考 | [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) |
 
 ## 知识库构建（六技能联合）
 
-把一堆论文变成可搜索、可对话、可可视化的知识库，由六个技能接力完成：
+把一堆论文变成可搜索、可对话、可视化的知识库，由六个技能接力完成：
 
 | 步骤 | 技能 | 做什么 |
 |------|------|--------|
@@ -204,6 +218,6 @@ skills-repo/
 │   ├── creative/        ← PPT Agent
 │   ├── superpowers/     ← 6 个轻量通用方法论技能入口
 │   ├── anysearch         ← 实时搜索（solo symlink）
-│   └── agent-loop        ← 四角色迭代循环（solo symlink）
+│   └── agent-loop        ← 反馈驱动 Agent 编排循环（solo symlink）
 └── setup.sh
 ```
