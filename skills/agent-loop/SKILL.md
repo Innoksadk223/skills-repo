@@ -1,55 +1,42 @@
 ---
 name: agent-loop
-description: "Use when a concrete task has multiple steps, verifiable outcomes, reusable skills, independent quality gates, or unclear acceptance criteria that can be clarified. Also use when explicitly invoked as agent-loop."
+description: "通用高质量输出工作流。将主Agent变为执行引擎，分派一个可持续交互的子Agent作为审核者，通过互相拉扯循环提升质量，直到最终交付。"
 ---
 # Agent Loop
-**不要给 Agent 写 Prompt，写 Loop——让 Loop 给 Agent 写 Prompt。**
-Agent Loop 是通用 Agent 编排循环——产出是经过多轮 Worker 执行 + Feedbacker 反馈修正后的最终交付物。主 agent 只做验收，不替 Worker 干活。
-## 概念内核
-- **Loop = cron + 决策者**。cron 调度，Feedbacker 判断每轮下一步。可以引入辅助脚本 / webhook 来实现自动化调度以推进循环。
-- **Worktree = `state/` 目录**。Worker 产出写入 worktree，Feedbacker 读取并反馈；同一 Worker 会话持续修正直到通过。
-- **Skill > Prompt**。可复用单位是 Skill，PLAN 必须列出本轮 skill/reference。
-## 优先级与组合规则
-- **调用即显式触发**：用户点名本 skill 或任务命中条件，即进入 Loop。
-- **Loop > Prompt**：命中条件即先进入 Loop，不得用一次性 prompt 绕过。
-- **Loop 是外层调度器**：其他 skill 是 PLAN/ACT/FEEDBACK/VERIFY 中被调用的能力单元。
-- **Skill > Prompt**：有匹配 skill 时 PLAN 必须列出，Worker goal 必须加载。
-- **Hard gate 兼容**：其他 skill 的审批/设计/TDD/验证硬门槛写进 handoff 或 checklist，不绕过。
-- **可续写优先**：修正轮优先复用原 Worker 会话；不支持时走 state replay（详见 `references/act.md`）。
-## 流程全貌
-```
-SOCRATIC INTAKE（Orchestrator 先通过苏格拉底式提问明确目标、约束、停止条件，并写入本地）
-  ↓
-PLAN（Orchestrator 输出计划 + checklist + handoff 条件）
-  ↓
-ACT（分派 1-N 个 Worker subagent 执行 → 写入 state/ → mini-check）
-  ↓
-FEEDBACK（分派 1 个可持续对话（stateful）的 Feedbacker subagent 审核 state/ → 针对性写修正 prompt）
-  ↓
-ACT-FIX（将 Feedbacker 的修正 prompt 发回原 Worker 会话；若不支持续写则走 state replay 流程 → 更新 state/）
-  ↓
-  ↑—— 如果 Feedbacker 判断仍需修正，向此可持续对话的 Feedbacker 发送新产出让其继续反馈 → ACT-FIX
-  ↓
-VERIFY（Orchestrator 最终比对需求和成果进行验收）
-  ↓
-PASS 且是最终成果 → DELIVER
-PASS 但交付物本身指出可操作改进项 → 自动进入 FEEDBACK → ACT-FIX（不询问用户）
-FAIL → FEEDBACK → ACT-FIX（继续修正）
-```
-## 角色总览
-- **Orchestrator**（主 agent）：PLAN + VERIFY + DELIVER。先想后做，不替 Worker 执行。
-- **Worker(s)**：→ 详见 `references/act.md` 的 Worker 角色定义与执行流程。
-- **Feedbacker**（1 个）：→ 详见 `references/feedback.md` 的 Feedbacker 角色定义。只派出一个可持续对话（stateful）的实例。
-## 终止条件
-→ 详见 `references/termination.md`（含陷阱排查表）。
-## Reference 加载决策表
-| 你要做什么 | 加载 |
-|-----------|------|
-| 制定计划、checklist、worktree 结构 | `references/plan.md` |
-| 分派 Worker、执行、修正回合 | `references/act.md` |
-| 判定宿主 worker 能力 | `references/hosts/<host>.md` |
-| 分派 Feedbacker、生成修正 prompt | `references/feedback.md` |
-| 对照 checklist 验收交付物 | `references/verify.md` |
-| 终止判断、代价、陷阱 | `references/termination.md` |
-| 无法分派时的本地模拟 | `references/fallback-local.md` |
-| 通过/终止后的交付 | `references/deliver.md` |
+
+**“不要给 Agent 写 Prompt，写 Loop——让 Loop 给 Agent 写 Prompt。”**
+
+Agent Loop 是一个确保高质量产出的通用工作流，受到 Peter Steinberger 和 Boris Cherny 的理念启发。适用于 Codex、Claude Code 或 Hermes。
+本技能的本质是建立一个内部监督机制：主 Agent 负责执行和迭代，子 Agent 负责审核和写 Prompt，两者形成闭环。
+
+## 核心流程（必须严格按顺序执行）
+
+### 1. PLAN（计划与 Intake）
+- **先想后做**：不要直接开始写代码或执行任务。不管是否调用专门的 planning 技能，必须先与用户进行苏格拉底式提问。
+- **明确要素**：澄清用户真实需求、目的、验收标准以及**循环的终止条件**（如最大轮数、资源限制）。
+- **本地落盘**：将明确后的计划、需求和终止条件**强制写入本地文件**（如 `plan.md` 或 `state/loop_contract.md`）。
+
+### 2. ACT（主 Agent 执行）
+- 主 Agent 根据写好的本地计划，在**当前主会话中直接执行任务**，调用相应的工具（写代码、建文件、执行命令等）。
+- 在此阶段，主 Agent 可以正常调用任何其他相关技能（如搜索、调试等），不影响正常技能组合。
+- 必须产出实质性的内容（文件、代码、完整的文档等）。
+
+### 3. AUDIT（分派审核子 Agent）
+- **分派**：主 Agent 完成初步产出后，分派一个**可持续交互（保持会话存活）**的审核子 Agent（Subagent）。
+- **职责**：该子 Agent 不亲自改代码，而是严格读取主 Agent 的产出与初始落盘计划进行交叉审查。对于发现的问题（缺陷、不符合需求等），**针对性地写出可供主 Agent 执行的修正 Prompt**。
+- **省 Token 策略**：因为子 Agent 是可持续对话的，主 Agent 在后续轮次中只需极简告知（例如“已按要求修改，请重审最新文件”），不需要每次重发大量前置提示词。
+
+### 4. LOOP（迭代循环）
+- 主 Agent 收到子 Agent 生成的“修正 Prompt”后，根据该 Prompt 继续在主会话中迭代、修改。
+- 每次修改完成后，将成果再次交回给该子 Agent 进行审查。
+- **自动化流转**：此循环过程可借助脚本、Hook 或自动化工具辅助流转。循环直至子 Agent 审核通过，或触发设定的终止条件。
+
+### 5. VERIFY（最终验收）
+- 循环结束，子 Agent 盖章通过后。
+- 主 Agent 亲自将最终成果与第一步落盘的计划（原始需求）进行最终比对。
+- 确认完全符合目标后，直接向用户交付最终结果。
+
+## 关键要求
+- **不打扰用户**：我要的是最终结果。在循环迭代（ACT <-> AUDIT）期间，主 Agent 和子 Agent 内部解决问题，不要因中间状态频繁向用户提问。
+- **主从倒置**：在这个 Loop 中，主 Agent 是干活的执行者（被 Prompt 驱动），子 Agent 才是 Prompt 的制定者和审核官。
+- **状态持久化**：计划必须落盘，审核子 Agent 的会话必须存活。
