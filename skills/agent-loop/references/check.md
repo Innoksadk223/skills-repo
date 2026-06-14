@@ -1,6 +1,8 @@
 # VERIFY 阶段手册
 
-Orchestrator 亲自对照原始需求和 checklist 验收任务是否完成时加载。
+Orchestrator 亲自对照原始需求和 checklist 验收 worktree 中的最终交付物时加载。
+
+**验收对象是 worktree 里的产出物，不是计划。** PLAN 写得好不好不重要——`state/` 里的文件是否达标才是唯一标准。
 
 ## 验收输入
 
@@ -8,10 +10,9 @@ Orchestrator 亲自对照原始需求和 checklist 验收任务是否完成时�
 
 - 原始需求（完整）
 - Loop Contract（意图、完成判定、停止护栏、预算剩余）
-- 本轮 Skill/Reference 与各 skill hard gate
 - 验收 Checklist
-- Worker 产出（阅读 state/ 目录下的文件）
-- Feedbacker 报告（若有，阅读修正 prompt / delta plan）
+- Worker 产出（阅读 state/ 目录下的文件，不是看 Worker 的总结摘要）
+- Feedbacker 报告（阅读 state/feedback_round_N.json，含判定和修正历史）
 - 验证命令输出或证据文件
 
 ## 验收输出格式
@@ -32,24 +33,25 @@ Orchestrator 亲自对照原始需求和 checklist 验收任务是否完成时�
 
 | 判定 | 条件 |
 |------|------|
-| PASS | 全部 checklist 项通过 |
+| PASS | 全部 checklist 项通过，交付物在 worktree 中可独立核验 |
 | REVISE | 至少一项 FAIL，且问题有明确修正方向 |
 | STAGNATE | 连续 2 轮提升 <10%，问题反复出现未解决 |
 | BUDGET_STOP | 已达到 Loop Contract 中的 token/时间/费用上限 |
 
 ## 严格度校准
 
-- **默认严格** — 主 agent 验收时要找差距，不急着放行。宽松=浪费所有人的 token。
+- **默认严格** — 验收要找差距，不急着放行。宽松 = 浪费所有人的 token。
 - 证据不充分 → FAIL：Worker 说"测试通过"但未附 pytest 输出 → 不是 PASS
-- skill/hard gate 证据不充分 → FAIL：PLAN 指定 TDD 但没有 RED/GREEN 输出，或指定 brainstorming 但没有用户确认 → 不是 PASS
-- 只看 Feedbacker 摘要 → FAIL：主 agent 必须打开 `state/` 中的产出和证据
+- skill/hard gate 证据不充分 → FAIL：PLAN 指定 TDD 但没有 RED/GREEN 输出 → 不是 PASS
+- 只看 Worker 摘要不看 worktree 文件 → FAIL：主 agent 必须打开 `state/` 中的产出和证据
 - 发现质量问题但 checklist 没覆盖 → 更新 checklist，再交给 Feedbacker 写修正 prompt
 - 主 agent 只做验收和调度，不亲自修正文档/代码/产物；失败后的修正 prompt 交给 Feedbacker，修正执行交给 Worker
+- **验收的是交付物，不是计划**：PLAN 可能不完美，但只要 worktree 里的产出物全部达标，就是 PASS
 
 ## Orchestrator 决策
 
 1. 检查判定：PASS / REVISE / STAGNATE / BUDGET_STOP
-2. 如果是 PASS → 进入 DELIVER
+2. 如果是 PASS → 进入 DELIVER，交付 worktree 中的最终产出物
 3. 如果是 REVISE → 收集失败项的问题描述 → 进入 FEEDBACK（加载 revise.md）
 4. 如果是 STAGNATE → 进入 DELIVER，标注未达标项
 5. 如果是 BUDGET_STOP → 进入 DELIVER，标注预算耗尽和未达标项

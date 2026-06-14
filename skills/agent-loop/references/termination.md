@@ -6,9 +6,9 @@ Orchestrator 做「继续/终止」决策或排查异常时加载。
 
 | 条件 | 触发动作 | 说明 |
 |------|---------|------|
-| Orchestrator 验收 PASS | **DELIVER** | 全部达标，交付最终产出 |
-| 累计 3 轮 | **DELIVER + 标注未达标项** | 硬上限，防止无限循环。交付时标注哪些 checklist 项未达标 |
-| STAGNATE（连续 2 轮提升 <10%） | **DELIVER** | 继续修正已无边际收益，交付当前最佳版本 |
+| Orchestrator 验收 PASS | **DELIVER** | 全部达标，交付 worktree（state/）中的最终产出物 |
+| 累计 3 轮 FEEDBACK→ACT-FIX | **DELIVER + 标注未达标项** | 硬上限，防止无限循环。交付时标注哪些 checklist 项未达标 |
+| STAGNATE（连续 2 轮提升 <10%） | **DELIVER** | 继续修正已无边际收益，交付当前 worktree 中的最佳版本 |
 | BUDGET_STOP | **DELIVER + 标注预算耗尽** | 达到 PLAN 声明的 token、时间或费用上限 |
 
 **不做「再试最后一次」的判断。** 3 轮硬上限、停滞检测和预算上限是安全网——到了就终止。
@@ -19,10 +19,10 @@ Orchestrator 做「继续/终止」决策或排查异常时加载。
 |------|:---:|------|
 | Orchestrator PLAN | 1 | 首轮完整，后续 delta |
 | Worker ACT | 1-N | 并行度由依赖、预算和宿主能力决定 |
-| Feedbacker FEEDBACK | 1 | 读取 state/，写下一轮 Worker prompt / delta plan |
-| Orchestrator VERIFY | 1 | 主 agent 读取 state/ 并验收 |
+| Feedbacker FEEDBACK | 1 | 读取 worktree，写修正 prompt |
+| Orchestrator VERIFY | 1 | 主 agent 读取 worktree 并验收 |
 
-首轮 PASS：约 `N + 2` 次 LLM 调用（N = Worker agent 总数）。每加一轮修正：失败 Worker 数 + Feedbacker + Orchestrator VERIFY。
+首轮 PASS：约 `N + 2` 次 LLM 调用（N = Worker 总数）。每加一轮修正：Feedbacker + 受影响 Worker + Orchestrator VERIFY。
 
 ## 预算护栏
 
@@ -42,7 +42,7 @@ PLAN 未声明预算时，默认护栏：
 ### 1. Orchestrator 越权
 
 **问题**：Orchestrator 亲自执行步骤或替 Feedbacker 写修正 prompt → 主控和执行混在一起。
-**对策**：执行交给 Worker，反馈 prompt 交给 Feedbacker；分派入口只是入口，不是角色身份。Orchestrator 负责 PLAN + VERIFY + DELIVER + 资源调配。
+**对策**：执行交给 Worker，修正 prompt 交给 Feedbacker。Orchestrator 负责 PLAN + VERIFY + DELIVER + 资源调配。收到 Feedbacker 的 worker_fix_prompt 后原样转发，不修改。
 
 ### 2. PLAN 步骤描述太粗
 
@@ -52,7 +52,7 @@ PLAN 未声明预算时，默认护栏：
 ### 3. 主 agent 验收放水
 
 **问题**：连续全部 PASS 但质量差 → 主 agent 验收标准或证据门槛不足。
-**对策**：在 VERIFY 阶段对证据充分性零容忍；发现 checklist 缺口时先更新 checklist，再交给 Feedbacker 写修正 prompt。
+**对策**：在 VERIFY 阶段对证据充分性零容忍；发现 checklist 缺口时先更新 checklist，再交给 Feedbacker 写修正 prompt。验收对象是 worktree 中的交付物，不是 Worker 的自我总结。
 
 ### 4. Worker 不给证据
 
@@ -72,7 +72,7 @@ PLAN 未声明预算时，默认护栏：
 ### 7. 被其它 Skill 短路
 
 **问题**：任务同时触发 TDD、brainstorming、writing-plans 等 skill，于是跳过 agent-loop，或只说"参考 loop 思想"。
-**对策**：只要任务满足 agent-loop 触发条件，Loop 就是外层调度器。调用本 skill 即视为明确进入 Loop，并授权使用当前宿主可用的 subagent / worker / thread / task 分派能力。其它 skill 的 hard gate 进入 handoff/checklist；若不能分派，必须声明限制并本地模拟角色。
+**对策**：只要任务满足 agent-loop 触发条件，Loop 就是外层调度器。调用本 skill 即视为明确进入 Loop，并授权使用宿主可用的 subagent / worker 分派能力。其他 skill 的 hard gate 进入 handoff/checklist；若不能分派，必须声明限制并本地模拟角色。
 
 ### 8. 验收标准模糊导致跳过 Loop
 
@@ -83,3 +83,13 @@ PLAN 未声明预算时，默认护栏：
 
 **问题**：已有匹配 skill，却写一次性长 prompt 让 Worker 临场发挥。
 **对策**：PLAN 先列 skill/reference，再写步骤。没有匹配 skill 时才允许一次性 prompt，并在 Loop Contract 标注原因。
+
+### 10. 修正 prompt 被 Orchestrator 转述
+
+**问题**：Feedbacker 写了精确的修正指令，Orchestrator 觉得"我可以说得更好"于是改写——引入新偏差。
+**对策**：Orchestrator 只做信使。Feedbacker 的 worker_fix_prompt 原样转发给 Worker。
+
+### 11. Worker 只会说不会改
+
+**问题**：Worker 收到修正 prompt 后，分析了一番为什么需要改，但没有实际修改 worktree 中的文件。
+**对策**：Worker goal 中明确要求"更新 state/ 中的文件"而非"分析问题"。handoff check 必须有文件存在 + 内容变更证据。

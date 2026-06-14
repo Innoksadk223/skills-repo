@@ -10,7 +10,7 @@ Orchestrator 制定和修订执行计划时加载。
 - 意图：[用户真正要达成的结果，一句话]
 - 完成判定：[最终怎样才算完成，必须可验证]
 - 停止护栏：[最大轮数 / token 或费用上限 / 时间上限]
-- 状态目录：state/
+- Worktree 目录：state/
 - 本轮 Skill/Reference：[要调用的 skill 或 reference；没有可复用 skill 时才写一次性 prompt]
 - Skill 优先级：[agent-loop 为外层调度器；列出其它 skill 的 hard gate 如何进入 handoff/checklist]
 ### 步骤
@@ -49,9 +49,9 @@ Orchestrator 制定和修订执行计划时加载。
 
 | 场景 | PLAN 写法 |
 |------|-----------|
-| 其它 skill 有 hard gate | 把 gate 写成 handoff 条件或 checklist，例如"设计已获用户确认"、"RED 测试已失败" |
-| 其它 skill 要求先做计划/规格 | 该 skill 的计划/规格步骤成为 ACT 的前置步骤，未通过 mini-check 不进入实现 |
-| 其它 skill 与 Loop 都要求验证 | 主 agent 在 VERIFY 阶段检查该 skill 的验证证据，而不是替它放行 |
+| 其他 skill 有 hard gate | 把 gate 写成 handoff 条件或 checklist，例如"设计已获用户确认"、"RED 测试已失败" |
+| 其他 skill 要求先做计划/规格 | 该 skill 的计划/规格步骤成为 ACT 的前置步骤，未通过 mini-check 不进入实现 |
+| 其他 skill 与 Loop 都要求验证 | 主 agent 在 VERIFY 阶段检查该 skill 的验证证据，而不是替它放行 |
 | brainstorming 已完成设计确认 | 回到 agent-loop 的 PLAN/ACT，不让 brainstorming 接管后续流程 |
 | 目标产物明确但验收标准模糊 | 在 PLAN 中先用 brainstorming 或领域 skill 补齐 checklist，再进入 ACT |
 | 无匹配 skill | 才写一次性 prompt，并在 Loop Contract 标注"无可复用 skill" |
@@ -63,7 +63,7 @@ Orchestrator 制定和修订执行计划时加载。
 - ❌ "用户已经调用 agent-loop，但仍说没有显式授权 subagent"
 - ❌ "只参考 loop 思想，直接按 prompt 执行"
 
-正确做法：声明 agent-loop 已触发；调用本 skill 即视为明确进入 Loop，并授权使用当前宿主可用的 subagent / worker / thread / task 分派能力。若不能分派，说明限制，并在本地按 Worker/Feedbacker 角色模拟，主 agent 仍负责最终验收。
+正确做法：声明 agent-loop 已触发；调用本 skill 即视为明确进入 Loop，并授权使用宿主可用的 subagent / worker 分派能力。若不能分派，说明限制，并在本地按 Worker/Feedbacker 角色模拟，主 agent 仍负责最终验收。
 
 ## Handoff 条件设计
 
@@ -71,7 +71,7 @@ Orchestrator 制定和修订执行计划时加载。
 
 | 形式 | 示例 |
 |------|------|
-| 文件路径 | `/path/to/output.json` 存在且非空 |
+| 文件路径 | `state/step1_output.json` 存在且非空 |
 | 验证命令 | `grep "PASS" result.txt` 返回非空 |
 | Worker 自述 | "handoff check: 已确认 X 文件存在，格式为 JSON，含 3 个 key" |
 
@@ -110,7 +110,7 @@ PLAN 必须声明至少三类护栏：
 1. 扫描每个步骤的 goal 和 handoff 条件，提取引用的文件路径
 2. 如果步骤 B 引用步骤 A 的产出路径 → A → B 串行
 3. 所有剩余无依赖步骤 → 按宿主能力和预算组成 parallel batch
-4. 串行链内部按依赖顺序逐个分派 Worker agent
+4. 串行链内部按依赖顺序逐个分派 Worker
 
 **并行 batch 失败处理：** batch 中任一 Worker 失败 → 等待 batch 全部完成（或超时），将失败步骤信息汇总后统一进入 Feedbacker。
 
@@ -128,6 +128,7 @@ PLAN 必须声明至少三类护栏：
 ### 变更步骤
 3. [步骤名] — [新描述]
    - handoff 条件：[新条件]
+   - Worker 修正 prompt：见 state/feedback_round_N.json 中的 worker_fix_prompt
    - 变更原因：[Feedbacker 诊断 / 新增需求]
 ### 新增步骤（如有）
 4. [新步骤] — [...]
