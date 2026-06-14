@@ -65,7 +65,7 @@ Worker 产出初稿 → Feedbacker 审核 → **Feedbacker 的 worker_fix_prompt
 
 1. Orchestrator 收到 Feedbacker 的反馈输出（含 worker_fix_prompt）
 2. 如果 `decision == "continue_fix"`：
-   - 将 worker_fix_prompt 原样发给对应 Worker（转发规则详见 feedback.md）
+   - 将 worker_fix_prompt（或 per_worker_fixes 中对应 step_id 的 prompt）原样发给对应 Worker（转发规则详见 feedback.md）
    - Worker 读取 worktree（含 feedback 文件），在已有产出上修正
    - Worker 更新 worktree 文件，返回新的 handoff check
 3. 如果 Worker 修正后 Feedbacker 仍判断未通过 → 重复步骤 2（受终止条件约束）

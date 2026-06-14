@@ -41,6 +41,20 @@ toolsets: ["file"]
 }
 ```
 
+**并行 batch 中有多个 Worker 需要修正时**，`worker_fix_prompt` 扩展为 `per_worker_fixes` 数组，每条含 `step_id` 指向具体 Worker：
+
+```json
+{
+  "decision": "continue_fix",
+  "per_worker_fixes": [
+    {"step_id": 1, "worker_fix_prompt": "Worker 1 的修正指令...", "revised_handoff": "..."},
+    {"step_id": 2, "worker_fix_prompt": "Worker 2 的修正指令...", "revised_handoff": "..."}
+  ]
+}
+```
+
+单 Worker 时用 `worker_fix_prompt` 字段不变。Orchestrator 将每条 `worker_fix_prompt` 发给对应的原 Worker——Worker 1 的 prompt 只给 Worker 1，Worker 2 的 prompt 只给 Worker 2。
+
 **`worker_fix_prompt` 是核心字段**——它不是给 Orchestrator 看的分析，而是下一轮直接发给 Worker 的执行指令。必须：
 - 具体指出当前产出哪里不够（引用 worktree 中的文件内容或路径）
 - 明确期望改成什么样（格式、内容、证据要求）
