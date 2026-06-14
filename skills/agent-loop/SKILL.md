@@ -42,8 +42,9 @@ ACT-FIX（将 Feedbacker 的修正 prompt 发回同一个 Worker → Worker 读�
   ↓
 VERIFY（Orchestrator 对照 checklist 验收 state/ 中的最终交付物）
   ↓
-PASS? → DELIVER
-FAIL? → FEEDBACK → ACT-FIX（继续修正）
+PASS 且是最终成果 → DELIVER
+PASS 但交付物本身指出可操作改进项 → 自动进入 FEEDBACK → ACT-FIX（不询问用户）
+FAIL → FEEDBACK → ACT-FIX（继续修正）
 ```
 
 **核心机制**：不是"每轮换一个新 Worker 实例读 worktree 从头开始"，而是**同一个 Worker agent 维持多轮对话**——它产出初稿，接收 Feedbacker 的针对性 prompt，在已经理解任务上下文的前提下直接修正。Worktree（`state/`）是对话中的共享案卷，Feedbacker 读它来给出判断，Worker 读它来了解反馈指向什么。

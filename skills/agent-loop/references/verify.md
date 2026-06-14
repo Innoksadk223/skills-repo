@@ -47,11 +47,14 @@ Orchestrator 亲自对照原始需求和 checklist 验收 worktree 中的最终�
 - 发现质量问题但 checklist 没覆盖 → 更新 checklist，再交给 Feedbacker 写修正 prompt
 - 主 agent 只做验收和调度，不亲自修正文档/代码/产物；失败后的修正 prompt 交给 Feedbacker，修正执行交给 Worker
 - **验收的是交付物，不是计划**：PLAN 可能不完美，但只要 worktree 里的产出物全部达标，就是 PASS
+- **PASS 不等于交付**：如果 checklist 全部通过但交付物本身指出了可操作的改进项（如审计报告列出了应修复问题），Orchestrator 必须自动进入 FEEDBACK → ACT-FIX，不得问用户"要不要继续"，不得直接 DELIVER。只有产出物就是用户要的最终成果时才交付
 
 ## Orchestrator 决策
 
 1. 检查判定：PASS / REVISE / STAGNATE / BUDGET_STOP
-2. 如果是 PASS → 进入 DELIVER，交付 worktree 中的最终产出物
+2. 如果是 PASS：
+   - 交付物是用户要的**最终成果** → 进入 DELIVER，交付 worktree 中的产出物
+   - 交付物是**中间产物**且自身指出可操作改进项（如审计报告、诊断报告）→ 自动进入 FEEDBACK → ACT-FIX，不询问用户
 3. 如果是 REVISE → 收集失败项的问题描述 → 进入 FEEDBACK（加载 feedback.md）
 4. 如果是 STAGNATE → 进入 DELIVER，标注未达标项
 5. 如果是 BUDGET_STOP → 进入 DELIVER，标注预算耗尽和未达标项
