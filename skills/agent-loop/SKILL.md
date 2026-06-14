@@ -26,6 +26,26 @@ Agent Loop 是通用 Agent 编排循环。它不是一个「生成计划」的�
 - **Hard gate 兼容**：其他 skill 若有审批、设计、TDD、验证等硬门槛，Loop 不绕过；把这些门槛写进 handoff 或 checklist。
 - **验收模糊也进 Loop**：目标有具体产物但标准不清时，在 PLAN 中补齐标准，而非跳过 Loop。
 
+## 分派模式
+
+agent-loop 支持两种分派模式，由宿主能力自动判定。
+
+### 自动分派
+
+宿主支持程序化分派 subagent 时，Orchestrator 直接分派 Worker 和 Feedbacker，无需用户介入。流程全自动运行。
+
+### 手动分派
+
+宿主不支持程序化分派（如需要用户手动触发 agent）时，Orchestrator 不尝试自动分派——而是将每个 Worker/Feedbacker 的 goal 输出为独立的消息块：
+
+```
+--- 请分派 [Worker/Feedbacker] agent ---
+goal: [完整的执行描述 + 输出路径 + handoff 条件]
+toolsets: [最小必要集]
+```
+
+用户手动分派 agent 并将执行结果粘贴回来后，Orchestrator 继续下一步（mini-check → Feedbacker → ACT-FIX → VERIFY）。流程逻辑和终止条件不变——只是分派动作由用户代替程序完成。
+
 ## 流程全貌
 
 ```
