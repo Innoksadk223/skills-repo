@@ -41,7 +41,7 @@ toolsets: ["file"]
 }
 ```
 
-**并行 batch 中有多个 Worker 需要修正时**，`worker_fix_prompt` 扩展为 `per_worker_fixes` 数组，每条含 `step_id` 指向具体 Worker：
+**多 Worker 场景（串行或并行）中需要分别修正时**，用 `per_worker_fixes` 数组替代单个 `worker_fix_prompt`，每条含 `step_id` 指向原 Worker：
 
 ```json
 {

@@ -61,6 +61,8 @@ handoff 不通过时——Worker 不应交棒，而是自行修复或报告失�
 
 ## 修正回合的协调
 
+**核心规则：串行或并行，每个 Worker 只修正自己的产出。Worker 1 的产出由 Worker 1 修正，Worker 2 不越界。**
+
 Worker 产出初稿 → Feedbacker 审核 → **Feedbacker 的 worker_fix_prompt 发回同一个 Worker**：
 
 1. Orchestrator 收到 Feedbacker 的反馈输出（含 worker_fix_prompt）
@@ -87,8 +89,7 @@ Worker 产出初稿 → Feedbacker 审核 → **Feedbacker 的 worker_fix_prompt
 - 无文件依赖的步骤 → 一组 Worker 并行分派
 - 所有 Worker 完成后统一进入 FEEDBACK
 - batch 中某个 Worker 失败 → 等待全部完成（或超时），汇总后统一进入 Feedbacker
-- 成功步骤的产出保留（worktree 文件不删），Feedbacker 只处理失败项
-- 修正回合只对失败步骤的**原 Worker**进行——Worker 1 的产出由 Worker 1 修正，Worker 2 不越界
+- 成功步骤的产出保留（worktree 文件不删），Feedbacker 只处理失败项。修正同样遵循上述核心规则（原 Worker 修自己的产出）
 
 ## 产出物落盘（worktree）
 
