@@ -74,7 +74,7 @@ Worker 产出初稿 → Feedbacker 审核 → **Feedbacker 的 worker_fix_prompt
 4. 如果 decision == proceed_to_verify → 进入 VERIFY
 5. **硬规则：修正完成后，Orchestrator 必须重新调用同一个 Feedbacker 评估修正结果，不得跳过 Feedbacker 直接进入 VERIFY。** 每次 ACT-FIX 后必须进入 FEEDBACK，由同一个 Feedbacker 判定是否 proceed_to_verify。
 
-**如果宿主只支持 one-shot subagent**：Orchestrator 重新分派 Worker 时，goal 需包含完整上下文。模板：
+**如果宿主只支持 one-shot subagent**：修正时 Orchestrator 重新分派同一 Worker（非新编号），goal 需包含完整上下文：
 
 ```
 [原始任务摘要，≤3 句]
