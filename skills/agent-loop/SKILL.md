@@ -25,7 +25,7 @@ Agent Loop 是通用 Agent 编排循环。它不是一个「生成计划」的�
 - **Loop 是外层调度器**：其他 skill 不是竞争入口，而是 PLAN/ACT/FEEDBACK/VERIFY 中被调用的能力单元。agent-loop 不干涉其他 skill 的内部逻辑，只负责编排调度。
 - **Skill > Prompt**：某步骤已有匹配 skill 时，PLAN 必须列出它，Worker goal 必须要求先加载并遵循它。
 - **Hard gate 兼容**：其他 skill 若有审批、设计、TDD、验证等硬门槛，Loop 不绕过；把这些门槛写进 handoff 或 checklist。
-- **验收模糊也进 Loop**：目标有具体产物但标准不清时，在 PLAN 中补齐标准，而非跳过 Loop。
+- **验收模糊先问用户**：目标有具体产物但标准不清时，停下来向用户确认，补齐可量化 checklist 后再进入 PLAN。不得自行猜测验收标准。
 
 ## 流程全貌
 

@@ -74,10 +74,11 @@ PLAN 未声明预算时，默认护栏：
 **问题**：任务同时触发 TDD、brainstorming、writing-plans 等 skill，于是跳过 agent-loop，或只说"参考 loop 思想"。
 **对策**：只要任务满足 agent-loop 触发条件，Loop 就是外层调度器。调用本 skill 即视为明确进入 Loop，并授权使用宿主可用的 subagent / worker 分派能力。其他 skill 的 hard gate 进入 handoff/checklist；若不能分派，必须声明限制并本地模拟角色。
 
-### 8. 验收标准模糊导致跳过 Loop
+### 8. 验收标准模糊时自行猜测
 
-**问题**：目标有具体产物，但 checklist 尚未明确，于是把任务当开放探索处理。
-**对策**：先进入 PLAN，用 brainstorming 或领域 skill 补齐可量化 checklist；只有没有具体产物的开放探索才不触发 Loop。
+**问题**：目标有具体产物，但 checklist 尚未明确。Orchestrator 自行猜测验收标准直接出计划，导致最终产出不符合用户真实期望。
+
+**对策**：停下来向用户确认。补齐可量化 checklist 后再进入 PLAN。不得跳过这一步直接进 ACT。
 
 ### 9. 把 Prompt 放在 Skill 前面
 
