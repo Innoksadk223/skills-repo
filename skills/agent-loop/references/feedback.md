@@ -44,7 +44,7 @@ toolsets: ["file"]
 **`worker_fix_prompt` 是核心字段**——它不是给 Orchestrator 看的分析，而是下一轮直接发给 Worker 的执行指令。必须：
 - 具体指出当前产出哪里不够（引用 worktree 中的文件内容或路径）
 - 明确期望改成什么样（格式、内容、证据要求）
-- 自包含——新 Worker 实例如果看不到之前对话，也能靠这个 prompt + worktree 文件理解要做什么
+- 自包含——即使宿主只支持 one-shot、Worker 看不到前序对话，也能靠这个 prompt + worktree 文件继续修正
 
 ## Orchestrator 使用反馈的流程
 
