@@ -40,14 +40,10 @@ Orchestrator 亲自对照原始需求和 checklist 验收 worktree 中的最终�
 
 ## 严格度校准
 
-- **默认严格** — 验收要找差距，不急着放行。宽松 = 浪费所有人的 token。
-- 证据不充分 → FAIL：Worker 说"测试通过"但未附 pytest 输出 → 不是 PASS
-- skill/hard gate 证据不充分 → FAIL：PLAN 指定 TDD 但没有 RED/GREEN 输出 → 不是 PASS
-- 只看 Worker 摘要不看 worktree 文件 → FAIL：主 agent 必须打开 `state/` 中的产出和证据
-- 发现质量问题但 checklist 没覆盖 → 更新 checklist，再交给 Feedbacker 写修正 prompt
-- 主 agent 只做验收和调度，不亲自修正文档/代码/产物；失败后的修正 prompt 交给 Feedbacker，修正执行交给 Worker
 - **验收的是交付物，不是计划**：PLAN 可能不完美，但只要 worktree 里的产出物全部达标，就是 PASS
 - **PASS 不等于交付**：如果 checklist 全部通过但交付物本身指出了可操作的改进项（如审计报告列出了应修复问题），Orchestrator 必须自动进入 FEEDBACK → ACT-FIX，不得问用户"要不要继续"，不得直接 DELIVER。只有产出物就是用户要的最终成果时才交付
+- **证据零容忍**：Worker 声称通过但未附输出/路径 → FAIL。skill 指定了 TDD 但没有 RED/GREEN 输出 → FAIL。主 agent 必须打开 worktree 文件，不能只看 Worker 摘要
+- **主 agent 只验收不修正**：失败后的修正 prompt 交给 Feedbacker，修正执行交给 Worker
 
 ## Orchestrator 决策
 

@@ -47,7 +47,7 @@ PASS 但交付物本身指出可操作改进项 → 自动进入 FEEDBACK → AC
 FAIL → FEEDBACK → ACT-FIX（继续修正）
 ```
 
-**核心机制**：不是"每轮换一个新 Worker 实例读 worktree 从头开始"，而是**同一个 Worker agent 维持多轮对话**——它产出初稿，接收 Feedbacker 的针对性 prompt，在已经理解任务上下文的前提下直接修正。Worktree（`state/`）是对话中的共享案卷，Feedbacker 读它来给出判断，Worker 读它来了解反馈指向什么。
+**核心机制**：同一个 Worker agent 维持多轮对话——产出初稿，收 Feedbacker 的修正 prompt，在已有上下文上直接修正。Worktree（`state/`）是共享案卷。
 
 ## 角色总览
 
@@ -59,16 +59,11 @@ FAIL → FEEDBACK → ACT-FIX（继续修正）
 
 **Feedbacker 只有一个**——反馈必须一致、不矛盾。Worker 不限制数量，按依赖和预算决定。
 
-Feedbacker 的输出不是分析报告给主 agent 看——**是发给 Worker 的修正指令**。主 agent 只负责把 Feedbacker 的 prompt 转发给 Worker，不修改、不转述。
+Feedbacker 的输出是发给 Worker 的修正指令，Orchestrator 原样转发（详见 feedback.md）。
 
 ## 终止条件
 
-| 条件 | 触发动作 |
-|------|---------|
-| Orchestrator 验收 PASS | DELIVER |
-| 累计 3 次修正轮 | DELIVER + 标注未达标项 |
-| 连续 2 次修正轮提升 <10%（STAGNATE） | DELIVER |
-| 达到 token/时间/费用预算 | DELIVER + 标注预算耗尽 |
+→ 详见 `references/termination.md`
 
 ## Reference 加载决策表
 

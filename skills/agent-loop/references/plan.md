@@ -2,7 +2,7 @@
 
 Orchestrator 制定和修订执行计划时加载。
 
-**铁律：需求或验收标准有任何不清之处，Orchestrator 必须先向用户确认，不得自行猜测后直接出计划。** 意图不明确、边界条件模糊、验收标准无法量化的——停下来问，不要替用户做决定。
+**铁律：需求或验收标准不清 → 停下来问用户，补齐可量化 checklist 后再出计划。不得自行猜测。**
 
 ## PLAN 输出格式（首轮完整版）
 
@@ -60,12 +60,9 @@ Orchestrator 制定和修订执行计划时加载。
 
 **禁止的降级：**
 - ❌ "这个任务也触发 TDD，所以不用 agent-loop"
-- ❌ "验收标准还不清楚，所以不用 agent-loop"
-- ❌ "brainstorming 已要求写 plan，所以由 writing-plans 接管 agent-loop"
-- ❌ "用户已经调用 agent-loop，但仍说没有显式授权 subagent"
 - ❌ "只参考 loop 思想，直接按 prompt 执行"
 
-正确做法：声明 agent-loop 已触发；调用本 skill 即视为明确进入 Loop，并授权使用宿主可用的 subagent / worker 分派能力。若不能分派，说明限制，并在本地按 Worker/Feedbacker 角色模拟，主 agent 仍负责最终验收。
+正确做法：agent-loop 已是外层调度器。调用即授权分派能力。不能分派则本地模拟（详见 `fallback-local.md`）。
 
 ## Handoff 条件设计
 
@@ -102,7 +99,7 @@ PLAN 必须声明至少三类护栏：
 | 无进展检测 | 连续 2 轮通过率提升 <10% → STAGNATE |
 | 资源预算 | 超过 45 分钟 / 20k token / 指定费用上限 → 停止并交付当前状态 |
 
-没有停止护栏，不允许进入 ACT。
+没有停止护栏，不允许进入 ACT。终止条件详解 → `references/termination.md`。
 
 ## 执行策略：依赖判定规则
 

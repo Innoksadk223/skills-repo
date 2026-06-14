@@ -37,60 +37,23 @@ PLAN 未声明预算时，默认护栏：
 
 预算只能在用户明确要求时放宽。Orchestrator 不得因为"快好了"自行加轮。
 
-## 常见陷阱及对策
+## 常见陷阱速查
 
-### 1. Orchestrator 越权
+### 1. Orchestrator 越权（最频发）
 
-**问题**：Orchestrator 亲自执行步骤或替 Feedbacker 写修正 prompt → 主控和执行混在一起。
-**对策**：执行交给 Worker，修正 prompt 交给 Feedbacker。Orchestrator 负责 PLAN + VERIFY + DELIVER + 资源调配。收到 Feedbacker 的 worker_fix_prompt 后原样转发，不修改。
+Orchestrator 亲自执行步骤或替 Feedbacker 写修正 prompt。**对策**：执行交给 Worker，修正 prompt 交给 Feedbacker，Orchestrator 只做 PLAN + VERIFY + DELIVER。Feedbacker 的 worker_fix_prompt 原样转发。
 
-### 2. PLAN 步骤描述太粗
+### 其余陷阱速查
 
-**问题**：写"生成测试"而非"为 src/auth.py 写 pytest，覆盖 3 条路径，断言 200/401/403"。Worker 没有深度规格。
-**对策**：见 references/plan.md → 步骤设计规则表。
-
-### 3. 主 agent 验收放水
-
-**问题**：连续全部 PASS 但质量差 → 主 agent 验收标准或证据门槛不足。
-**对策**：在 VERIFY 阶段对证据充分性零容忍；发现 checklist 缺口时先更新 checklist，再交给 Feedbacker 写修正 prompt。验收对象是 worktree 中的交付物，不是 Worker 的自我总结。
-
-### 4. Worker 不给证据
-
-**问题**：Worker 声称完成但无文件路径、无命令输出 → Feedbacker / 主 agent 无法核验。
-**对策**：ACT 阶段 mini-check 必须看到 `handoff check: [文件路径]` 行才放行。无此行的 Worker 返回视为失败。
-
-### 5. 忘掉终止条件
-
-**问题**：反复修正第 4、5 轮，"最后一次"变成"再来一次"。
-**对策**：3 轮硬上限是代码逻辑，不是建议。Orchestrator 在每轮 VERIFY 后加载本文件核对。
-
-### 6. 把 Loop 当 Prompt 放大器
-
-**问题**：每轮临时写更长 Prompt，不沉淀 Skill，不加强验证。
-**对策**：失败后优先问三件事：是否该调用已有 skill、是否该把重复步骤固化成 skill、是否该加强证据门槛。
-
-### 7. 被其它 Skill 短路
-
-**问题**：任务同时触发 TDD、brainstorming、writing-plans 等 skill，于是跳过 agent-loop，或只说"参考 loop 思想"。
-**对策**：只要任务满足 agent-loop 触发条件，Loop 就是外层调度器。调用本 skill 即视为明确进入 Loop，并授权使用宿主可用的 subagent / worker 分派能力。其他 skill 的 hard gate 进入 handoff/checklist；若不能分派，必须声明限制并本地模拟角色。
-
-### 8. 验收标准模糊时自行猜测
-
-**问题**：目标有具体产物，但 checklist 尚未明确。Orchestrator 自行猜测验收标准直接出计划，导致最终产出不符合用户真实期望。
-
-**对策**：停下来向用户确认。补齐可量化 checklist 后再进入 PLAN。不得跳过这一步直接进 ACT。
-
-### 9. 把 Prompt 放在 Skill 前面
-
-**问题**：已有匹配 skill，却写一次性长 prompt 让 Worker 临场发挥。
-**对策**：PLAN 先列 skill/reference，再写步骤。没有匹配 skill 时才允许一次性 prompt，并在 Loop Contract 标注原因。
-
-### 10. 修正 prompt 被 Orchestrator 转述
-
-**问题**：Feedbacker 写了精确的修正指令，Orchestrator 觉得"我可以说得更好"于是改写——引入新偏差。
-**对策**：Orchestrator 只做信使。Feedbacker 的 worker_fix_prompt 原样转发给 Worker。
-
-### 11. Worker 只会说不会改
-
-**问题**：Worker 收到修正 prompt 后，分析了一番为什么需要改，但没有实际修改 worktree 中的文件。
-**对策**：Worker goal 中明确要求"更新 state/ 中的文件"而非"分析问题"。handoff check 必须有文件存在 + 内容变更证据。
+| # | 陷阱 | 对策 → |
+|---|------|--------|
+| 2 | PLAN 步骤太粗（"生成测试"而非具体规格） | → `plan.md` 步骤设计规则表 |
+| 3 | 验收放水（证据不充分也给 PASS） | → `verify.md` 严格度校准 |
+| 4 | Worker 不给证据（声称完成无文件路径） | → `act.md` mini-check 要求 `handoff check:` |
+| 5 | 忘掉终止条件（反复修正超限） | → 本文件终止条件表（硬上限是代码逻辑） |
+| 6 | Loop 当 Prompt 放大器（不沉淀 Skill） | → 失败后先问：是否该调用已有 skill？ |
+| 7 | 被其它 Skill 短路 | → `plan.md` 禁止降级列表 |
+| 8 | 验收标准模糊时自行猜测 | → `plan.md` 铁律：先问用户 |
+| 9 | Prompt 放 Skill 前面 | → 同 #6，PLAN 先列 skill 再写步骤 |
+| 10 | 修正 prompt 被转述 | → `feedback.md` 原样转发规则 |
+| 11 | Worker 只会说不会改 | → `act.md` handoff + worktree 输出规则 |
