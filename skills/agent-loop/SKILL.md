@@ -31,7 +31,7 @@ description: "双Agent闭环工作流。主Agent执行(ACT)→独立审查子Age
 
 **0. 分离令（#1 陷阱）** — 主 Agent 严禁审查自己产出或替审查子 Agent 写 prompt。修正指令原样转发。
 
-**1. 持久化审查** — 首轮 `Agent` 派发并捕获 `agentId` → `state/auditor_id.txt`。后续轮**严禁新建 Agent**，必须 `SendMessage` 续对话（或 CLI `--resume`）。新建 = 丢失审查记忆 = 违规。主 Agent 在每轮 AUDIT 前必须先验证 auditor_id.txt 存在。
+**1. 持久化审查** — 首轮 `Agent` 派发并捕获 `agentId` → `state/<slug>/auditor_id.txt`。后续轮**严禁新建 Agent**，必须 `SendMessage` 续对话（或 CLI `--resume`）。新建 = 丢失审查记忆 = 违规。主 Agent 在每轮 AUDIT 前必须先验证 `state/<slug>/auditor_id.txt` 存在。
 
 **2. 默认严格** — 审查子 Agent 的立场是"默认不信任"。PROCEED_TO_VERIFY 需满足五条可操作标准（证据闭环/四维全覆盖/边界可核验/修正闭环/零未解决问题），不是默认结局。
 
@@ -54,6 +54,8 @@ description: "双Agent闭环工作流。主Agent执行(ACT)→独立审查子Age
 | **备选 2** | Hermes / 任意 | Claude Code CLI（独立进程） | `--session-id` 命名会话 + `--resume` 续接 |
 | **备选 3** | Hermes / 任意 | Codex CLI（独立进程） | 同上 CLI 会话机制 |
 | **降级模式（兜底）** | 无 CLI 可用 | 主 Agent 角色切换模拟审查 | `[角色切换]` 协议，≤2 轮 |
+
+Codex 执行时，若可用 sub-agent/thread 续接机制，首轮必须捕获可续接 ID 并写入 `state/<slug>/auditor_id.txt`，后续轮用该 ID 续接；若当前 Codex 无可续接机制，直接使用 CLI 备选方案或降级模式，并在 `feedback.md` 说明降级原因。
 
 ### CLI 跨平台审查（备选 2/3）
 
