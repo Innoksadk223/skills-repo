@@ -16,6 +16,7 @@ Agent Loop 是通用 Agent 编排循环。它不是一个「生成计划」的�
 - **可复用单位是 Skill，不是 Prompt**。PLAN 阶段必须列出本轮要调用的 skill/reference。
 - **最终交付的是成果，不是计划和分析**。PLAN 是脚手架，`state/` 里的产出物才是交付对象。
 - **验证比编排更重要**。Loop 的好坏取决于自我检查能力。没有反馈闭环的 Loop 只是自信地制造错误。
+- **术语约定**：「修正轮」指 FEEDBACK → ACT-FIX 子循环；「迭代」指 PLAN → VERIFY 完整大循环。全局统一。所有「第 N 轮」均指迭代计数。
 
 ## 优先级与组合规则
 
@@ -64,8 +65,8 @@ Feedbacker 的输出不是分析报告给主 agent 看——**是发给 Worker �
 | 条件 | 触发动作 |
 |------|---------|
 | Orchestrator 验收 PASS | DELIVER |
-| 累计 3 轮 FEEDBACK→ACT-FIX | DELIVER + 标注未达标项 |
-| 连续 2 轮提升 <10%（STAGNATE） | DELIVER |
+| 累计 3 次修正轮 | DELIVER + 标注未达标项 |
+| 连续 2 次修正轮提升 <10%（STAGNATE） | DELIVER |
 | 达到 token/时间/费用预算 | DELIVER + 标注预算耗尽 |
 
 ## Reference 加载决策表
@@ -74,16 +75,8 @@ Feedbacker 的输出不是分析报告给主 agent 看——**是发给 Worker �
 |-----------|------|
 | 制定/修订执行计划、设计 checklist、声明 worktree 结构 | `references/plan.md` |
 | 分派 Worker、执行 mini-check、处理反馈修正回合 | `references/act.md` |
-| 分派 Feedbacker、生成针对 Worker 的修正 prompt | `references/revise.md` |
-| 主 agent 对照 checklist 验收 worktree 中的交付物 | `references/check.md` |
+| 分派 Feedbacker、生成针对 Worker 的修正 prompt | `references/feedback.md` |
+| 主 agent 对照 checklist 验收 worktree 中的交付物 | `references/verify.md` |
 | 终止判断、token 代价、陷阱排查 | `references/termination.md` |
-
-## 参考
-
-| 文件 | 何时加载 |
-|------|---------|
-| [references/plan.md] | PLAN 阶段：制定计划、设计 checklist、设定 worktree |
-| [references/act.md] | ACT 阶段：分派 Worker、mini-check、反馈修正回合、worktree 读写 |
-| [references/revise.md] | FEEDBACK 阶段：分派 Feedbacker、生成针对 Worker 的修正 prompt、写入 worktree |
-| [references/check.md] | VERIFY 阶段：主 agent 验收 worktree 中的最终交付物 |
-| [references/termination.md] | 决策点：终止判断、token 代价、陷阱排查 |
+| 无法分派 subagent 时的本地模拟 | `references/fallback-local.md` |
+| 验收通过或触发终止后的交付 | `references/deliver.md` |

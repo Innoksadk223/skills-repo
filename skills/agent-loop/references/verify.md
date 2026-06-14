@@ -52,7 +52,7 @@ Orchestrator 亲自对照原始需求和 checklist 验收 worktree 中的最终�
 
 1. 检查判定：PASS / REVISE / STAGNATE / BUDGET_STOP
 2. 如果是 PASS → 进入 DELIVER，交付 worktree 中的最终产出物
-3. 如果是 REVISE → 收集失败项的问题描述 → 进入 FEEDBACK（加载 revise.md）
+3. 如果是 REVISE → 收集失败项的问题描述 → 进入 FEEDBACK（加载 feedback.md）
 4. 如果是 STAGNATE → 进入 DELIVER，标注未达标项
 5. 如果是 BUDGET_STOP → 进入 DELIVER，标注预算耗尽和未达标项
 6. 如果验收记录不完整 → 补齐证据后重新判定

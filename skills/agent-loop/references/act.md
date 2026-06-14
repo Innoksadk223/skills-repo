@@ -33,6 +33,7 @@ toolsets: 最小必要集（如 ["terminal", "file", "web"]）
 - **toolsets 最小集** — 只给完成当前步骤必要的工具
 - **skill 优先** — Worker goal 中如指定 skill/reference，必须先加载并按其流程执行
 - **hard gate 不绕过** — 指定 skill 若要求审批、RED 测试、设计文档或验证命令，Worker 必须完成并返回证据，不能跳过
+- **skill 加载失败立即报告** — 如指定 skill/reference 文件不存在或无法读取，Worker 必须在返回中报告 `handoff check: FAIL — skill [名称] 加载失败`，Orchestrator 暂停后续步骤并标注阻塞
 - **修正回合不重做已完成的部分** — Worker 收到修正 prompt 后，只改被指出问题的部分，保留已有正确内容
 
 ## Worker 必须做的事
@@ -68,11 +69,20 @@ Worker 产出初稿 → Feedbacker 审核 → **Feedbacker 的 worker_fix_prompt
    - Worker 读取 worktree（含 feedback 文件），在已有产出上修正
    - Worker 更新 worktree 文件，返回新的 handoff check
 3. 如果 Worker 修正后 Feedbacker 仍判断未通过 → 重复步骤 2（受终止条件约束）
-4. 如果 `decision == "proceed_to_verify"` → 进入 VERIFY
+4. 如果 decision == proceed_to_verify → 进入 VERIFY
+5. **硬规则：修正完成后，Orchestrator 必须重新分派 Feedbacker 评估修正结果，不得跳过 Feedbacker 直接进入 VERIFY。** 每次 ACT-FIX 后必须进入 FEEDBACK，由 Feedbacker 判定是否 proceed_to_verify。
 
 **同一 Worker 修正的好处**：Worker 已经理解任务上下文，不需要重新解释整个任务——Feedbacker 的 prompt 只需指出"哪里不够、怎么改"即可。
 
-**如果宿主只支持 one-shot subagent**：Orchestrator 重新分派 Worker 时，goal 需包含完整上下文：原始任务描述 + 已有 worktree 文件摘要 + Feedbacker 的 worker_fix_prompt。等效于"同一个 Worker 继续"的效果。
+**如果宿主只支持 one-shot subagent**：Orchestrator 重新分派 Worker 时，goal 需包含完整上下文。模板：
+
+```
+[原始任务摘要，≤3 句]
+[已有 worktree 文件内容摘要]
+[Feedbacker 的 worker_fix_prompt，原样粘贴]
+```
+
+等效于"同一个 Worker 继续"的效果。
 
 ## 并行 batch 协调
 
@@ -96,7 +106,7 @@ state/
 └── ...
 ```
 
-Orchestrator 在分派 Worker 时在 goal 中指定输出路径。
+Orchestrator 在分派 Worker 时在 goal 中指定输出路径。PLAN 阶段由 Orchestrator 负责创建 `state/` 目录；如 Orchestrator 无法创建文件，由首个 Worker 在执行前创建。
 
 ## 反馈闭环
 

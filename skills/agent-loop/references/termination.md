@@ -7,8 +7,8 @@ Orchestrator 做「继续/终止」决策或排查异常时加载。
 | 条件 | 触发动作 | 说明 |
 |------|---------|------|
 | Orchestrator 验收 PASS | **DELIVER** | 全部达标，交付 worktree（state/）中的最终产出物 |
-| 累计 3 轮 FEEDBACK→ACT-FIX | **DELIVER + 标注未达标项** | 硬上限，防止无限循环。交付时标注哪些 checklist 项未达标 |
-| STAGNATE（连续 2 轮提升 <10%） | **DELIVER** | 继续修正已无边际收益，交付当前 worktree 中的最佳版本 |
+| 累计 3 次修正轮 | **DELIVER + 标注未达标项** | 硬上限，防止无限循环。交付时标注哪些 checklist 项未达标 |
+| STAGNATE（连续 2 次修正轮提升 <10%） | **DELIVER** | 继续修正已无边际收益，交付当前 worktree 中的最佳版本 |
 | BUDGET_STOP | **DELIVER + 标注预算耗尽** | 达到 PLAN 声明的 token、时间或费用上限 |
 
 **不做「再试最后一次」的判断。** 3 轮硬上限、停滞检测和预算上限是安全网——到了就终止。

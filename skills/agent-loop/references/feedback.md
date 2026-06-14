@@ -62,6 +62,7 @@ toolsets: ["file"]
 6. **如果 Feedbacker 诊断无法操作**（根因模糊、修正不具体）→ 在 delta plan 中标注不确定性，但仍尝试执行一轮
 7. **如果根因是 weak_validation** → 优先加强 checklist 或证据要求，不只改 Worker 文案
 8. **如果根因是 skipped_skill_gate** → 不扩大 prompt；把对应 skill 的 hard gate 写进 Worker 指令和 checklist
+9. **如果 Feedbacker 返回无效输出**（缺失必填字段、decision 值不合法、JSON 解析失败）→ Orchestrator 重试一次分派 Feedbacker。仍失败则视为 `stop_with_blocker`，进入 DELIVER 并标注「Feedbacker 评估失败」。
 
 ## 示例：合并后的 delta plan
 
