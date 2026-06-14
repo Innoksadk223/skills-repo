@@ -4,7 +4,7 @@ Orchestrator 在 Worker 完成产出后、或主 agent 验收 FAIL 后，调用 
 
 ## Feedbacker 分派
 
-Feedbacker 是独立 subagent，只读 worktree，只写反馈。**不直接改 Worker 的产出物，不替 Worker 执行修正。**
+Feedbacker 是独立 subagent，只读 worktree，只写反馈。
 
 ```
 分派 Feedbacker subagent，goal 包含：

@@ -43,7 +43,6 @@ Orchestrator 亲自对照原始需求和 checklist 验收 worktree 中的最终�
 - **验收的是交付物，不是计划**：PLAN 可能不完美，但只要 worktree 里的产出物全部达标，就是 PASS
 - **PASS 不等于交付**：如果 checklist 全部通过但交付物本身指出了可操作的改进项（如审计报告列出了应修复问题），Orchestrator 必须自动进入 FEEDBACK → ACT-FIX，不得问用户"要不要继续"，不得直接 DELIVER。只有产出物就是用户要的最终成果时才交付
 - **证据零容忍**：Worker 声称通过但未附输出/路径 → FAIL。skill 指定了 TDD 但没有 RED/GREEN 输出 → FAIL。主 agent 必须打开 worktree 文件，不能只看 Worker 摘要
-- **主 agent 只验收不修正**：失败后的修正 prompt 交给 Feedbacker，修正执行交给 Worker
 
 ## Orchestrator 决策
 

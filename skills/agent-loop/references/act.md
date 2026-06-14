@@ -72,8 +72,6 @@ Worker 产出初稿 → Feedbacker 审核 → **Feedbacker 的 worker_fix_prompt
 4. 如果 decision == proceed_to_verify → 进入 VERIFY
 5. **硬规则：修正完成后，Orchestrator 必须重新调用同一个 Feedbacker 评估修正结果，不得跳过 Feedbacker 直接进入 VERIFY。** 每次 ACT-FIX 后必须进入 FEEDBACK，由同一个 Feedbacker 判定是否 proceed_to_verify。
 
-**同一 Worker 修正的好处**：Worker 已经理解任务上下文，不需要重新解释整个任务——Feedbacker 的 prompt 只需指出"哪里不够、怎么改"即可。
-
 **如果宿主只支持 one-shot subagent**：Orchestrator 重新分派 Worker 时，goal 需包含完整上下文。模板：
 
 ```
@@ -94,7 +92,7 @@ Worker 产出初稿 → Feedbacker 审核 → **Feedbacker 的 worker_fix_prompt
 
 ## 产出物落盘（worktree）
 
-Worker 产出应写入 `state/` 目录。这是 worktree——Worker 和 Feedbacker 共享的案卷：
+Worker 产出应写入 `state/` 目录（worktree）：
 
 ```
 state/

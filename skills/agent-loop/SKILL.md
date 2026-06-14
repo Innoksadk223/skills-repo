@@ -47,8 +47,6 @@ PASS 但交付物本身指出可操作改进项 → 自动进入 FEEDBACK → AC
 FAIL → FEEDBACK → ACT-FIX（继续修正）
 ```
 
-**核心机制**：同一个 Worker agent 维持多轮对话——产出初稿，收 Feedbacker 的修正 prompt，在已有上下文上直接修正。Worktree（`state/`）是共享案卷。
-
 ## 角色总览
 
 | 角色 | 位置 | 职责 |
