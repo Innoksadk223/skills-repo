@@ -70,7 +70,7 @@ Worker 产出初稿 → Feedbacker 审核 → **Feedbacker 的 worker_fix_prompt
    - Worker 更新 worktree 文件，返回新的 handoff check
 3. 如果 Worker 修正后 Feedbacker 仍判断未通过 → 重复步骤 2（受终止条件约束）
 4. 如果 decision == proceed_to_verify → 进入 VERIFY
-5. **硬规则：修正完成后，Orchestrator 必须重新分派 Feedbacker 评估修正结果，不得跳过 Feedbacker 直接进入 VERIFY。** 每次 ACT-FIX 后必须进入 FEEDBACK，由 Feedbacker 判定是否 proceed_to_verify。
+5. **硬规则：修正完成后，Orchestrator 必须重新调用同一个 Feedbacker 评估修正结果，不得跳过 Feedbacker 直接进入 VERIFY。** 每次 ACT-FIX 后必须进入 FEEDBACK，由同一个 Feedbacker 判定是否 proceed_to_verify。
 
 **同一 Worker 修正的好处**：Worker 已经理解任务上下文，不需要重新解释整个任务——Feedbacker 的 prompt 只需指出"哪里不够、怎么改"即可。
 
@@ -90,7 +90,7 @@ Worker 产出初稿 → Feedbacker 审核 → **Feedbacker 的 worker_fix_prompt
 - 所有 Worker 完成后统一进入 FEEDBACK
 - batch 中某个 Worker 失败 → 等待全部完成（或超时），汇总后统一进入 Feedbacker
 - 成功步骤的产出保留（worktree 文件不删），Feedbacker 只处理失败项
-- 修正回合可只对失败步骤的 Worker 进行，不影响已通过步骤
+- 修正回合只对失败步骤的**原 Worker**进行——Worker 1 的产出由 Worker 1 修正，Worker 2 不越界
 
 ## 产出物落盘（worktree）
 

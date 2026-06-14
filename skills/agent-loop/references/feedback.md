@@ -1,6 +1,6 @@
 # FEEDBACK 阶段手册
 
-Orchestrator 在 Worker 完成产出后、或主 agent 验收 FAIL 后，分派 Feedbacker subagent 生成反馈和修正 prompt 时加载。
+Orchestrator 在 Worker 完成产出后、或主 agent 验收 FAIL 后，调用 Feedbacker subagent 生成反馈和修正 prompt 时加载。**整个 Loop 只用一个 Feedbacker 实例，多轮修正复用同一实例。**
 
 ## Feedbacker 分派
 

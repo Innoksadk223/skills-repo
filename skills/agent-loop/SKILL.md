@@ -55,9 +55,9 @@ FAIL → FEEDBACK → ACT-FIX（继续修正）
 |------|------|------|
 | Orchestrator | 主 agent | PLAN + VERIFY + DELIVER。不执行、不写修正 prompt |
 | Worker(s) | 1-N 个 subagent | 多轮对话中持续工作。产出 → 收反馈 → 修正 → 更新 worktree |
-| Feedbacker | 1 个 subagent | 读 worktree → 诊断根因 → **写针对 Worker 的修正 prompt** |
+| Feedbacker | 1 个 subagent | 读 worktree → 诊断根因 → **写针对 Worker 的修正 prompt**。同一 Feedbacker 用于所有修正轮 |
 
-**Feedbacker 只有一个**——反馈必须一致、不矛盾。Worker 不限制数量，按依赖和预算决定。
+**Feedbacker 只有一个**——同一实例用于全部修正轮，反馈必须一致、不矛盾。Worker 不限制数量，按依赖和预算决定。
 
 Feedbacker 的输出是发给 Worker 的修正指令，Orchestrator 原样转发（详见 feedback.md）。
 
