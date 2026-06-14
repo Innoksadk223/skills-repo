@@ -24,7 +24,7 @@ toolsets: 最小必要集（如 ["terminal", "file", "web"]）
 - 当前 worktree 中相关文件的路径
 - 要求：在已有产出基础上修正，更新 worktree 文件，返回 handoff check
 
-如果宿主不支持 subagent 多轮对话：重新分派 Worker，goal = worker_fix_prompt + "当前 worktree 文件在 state/ 中，请先阅读它们，然后在已有基础上修正"
+如果宿主不支持 subagent 多轮对话：以上下文等效方式重新分派同一 Worker，goal = worker_fix_prompt + "当前 worktree 文件在 state/ 中，请先阅读它们，然后在已有基础上修正"
 ```
 
 ## Worker 约束
