@@ -1,53 +1,76 @@
 ---
 name: agent-loop
-description: "通用工程级自动化循环编排系统。基于通用编排理论（Loop Theory），通过物理脚本驱动、动态工具验证、强制技能复用和断点续传，将Agent从聊天机器人转化为无情交付的工程流水线。"
+description: "双Agent闭环工作流。主Agent执行(ACT)→独立审查子Agent四维审查+输出DECISION/failure_type修正指令(AUDIT)→主Agent逐条修正后重新提交(LOOP)→直到PROCEED_TO_VERIFY或触发终止条件。审查子Agent持久交互跨轮存活。触发:/agent-loop,或多轮迭代+独立验证的高质量任务。"
 ---
+
 # Agent Loop
 
-**“如果你在不断提示 Agent，你就是那个 Loop；你应该写一个驱动 Agent 的 Loop。”**
+**"不要再去提示 Agent 了。去设计一个循环，让循环来提示 Agent。"** — Boris Cherny & Peter Steinberger
 
-Agent Loop 不是一个“聊天流程”，而是一个**通用的自动化工程系统**。
-它由 **物理调度脚本**、**技能库 (Skills)**、**带有工具权限的审查子 Agent** 以及 **持久化状态** 组成。告别大模型在聊天框里的“自我陶醉”，走向真正的自动化流水线。
+一个模型审查自己的产出总是过于宽容。**分离执行者与审查者**是循环收敛的关键。主 Agent 执行，独立审查子 Agent 验证并写出可直接执行的修正指令，循环直到审查通过或触发终止。
 
-## 系统架构法则
-当 Agent 加载并执行本技能时，必须无条件遵守以下机器执行准则。这些法则是从工程编排理论转化而来的绝对约束，用于防止 Agent 退化为聊天模式：
+## 工作流
 
-1. **被动驱动禁令**：主 Agent 严禁依赖用户在对话框中的步步确认。在规划阶段（PLAN）完成后，必须通过生成物理脚本接管流程，将交互转入后台无头循环。
-2. **物理循环强制**：循环必须由真实的底层脚本驱动，而非通过 LLM 对话历史自我递归。Agent 仅作为“主体决策者”在每次被脚本唤醒时处理当前状态并给出决策。
-3. **动态验证硬门槛**：严禁肉眼或静态文本审查。负责审核的子 Agent 必须拥有并使用终端工具权限对产物进行真实编译、测试或运行。一切修正 Prompt 必须基于真实的报错日志。
-4. **防失控护栏**：系统必须在每一次迭代前校验三大停止条件：最大迭代次数、无进展检测、资源上限。触碰任何一项必须立即物理终止进程并抛出死锁异常，禁止尝试最后一次。
-5. **裸奔代码禁令**：循环仅作为调度总线。主 Agent 在执行具体领域任务时，严禁从零推导庞大的逻辑，必须优先检索并加载本地已存在的专用技能库作为执行引擎。
+| 步 | 谁做 | 做什么 | 产物 |
+|----|------|--------|------|
+| 1. PLAN | 主 Agent | 苏格拉底式追问 → 步骤设计 → handoff/Checklist → 生成 task-slug → 契约落盘 | `state/<slug>/loop_contract.md` |
+| 2. ACT | 主 Agent | 执行步骤，满足 handoff 条件，产出落盘 | 产出文件 |
+| 3. AUDIT | **审查子 Agent** | 四维审查(需求/问题/质量/回归) + failure_type 分类 → DECISION 三态裁决 | `state/<slug>/feedback.md` |
+| 4. LOOP | 主 Agent | 读 DECISION → CONTINUE_FIX 则逐条执行修正指令（可[APPEAL]误判指令）→ 重新提交审查 | 迭代至终止 |
+| 5. VERIFY | 主 Agent | 对照 Checklist 逐项验收 state/<slug>/ 产出物 → 询问用户是否保留或清理 state | 交付/收敛报告 |
 
----
+### 终止条件 (满足其一即停)
 
-## 工程管线流程 (The Pipeline)
+1. PROCEED_TO_VERIFY — 审查通过
+2. STOP_WITH_BLOCKER — 无法自动修复的阻塞
+3. 边际改进 < 10% — 收敛，交付当前最优版本（上诉轮不触发收敛）
+4. 3 轮修正硬上限 — 强制交付（每有 1 轮上诉则上限 +1）
+5. 连续 2 轮仅含上诉无实际修正 → 上诉死锁，强制交付
 
-### 1. INTAKE（需求收敛与契约落盘）
-- **绝不盲目开工**：无论任务多简单，主 Agent 首先进行苏格拉底式追问，探明边界和终点。
-- **缔结契约**：将目标、动态验收标准（如具体的 `pytest` 或 `npm build` 命令）、**硬性终止条件**（最大循环次数 N、Token/时间上限）强制写入 `state/loop_contract.md`。
+## 铁律
 
-### 2. BOOTSTRAP（生成物理循环引擎）
-- 主 Agent 不要在聊天框里手肉推进每一轮。
-- 主 Agent 应生成一个物理的调度脚本（例如 `state/loop_runner.py` 或 `loop_runner.sh`）。
-- **脚本职责**：该脚本负责维护 `while (rounds < MAX)` 的状态，并在内部通过 CLI/API 唤醒执行者与审核子 Agent。
+**0. 分离令（#1 陷阱）** — 主 Agent 严禁审查自己产出或替审查子 Agent 写 prompt。修正指令原样转发。
 
-### 3. ACT（技能驱动执行）
-- 循环开始，执行者（无论是主 Agent 还是被脚本唤起的 Worker）开始干活。
-- **硬性拦截 (Skill-First)**：执行前，必须先调用工具查找是否有可用的领域技能（如 `academic-search`, `frontend-design`）。如果有，必须加载并遵循其规范，**绝对禁止**纯靠原生 Prompt 猜测。
-- 产出必须落盘到 `state/` 工作区，并建议自动进行 `git commit` 保存版本快照。
+**1. 持久化审查** — 首轮 `Agent` 派发并捕获 `agentId` → `state/auditor_id.txt`。后续轮**严禁新建 Agent**，必须 `SendMessage` 续对话（或 CLI `--resume`）。新建 = 丢失审查记忆 = 违规。主 Agent 在每轮 AUDIT 前必须先验证 auditor_id.txt 存在。
 
-### 4. AUDIT（动态验证子 Agent）
-- **存活与赋权**：调度脚本唤醒持续存活的子 Agent。子 Agent **不仅是代码阅读器，更是 QA 工程师**。它必须被赋予终端 (`terminal`) 或代码执行 (`execute_code`) 权限。
-- **强制动态验证**：子 Agent 必须读取 `loop_contract.md` 中的测试命令，在终端中实际运行它们。
-- **生成修正指令**：如果测试失败或未达标，子 Agent 依据真实的报错日志（而非凭空猜测），写出具有极高针对性的“修正 Prompt”，保存至 `state/feedback.md`。
+**2. 默认严格** — 审查子 Agent 的立场是"默认不信任"。PROCEED_TO_VERIFY 需满足五条可操作标准（证据闭环/四维全覆盖/边界可核验/修正闭环/零未解决问题），不是默认结局。
 
-### 5. RECOVERY（断点续传机制）
-- **无缝恢复**：如果中途发生进程崩溃、API 宕机或会话中断，主 Agent 重新接入时，**不需人类解释上下文**。
-- 只要检查到 `state/loop_contract.md` 存在且任务未完成，自动读取最新的 `state/feedback.md`，直接恢复 `ACT` 阶段，继续未完的循环。
+**3. Prompt 不是意见** — 每条修正指令含 `failure_type`（logic_error/requirement_gap/missing_edge_case/regression/quality_issue/missing_skill/weak_validation/external_blocker），主 Agent 逐条执行。
 
-### 6. VERIFY（强制出口与交付）
-- 只有当子 Agent 运行的测试命令全部通过，输出 `PASS`，或触发硬性终止条件（达到轮数上限）时，循环才会被物理脚本终止。
-- 主 Agent 读取最终状态，向用户交付结果。如果触发了终止条件但未成功，交出最后一份 `feedback.md`，报告死锁，请求人类介入。
+**4. 证据零容忍** — 口头 PASS 无文件路径或命令输出 = FAIL。
 
-## 对用户的承诺
-这套管线的目的是**消灭过程噪音**。在 `INTAKE` 阶段确认完毕后，你可以合上电脑。系统将在后台依靠物理循环和动态验证自我拉扯，直到产出最终的成果或撞到护栏。
+**5. 上诉权** — 主 Agent 可对认为误判的修正指令提 `[APPEAL]`，写 `state/appeal.md` 附理由和反证。审查子 Agent 必须在下一轮逐条裁决 UPHELD/OVERRULED/CLARIFIED。被 OVERRULED 的指令不执行且不计入修正轮数。上诉不是让主 Agent 替代审查——只是标记明显误判请求复核。
+
+## 平台适配
+
+**审查 Agent 不需要和主 Agent 跑在同一个平台。** 关键是审查者有独立上下文、跨轮存活。
+
+### 方案优先级
+
+| 优先级 | 主 Agent 环境 | 审查 Agent 实现 | 持久化方式 |
+|--------|-------------|----------------|-----------|
+| **默认** | Claude Code | `Agent` 工具派发子 Agent | `SendMessage` 续对话 |
+| **备选 1** | Codex | Codex sub-agent | 同上机制 |
+| **备选 2** | Hermes / 任意 | Claude Code CLI（独立进程） | `--session-id` 命名会话 + `--resume` 续接 |
+| **备选 3** | Hermes / 任意 | Codex CLI（独立进程） | 同上 CLI 会话机制 |
+| **降级模式（兜底）** | 无 CLI 可用 | 主 Agent 角色切换模拟审查 | `[角色切换]` 协议，≤2 轮 |
+
+### CLI 跨平台审查（备选 2/3）
+
+主 Agent（Hermes）通过 CLI 启动独立审查进程，利用 CLI 的会话持久能力：
+
+```bash
+SESSION_ID=$(uuidgen)  # --session-id 要求 UUID 格式
+# 首轮：创建命名会话，审查 Agent 直接写 state/feedback.md
+claude -p "$(cat state/audit_prompt.md)" --session-id "$SESSION_ID"
+# 后续轮：恢复同一会话，审查 Agent 更新 state/feedback.md
+claude -p "$(cat state/audit_continue.md)" --resume "$SESSION_ID"
+```
+
+审查 Agent 的 CLI 进程跨轮存活（通过 `--session-id` / `--resume`），不每轮新建。主 Agent 只负责读写 state/ 文件、做路由决策。
+
+### 循环调度
+
+| Claude Code | Codex | Hermes / 通用 |
+|-------------|-------|--------------|
+| `CronCreate` / `ScheduleWakeup` | cron / hook | `while`+sleep / cron |
