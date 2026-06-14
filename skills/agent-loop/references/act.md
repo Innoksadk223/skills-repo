@@ -18,14 +18,8 @@ toolsets: 最小必要集（如 ["terminal", "file", "web"]）
 ```
 
 **修正回合**（Worker 已产出初稿，收到 Feedbacker 的修正 prompt 后）：
-```
-向同一个 Worker（或具备其上下文的等效实例）发送：
-- Feedbacker 的 worker_fix_prompt（原样转发）
-- 当前 worktree 中相关文件的路径
-- 要求：在已有产出基础上修正，更新 worktree 文件，返回 handoff check
 
-如果宿主不支持 subagent 多轮对话：以上下文等效方式重新分派同一 Worker，goal = worker_fix_prompt + "当前 worktree 文件在 state/ 中，请先阅读它们，然后在已有基础上修正"
-```
+向同一个 Worker 发送 Feedbacker 的 worker_fix_prompt，Worker 在已有产出上修正，更新 worktree 文件，返回 handoff check。
 
 ## Worker 约束
 
@@ -73,16 +67,6 @@ Worker 产出初稿 → Feedbacker 审核 → **Feedbacker 的 worker_fix_prompt
 3. 如果 Worker 修正后 Feedbacker 仍判断未通过 → 重复步骤 2（受终止条件约束）
 4. 如果 decision == proceed_to_verify → 进入 VERIFY
 5. **硬规则：修正完成后，Orchestrator 必须重新调用同一个 Feedbacker 评估修正结果，不得跳过 Feedbacker 直接进入 VERIFY。** 每次 ACT-FIX 后必须进入 FEEDBACK，由同一个 Feedbacker 判定是否 proceed_to_verify。
-
-**如果宿主只支持 one-shot subagent**：修正时 Orchestrator 重新分派同一 Worker（非新编号），goal 需包含完整上下文：
-
-```
-[原始任务摘要，≤3 句]
-[已有 worktree 文件内容摘要]
-[Feedbacker 的 worker_fix_prompt，原样粘贴]
-```
-
-等效于"同一个 Worker 继续"的效果。
 
 ## 并行 batch 协调
 
