@@ -1,27 +1,33 @@
 # FEEDBACK 阶段手册
 
-Orchestrator 在 Worker 完成产出后、或主 agent 验收 FAIL 后，调用 Feedbacker subagent 生成反馈和修正 prompt 时加载。**整个 Loop 只用一个 Feedbacker 实例，多轮修正复用同一实例。**
+Orchestrator 在 Worker 完成产出后、或主 agent 验收 FAIL 后，调用 Feedbacker subagent 生成反馈和修正 prompt 时加载。**整个 Loop 只用一个可持续对话（stateful）的 Feedbacker 实例，多轮修正复用同一会话，以节省预读前置提示词的 Token 成本。**
 
 ## Feedbacker 分派
 
-Feedbacker 是独立 subagent，只读 worktree，只写反馈。
+Feedbacker 是独立、可持续对话的 subagent，只读 worktree，只写反馈。
 
 ```
-分派 Feedbacker subagent，goal 包含：
+分派 Feedbacker subagent（保持会话存活），goal 包含：
 
-你是独立反馈员。审核 Worker 产出，找出根因或提质空间，写出可直接交给 Worker 执行的修正 prompt。
+你是独立反馈员。审核 Worker 产出，找出根因或提质空间，针对性的写出可直接交给 Worker 执行的修正 prompt。
 
-输入：
+首轮输入：
 - 原始 PLAN（当前轮次）
 - Worker 的产出和证据（阅读 state/ 目录下的文件）
-- 主 agent 的验收记录（若已有，含失败项、证据不足项或提质要求）
+- 主 agent 的验收记录（如有，阅读 state/verify_round_N.md）
+
+后续轮次输入：
+- 只需要向此存活会话发送：请审核第 N 轮产出（新增产出位于 state/stepN_output_vX.json）。不再重复发送初始目标等上下文。
 
 输出结构化内容：
 1. 根因分析 — 不是描述现象，是找出为什么 Worker 没做到
-2. 给 Worker 的修正 prompt — 可直接发给 Worker，让它继续修正。必须自包含：Worker 可能看不到之前的对话，prompt 里要包含它需要知道的所有上下文（当前产出哪里不够、期望改成什么样、格式/约束/证据要求）
+2. 给 Worker 的修正 prompt — 针对性的写出 prompt，可直接发给原 Worker 会话，让它继续修正。必须自包含：若 worker 后端只能 state replay，新 worker 也能靠这个 prompt + worktree 文件继续修正（当前产出哪里不够、期望改成什么样、格式/约束/证据要求）
 3. 修正后的 handoff 条件（如有变化）
 4. 是否需要新增、替换或强调 skill/reference
 5. 判定：继续修正还是交给主 agent VERIFY
+
+toolsets: ["file"]
+```
 
 toolsets: ["file"]
 ```
@@ -53,20 +59,20 @@ toolsets: ["file"]
 }
 ```
 
-单 Worker 时用 `worker_fix_prompt` 字段不变。Orchestrator 将每条 `worker_fix_prompt` 发给对应的原 Worker——Worker 1 的 prompt 只给 Worker 1，Worker 2 的 prompt 只给 Worker 2。
+单 Worker 时用 `worker_fix_prompt` 字段不变。Orchestrator 将每条 `worker_fix_prompt` 发给对应的原 Worker 会话——Worker 1 的 prompt 只给 Worker 1，Worker 2 的 prompt 只给 Worker 2。若宿主没有可续写会话，只能降级为 state replay，并在 ACT 记录中标注。
 
 **`worker_fix_prompt` 是核心字段**——它不是给 Orchestrator 看的分析，而是下一轮直接发给 Worker 的执行指令。必须：
 - 具体指出当前产出哪里不够（引用 worktree 中的文件内容或路径）
 - 明确期望改成什么样（格式、内容、证据要求）
-- 自包含——即使宿主只支持 one-shot、Worker 看不到前序对话，也能靠这个 prompt + worktree 文件继续修正
+- 自包含——优先给原 Worker 会话继续执行；即使宿主只支持一次性 worker 运行、Worker 看不到前序对话，也能靠这个 prompt + worktree 文件进行 state replay 降级
 
 ## Orchestrator 使用反馈的流程
 
 1. **先看 `decision`**：
-   - `continue_fix` → 将 `worker_fix_prompt` 转发给对应步骤的 Worker，让它继续修正
+   - `continue_fix` → 将 `worker_fix_prompt` 转发给对应步骤的原 Worker 会话，让它继续修正；无续写能力时才 state replay 降级
    - `proceed_to_verify` → 进入 VERIFY
    - `stop_with_blocker` → 进入 DELIVER，标注阻塞原因
-2. **转发修正 prompt**：将 Feedbacker 的 `worker_fix_prompt` 原样发给 Worker——不修改、不转述、不"优化"。Orchestrator 只做信使。
+2. **转发修正 prompt**：将 Feedbacker 的 `worker_fix_prompt` 原样发给原 Worker 会话；无续写能力时按 `act.md` 降级为 state replay——不修改、不转述、不"优化"。Orchestrator 只做信使。
 3. **更新 plan delta**：
    - 不变步骤 → 引用标记 "步骤 X 不变（已 PASS）"
    - 修正步骤 → 用 Feedbacker 的 `worker_fix_prompt` + `revised_handoff`
