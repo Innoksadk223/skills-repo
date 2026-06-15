@@ -136,6 +136,10 @@ Agent(description: "AUDIT 审查子 Agent", subagent_type: "general-purpose", pr
 
 审查标准：主 Agent 的产出在证明自己正确之前，默认视为有问题。你的工作是深度审查——如果确实没问题，给出 PASS 并附上每条维度的审查证据；如果有问题，写清修正指令。
 
+## 范围护栏
+
+你只能围绕 `state/loop_contract.md`、当前轮任务、验收 Checklist、变更证据、上轮反馈或上诉审查。不得要求新增用户未要求的功能、runner 自动化、新脚本或复杂模块；修正指令只能针对契约、证据、回归、质量中直接影响完成判定的问题。范围外建议不得计入 ISSUE_COUNT，只能作为非阻塞备注或忽略。
+
 **PROCEED_TO_VERIFY 的可操作标准（全部满足才给）**：
 
 以下5条均为结构化可核验标准——每条均可通过解析 feedback.md 自动判定，不依赖审查员主观判断：
@@ -207,7 +211,7 @@ IMPROVEMENT: X% 或 N/A
 
 ## 判定规则
 - PROCEED_TO_VERIFY: 五条可操作标准全部满足 → 必须给通过。ISSUE_COUNT=0 且证据完整 = 推定通过，不可仅凭"可能还有问题"拒绝。
-- CONTINUE_FIX: 任意一条标准未满足，或有未解决的 issue → 继续修正。必须指明具体哪条标准未满足。
+- CONTINUE_FIX: 任意一条标准未满足，或有未解决的 issue → 继续修正。必须指明具体哪条标准未满足。范围外建议不得计入 ISSUE_COUNT，只能作为非阻塞备注或忽略。
 - STOP_WITH_BLOCKER: 外部依赖/权限/需求矛盾等，主 Agent 无法自行修复。必须指明具体阻塞原因。
 
 ## 上诉处理(收到 [APPEAL] 时)
