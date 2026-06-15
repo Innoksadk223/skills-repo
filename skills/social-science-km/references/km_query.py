@@ -24,7 +24,7 @@ WIKI_DIR_NAME = "wiki"
 INDEX_DIR_NAME = "检索索引"
 RAW_INDEX_NAME = "raw"
 WIKI_INDEX_NAME = "wiki"
-WIKI_INDEX_SOURCE_DIRS = ("claims", "concepts", "entities", "comparisons", "synthesis", "queries")
+WIKI_INDEX_SOURCE_DIRS = ("claims", "concepts", "entities", "comparisons", "debates", "synthesis", "queries")
 SKIP_NAMES = {"_conversion_failures.md", "_conversion_manifest.md", "_主题索引.md"}
 
 
@@ -103,6 +103,7 @@ def check_one_index(
     include_dirs: tuple[str, ...] | None = None,
     exclude_dirs: tuple[str, ...] | None = None,
     expected_metadata_mode: str | None = None,
+    allowed_metadata_modes: set[str] | None = None,
 ) -> tuple[bool, str]:
     current = compute_hashes(source_dir, include_dirs=include_dirs, exclude_dirs=exclude_dirs)
     manifest = index_manifest(index_dir)
@@ -112,7 +113,11 @@ def check_one_index(
         return True, f"{label} 源目录不存在: {source_dir}"
     if not manifest:
         return True, f"{label} 索引不存在，需要先构建"
-    if expected_metadata_mode and manifest.get("metadata_mode") != expected_metadata_mode:
+    manifest_mode = manifest.get("metadata_mode")
+    if allowed_metadata_modes and manifest_mode not in allowed_metadata_modes:
+        modes = "/".join(sorted(allowed_metadata_modes))
+        return True, f"{label} 索引 metadata_mode={manifest_mode}，需要按 {modes} 重建"
+    if expected_metadata_mode and manifest_mode != expected_metadata_mode:
         return True, f"{label} 索引 metadata_mode={manifest.get('metadata_mode')}，需要按 {expected_metadata_mode} 重建"
     stored = manifest.get("file_hashes")
     if not isinstance(stored, dict):
@@ -123,6 +128,25 @@ def check_one_index(
     return False, ""
 
 
+def graph_hashes(project_root: Path) -> dict[str, str]:
+    wiki_dir = project_path(project_root, WIKI_DIR_NAME)
+    return compute_hashes(
+        wiki_dir,
+        include_dirs=WIKI_INDEX_SOURCE_DIRS,
+        exclude_dirs=("raw", "_archive"),
+    )
+
+
+def raw_expected_metadata_mode(project_root: Path) -> str:
+    """Default build mode: plain before graph pages, enriched_raw after graph pages."""
+    return "enriched_raw" if graph_hashes(project_root) else "plain"
+
+
+def raw_allowed_metadata_modes(project_root: Path) -> set[str]:
+    """Before graph pages exist, both plain and enriched_raw are valid."""
+    return {"enriched_raw"} if graph_hashes(project_root) else {"plain", "enriched_raw"}
+
+
 def check_staleness(project_root: Path) -> StalenessStatus:
     wiki_dir = project_path(project_root, WIKI_DIR_NAME)
     index_root = project_path(project_root, INDEX_DIR_NAME)
@@ -131,7 +155,7 @@ def check_staleness(project_root: Path) -> StalenessStatus:
         source_dir=wiki_dir / "raw",
         index_dir=index_root / RAW_INDEX_NAME,
         label="raw",
-        expected_metadata_mode="enriched_raw",
+        allowed_metadata_modes=raw_allowed_metadata_modes(project_root),
     )
     wiki_stale, wiki_msg = check_one_index(
         source_dir=wiki_dir,
