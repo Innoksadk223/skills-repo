@@ -32,7 +32,27 @@ compiled_to:
   - wiki/concepts/...
 ```
 
-Do not delete dossiers by default. Archive low-use compiled dossiers under `reading_dossiers/_archive/` only when the user asks or the project policy says so.
+Do not delete dossiers by default. Treat them as durable audit and handoff records for how raw evidence was selected, compressed, and compiled.
+
+## Dossier Retention Policy
+
+Default lifecycle:
+
+1. Keep new dossiers in `reading_dossiers/` with `status: draft` until they pass the quality gates.
+2. After `karpathy-wiki` compilation, keep the dossier and update frontmatter to `status: compiled` plus `compiled_to:`.
+3. If compiled dossiers become noisy, move them to `reading_dossiers/_archive/` and update frontmatter to `status: archived`.
+4. Hard-delete a dossier only after explicit user approval.
+
+Prefer archiving over deletion. A compiled dossier may still explain why a claim was created, why a candidate was rejected, what context risks were known, and which raw anchors must be rechecked. It is not raw evidence, not a formal wiki node, and not part of the default RAG index.
+
+Ask the user before deleting any dossier unless the project has an explicit written cleanup policy. Only propose deletion when all of these are true:
+
+- the dossier has been compiled or deliberately rejected;
+- the relevant raw sources still exist under `wiki/raw/`;
+- any useful wiki outputs are listed in `compiled_to:` or in the dossier handoff section;
+- there is no unresolved context risk, pending RAG follow-up, or user-facing writing task depending on it.
+
+Never delete original source files or `wiki/raw/` materials from this skill.
 
 ## Input Modes
 
