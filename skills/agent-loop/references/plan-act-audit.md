@@ -28,6 +28,10 @@
 - 停止护栏：最大修正 3 轮 / 改进<10%收敛 / 资源预算[可选]
 - 任务标识：[task-slug]（唯一，防止多次运行 state 冲突）
 - Worktree: state/[task-slug]/
+- Progress: state/[task-slug]/progress.md
+- Auditor scope: session/workdir/series（同一目标的连续追加请求也算同一系列）
+- Shared auditor id: state/session_auditor_id.txt
+- Task auditor pointer: state/[task-slug]/auditor_id.txt
 
 ### 执行步骤
 1. [步骤名] — 做什么 + 做到什么程度 → handoff: [文件路径/验证命令]
@@ -39,6 +43,8 @@
 ### 需加载的技能
 - [skill] — [用途]
 ```
+
+同时创建 `state/[task-slug]/progress.md`，至少包含：done / tried / next / open / user-confirm / cost。`cost` 记录本轮耗时、调用的 agent/工具、是否值得继续、停止原因（如适用）。
 
 ### 1.3 步骤与 Handoff 设计规则
 
@@ -70,11 +76,51 @@
 
 **谁做**：主 Agent
 
-- 首轮：读 `state/loop_contract.md`，执行步骤，满足 handoff 条件
-- 后续轮：读 `state/feedback.md`，逐条执行 CONTINUE_FIX 修正指令
+- 首轮：读 `state/loop_contract.md` 和 `state/<slug>/progress.md`，执行步骤，满足 handoff 条件
+- 后续轮：读 `state/feedback.md` 与 `state/<slug>/progress.md`，逐条执行 CONTINUE_FIX 修正指令
 - **Skill-First**：执行前检索加载领域技能，禁止纯 Prompt 猜测
 - **TaskCreate/TaskUpdate** 拆分工作
 - 产出落盘 `state/`
+- 每轮结束后更新 `progress.md`：done/tried/next/open/user-confirm/cost。`cost` 必须记录本轮耗时、调用的 agent/工具、是否值得继续、停止原因（如适用）
+- 不能自动继续的事项写入 `state/inbox.md`：需要用户确认、外部阻塞、低收益暂停、硬上限、上诉死锁、后续风险。主 Agent 写，审查 Agent 只读并在 `feedback.md` 指出遗漏
+
+### 2.1 WAITING_FOR_AUDIT（等待审查期间）
+
+**谁做**：主 Agent
+
+审查 Agent 正在处理 AUDIT 时，主 Agent 可并行做轻量状态维护，但不得改变审查对象。
+
+允许：
+
+- 更新 `state/<slug>/progress.md` 的 done/tried/next/open/user-confirm/cost
+- 补写 `state/inbox.md` 中的阻塞、用户确认项、后续风险
+- 整理本轮 handoff 证据路径、命令输出摘要、耗时与工具记录
+- 检查 `state/session_auditor_id.txt` 与 `state/<slug>/auditor_id.txt` 是否指向同一共享审查 Agent
+
+禁止：
+
+- 修改已经提交给审查 Agent 的正式产出文件
+- 新增未写入契约的功能、脚本、runner 或自动化
+- 替审查 Agent 预判 DECISION、提前执行假想修正
+- 覆写 `feedback.md` 或把审查意见改写成主 Agent 自己的判断
+
+审查 Agent 在 `feedback.md` 中检查状态文件是否完整；若发现 `progress.md`、`inbox.md`、成本观测或 handoff 证据缺失，按 `weak_validation` 或对应 failure_type 指出。小项目默认由主 Agent 做这项维护，不新增独立记忆维护 Agent。
+
+---
+
+## 2.5 RESUME（恢复入口）
+
+**谁做**：主 Agent
+
+恢复 loop 时先读 `state/session_auditor_id.txt`、`state/<slug>/auditor_id.txt`、`state/<slug>/progress.md`、`state/inbox.md`、上轮 `feedback.md`，再路由：
+
+1. `user-confirm` 非空 → 先问用户，暂停自动执行
+2. 存在上诉待处理 → 恢复同一审查会话处理上诉
+3. `next` 指向未完成修正 → 继续 ACT
+4. 上轮 `DECISION: PROCEED_TO_VERIFY` → 进入 VERIFY
+5. `cost` 或停止原因显示低收益、硬上限、上诉死锁或阻塞 → 停止并汇报
+
+恢复不是新建任务。必须沿用同一 `task-slug`、同一 `progress.md`，并先判断当前任务是否属于同一会话、同一工作目录、同一系列任务；同一目标的连续追加请求也算同一系列。属于同系列时必须续用 `state/session_auditor_id.txt` 指向的共享审查 Agent。
 
 ---
 
@@ -86,35 +132,49 @@
 
 **持久化硬规则（所有方案通用）**：
 
-- 审查 Agent 必须跨轮存活，**严禁每轮新建**。同一任务的审查始终是同一个 Agent 实例。
-- 主 Agent 在首轮后必须先验证 `state/auditor_id.txt` 存在，再派发。如果 ID 丢失，报 STOP_WITH_BLOCKER。
+- 审查 Agent 必须跨轮、跨同系列任务存活，**严禁每轮或每个 task-slug 新建**。同一会话、同一工作目录、同一系列任务始终复用同一个 Agent 实例；同一目标的连续追加请求也按同系列处理。
+- 共享审查 Agent ID 写入 `state/session_auditor_id.txt`；当前任务的 `state/<slug>/auditor_id.txt` 只是指向或复制该共享 ID。
+- 主 Agent 在每轮 AUDIT 前必须先验证 `state/session_auditor_id.txt` 或 `state/<slug>/auditor_id.txt` 存在，并判断是否同会话/同工作目录/同系列。如果同系列且 ID 存在，必须续用。
+- 只有没有可续接共享审查 Agent、工作目录变化、任务系列不相关、用户明确要求重置时，才允许创建新审查 Agent。创建后必须写入 `state/session_auditor_id.txt`，并让当前 task-slug 的 `auditor_id.txt` 指向它。
 - 新 Agent = 新上下文 = 丢失审查记忆 = 违反铁律 #1。
 
 **方案 A — Claude Code 原生（默认）**：
 
-1. 首轮 `Agent()` 派发 → 从返回值取 `agentId` → `echo "<id>" > state/auditor_id.txt`
-2. **后续轮严禁 `Agent()` 新建**，必须先验证 `state/auditor_id.txt` 存在。如文件丢失 → STOP_WITH_BLOCKER（不可自动恢复，需用户重新启动循环）。必须 `SendMessage(to: read("state/auditor_id.txt"), ...)` 续对话。
-3. 读 `state/feedback.md` 提取裁决
+1. AUDIT 前先读 `state/session_auditor_id.txt`；若当前 task 属于同会话/同工作目录/同系列且共享 ID 存在，直接 `SendMessage(to: read("state/session_auditor_id.txt"), ...)`。
+2. 只有满足允许新建的例外条件时，才 `Agent()` 派发 → 从返回值取 `agentId` → 写入 `state/session_auditor_id.txt`，并复制/指向到 `state/<slug>/auditor_id.txt`。
+3. **后续轮严禁 `Agent()` 新建**。如同系列共享 ID 丢失 → STOP_WITH_BLOCKER（不可自动恢复，需用户确认是否重置审查 Agent）。
+4. 读 `state/feedback.md` 提取裁决
 
 **方案 B — CLI 跨平台审查（Hermes 等无原生子 Agent 的环境）**：
 
-审查 Agent 是一个独立 CLI 进程，通过 `--session-id` / `--resume` 跨轮存活。主 Agent 无需在同一个平台。
+审查 Agent 是一个独立 CLI 进程，通过 `--session-id` / `--resume` 跨轮、跨同系列任务存活。主 Agent 无需在同一个平台。
 
 ```bash
-# 首轮：审查 Agent 的 prompt 要求它把结果写入 state/feedback.md
+# AUDIT 前：优先复用同会话/同目录/同系列的共享审查会话
+if [ -f state/session_auditor_id.txt ]; then
+  SESSION_ID="$(cat state/session_auditor_id.txt)"
+else
+  # 仅在无可续接共享 Agent / 工作目录变化 / 任务系列不相关 / 用户明确重置时创建
+  SESSION_ID="$(uuidgen)"
+  printf "%s\n" "$SESSION_ID" > state/session_auditor_id.txt
+fi
+mkdir -p "state/$TASK_SLUG"
+printf "%s\n" "$SESSION_ID" > "state/$TASK_SLUG/auditor_id.txt"
+
+# 首次共享会话：审查 Agent 的 prompt 要求它把结果写入 state/<slug>/feedback.md
 cat > state/audit_prompt.md << 'PROMPT'
 [子 Agent prompt 模板，含四维度+输出格式+要求写入 state/feedback.md]
 PROMPT
-claude -p "$(cat state/audit_prompt.md)" --session-id $SESSION_ID
-# 审查 Agent 已直接将结果写入 state/feedback.md，主 Agent 直接读取
+claude -p "$(cat state/audit_prompt.md)" --session-id "$SESSION_ID"
+# 审查 Agent 已直接将结果写入 state/<slug>/feedback.md，主 Agent 直接读取
 
-# 后续轮：恢复同一会话
+# 同系列后续轮/后续任务：恢复同一共享会话
 cat > state/audit_continue.md << 'PROMPT'
 审查 Round N。主 Agent 已逐条执行你上一轮的修正指令。
 本轮变更: [列出文件+改动]
 请重新验证，更新 ISSUE_COUNT 和 IMPROVEMENT，更新 state/feedback.md。
 PROMPT
-claude -p "$(cat state/audit_continue.md)" --resume $SESSION_ID
+claude -p "$(cat state/audit_continue.md)" --resume "$SESSION_ID"
 # 审查 Agent 保持全部对话历史，只收增量，更新 state/feedback.md
 ```
 
@@ -132,9 +192,9 @@ CLI 的 `--session-id` / `--resume` 提供持久化。`--session-id` 要求 UUID
 Agent(description: "AUDIT 审查子 Agent", subagent_type: "general-purpose", prompt: """
 你是独立审查员，跨轮存活，只审查不动手修改。
 
-## 你的立场：严格审查
+## 你的立场：固定严格审查
 
-审查标准：主 Agent 的产出在证明自己正确之前，默认视为有问题。你的工作是深度审查——如果确实没问题，给出 PASS 并附上每条维度的审查证据；如果有问题，写清修正指令。
+审查标准：主 Agent 的产出在证明自己正确之前，默认视为有问题。agent-loop 不提供轻量/标准/严格分级；恢复、降级和审查 prompt 均按严格四维审查与既有通过标准执行。你的工作是深度审查——如果确实没问题，给出 PASS 并附上每条维度的审查证据；如果有问题，写清修正指令。
 
 ## 范围护栏
 
@@ -173,7 +233,7 @@ Agent(description: "AUDIT 审查子 Agent", subagent_type: "general-purpose", pr
 - CLI 参数未经实际验证（应跑 --help 确认）→ logic_error
 
 ## 每轮步骤
-1. 读 state/loop_contract.md → 2. 审查本轮变更文件 → 3. 运行测试+主动补充验证(跑 linter, 构造边界输入, 跑 --help 验证 CLI 参数) → 4. 统计 ISSUE_COUNT，对比上轮 → 5. 写 feedback.md
+1. 读 state/loop_contract.md + progress.md → 2. 审查本轮变更文件 → 3. 运行测试+主动补充验证(跑 linter, 构造边界输入, 跑 --help 验证 CLI 参数) → 4. 统计 ISSUE_COUNT，对比上轮 → 5. 写 feedback.md → 6. 确认主 Agent 在本轮后更新 progress.md 的 done/tried/next/open/user-confirm/cost
 
 ## 输出格式(严格遵循)
 
@@ -234,6 +294,9 @@ elif CONTINUE_FIX:
     elif IMPROVEMENT < 10% → 收敛交付
     else → LOOP(逐条执行修正指令, 重新提交审查)
 ```
+
+每次路由后都更新 `progress.md` 的 `cost`：耗时、调用的 agent/工具、是否值得继续、停止原因（如适用）。如果因为硬上限、改进<10%、上诉死锁或阻塞停止，停止原因必须写入 `progress.md` 和最终报告。
+需要用户确认、外部阻塞、低收益暂停、硬上限、上诉死锁或后续风险时，同时写入 `state/inbox.md`。每条 inbox 记录包含任务标识、优先级、原因、当前状态、建议动作、来源文件。
 
 ---
 
@@ -307,9 +370,32 @@ while True:
 结果：3/3 PASS | 修正 1 轮
 ```
 
-- PROCEED_TO_VERIFY → 交付产出物清单 + 验收结果 + 修正历史 → 询问用户保留或清理 `state/<slug>/`
+- PROCEED_TO_VERIFY → 交付产出物清单 + 验收结果 + 修正历史 + 理解交付 → 询问用户保留或清理 `state/<slug>/`
 - 收敛/硬上限 → 交付当前最优版本 + 标注未达标项 + 终止原因
 - STOP_WITH_BLOCKER → 交付当前版本 + 阻塞原因
+
+### 理解交付（必填）
+
+最终交付必须包含：
+
+- 改了什么
+- 为什么这样做
+- 风险/限制
+- 用户后续需要知道什么
+
+缺任一项不得视为完成交付。最终报告还必须引用 `progress.md` 中的当前状态、停止原因和成本/预算观测。
+
+### 老板汇报式摘要（必填）
+
+像产品经理向老板汇报，最终摘要必须包含：
+
+- 本次完成了什么
+- 为什么这样做
+- 结果是否达标
+- 风险与遗留问题
+- 下一步建议
+
+摘要先讲结果，再讲依据和下一步；避免只堆技术细节。
 
 ---
 

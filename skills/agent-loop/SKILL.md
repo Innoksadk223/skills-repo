@@ -19,18 +19,83 @@ description: "双Agent闭环工作流。主Agent执行(ACT)→独立审查子Age
 - 当前轮任务：本轮是在首轮执行、修正、上诉还是最终验证
 - 变更证据：文件路径、diff 摘要、命令输出或产出物路径
 - 上轮反馈或上诉：`feedback.md` / `appeal.md` 路径，无则写“首轮无上轮反馈”
+- 审查 Agent 作用域：当前会话、工作目录、任务系列、共享审查 Agent ID
 
-审查子 Agent 只能按 `loop_contract.md`、当前轮任务和上述证据审核；缺少这些输入时，先要求补齐 handoff，不凭空扩展任务。
+审查子 Agent 只能按 `loop_contract.md`、当前轮任务和上述证据审核；缺少这些输入时，先要求补齐 handoff，不凭空扩展任务。AUDIT 前必须先查共享审查 Agent ID，不能因为 task-slug 变化就默认新建审查 Agent。
 
 ## 工作流
 
 | 步 | 谁做 | 做什么 | 产物 |
 |----|------|--------|------|
-| 1. PLAN | 主 Agent | 苏格拉底式追问 → 步骤设计 → handoff/Checklist → 生成 task-slug → 契约落盘 | `state/<slug>/loop_contract.md` |
-| 2. ACT | 主 Agent | 执行步骤，满足 handoff 条件，产出落盘 | 产出文件 |
+| 1. PLAN | 主 Agent | 苏格拉底式追问 → 步骤设计 → handoff/Checklist → 生成 task-slug → 契约落盘 | `state/<slug>/loop_contract.md` + `progress.md` |
+| 2. ACT | 主 Agent | 执行步骤，满足 handoff 条件，产出落盘；更新进度脊柱 | 产出文件 + `progress.md` |
 | 3. AUDIT | **审查子 Agent** | 四维审查(需求/问题/质量/回归) + failure_type 分类 → DECISION 三态裁决 | `state/<slug>/feedback.md` |
-| 4. LOOP | 主 Agent | 读 DECISION → CONTINUE_FIX 则逐条执行修正指令（可[APPEAL]误判指令）→ 重新提交审查 | 迭代至终止 |
-| 5. VERIFY | 主 Agent | 对照 Checklist 逐项验收 state/<slug>/ 产出物 → 询问用户是否保留或清理 state | 交付/收敛报告 |
+| 4. LOOP | 主 Agent | 读 DECISION → CONTINUE_FIX 则逐条执行修正指令（可[APPEAL]误判指令）→ 更新 progress → 重新提交审查 | 迭代至终止 |
+| 5. VERIFY | 主 Agent | 对照 Checklist 逐项验收 → 理解交付 → 询问用户是否保留或清理 state | 验收结果 + 理解交付 + `progress.md` |
+
+### 长期状态脊柱
+
+`state/<slug>/progress.md` 是跨轮记忆，不替代 `feedback.md`。每轮开始前先读，结束后更新：
+
+- done：已经完成并有证据的事项
+- tried：尝试过的方案、失败原因、上诉结果
+- next：下一步动作或停止后的建议
+- open：未解决问题、阻塞、风险
+- user-confirm：需要用户确认的取舍或外部动作
+- cost：本轮耗时、调用的 agent/工具、是否值得继续、停止原因（如适用）
+
+每轮必须把耗时、工具/agent、继续价值或停止原因写入 `progress.md` 或契约的当前轮状态区。
+
+### 等待审查期间
+
+审查 Agent 工作时，主 Agent 不必空转，但只能维护状态，不得改变正在被审查的正式产物：
+
+- 允许：更新 `progress.md` 的 done/tried/next/open/user-confirm/cost、补写 `state/inbox.md`、整理 handoff 证据、记录等待中的阻塞或成本
+- 禁止：修改本轮已提交审查的产出文件、追加未进契约的新功能、替审查 Agent 预判结论或提前执行假想修正
+
+审查 Agent 在 `feedback.md` 中负责指出状态遗漏；主 Agent 只按反馈修正，不新增独立记忆维护 Agent。
+
+### 待处理箱
+
+`state/inbox.md` 是跨任务待处理箱，不替代单个任务的 `progress.md`。主 Agent 负责写入；审查 Agent 只读，并在 `feedback.md` 中指出遗漏。
+
+遇到以下任一情况，主 Agent 必须写入 `state/inbox.md`：
+
+- 需要用户确认才能继续
+- 外部依赖、权限、网络、账号、API key 阻塞
+- 改进 < 10% 后收敛暂停
+- 达到修正硬上限
+- 连续上诉死锁
+- 有不阻塞本次交付、但需要后续决策的风险
+
+每条记录包含：任务标识、优先级、原因、当前状态、建议动作、来源文件。
+
+### 恢复规则
+
+恢复 loop 时，先读 `state/<slug>/progress.md` 的 `next/open/user-confirm/cost` 和 `state/inbox.md`，再决定路由：
+
+- `user-confirm` 非空：先问用户，暂停自动执行
+- 有上诉待处理：恢复同一审查会话处理上诉
+- `next` 指向未完成修正：继续 ACT
+- 上轮 `DECISION: PROCEED_TO_VERIFY`：进入 VERIFY
+- `cost` 或停止原因显示低收益、硬上限、上诉死锁或阻塞：停止并汇报
+
+### 理解交付
+
+VERIFY 不是只报“通过”。最终交付缺少以下任一项，不得视为完成：
+
+- 改了什么
+- 为什么这样做
+- 风险/限制
+- 用户后续需要知道什么
+
+最终交付还必须包含产品经理对老板汇报式摘要：
+
+- 本次完成了什么
+- 为什么这样做
+- 结果是否达标
+- 风险与遗留问题
+- 下一步建议
 
 ### 终止条件 (满足其一即停)
 
@@ -44,9 +109,9 @@ description: "双Agent闭环工作流。主Agent执行(ACT)→独立审查子Age
 
 **0. 分离令（#1 陷阱）** — 主 Agent 严禁审查自己产出或替审查子 Agent 写 prompt。修正指令原样转发。
 
-**1. 持久化审查** — 首轮 `Agent` 派发并捕获 `agentId` → `state/<slug>/auditor_id.txt`。后续轮**严禁新建 Agent**，必须 `SendMessage` 续对话（或 CLI `--resume`）。新建 = 丢失审查记忆 = 违规。主 Agent 在每轮 AUDIT 前必须先验证 `state/<slug>/auditor_id.txt` 存在。
+**1. 持久化审查** — 同一会话、同一工作目录、同一系列任务必须复用同一个审查 Agent。`state/<slug>/` 继续隔离任务产物，但审查 Agent 身份按 session/workdir/series 复用。共享 ID 写入 `state/session_auditor_id.txt`；`state/<slug>/auditor_id.txt` 只是指向该共享审查 Agent 的指针或拷贝，不代表每个 task-slug 都新建 Agent。后续轮**严禁新建 Agent**，必须 `SendMessage` 续对话（或 CLI `--resume`）。只有没有可续接共享审查 Agent、工作目录变化、任务系列不相关、用户明确要求重置时，才允许创建新审查 Agent。新建 = 丢失审查记忆 = 违规。
 
-**2. 默认严格** — 审查子 Agent 的立场是"默认不信任"。PROCEED_TO_VERIFY 需满足五条可操作标准（证据闭环/四维全覆盖/边界可核验/修正闭环/零未解决问题），不是默认结局。
+**2. 固定严格** — 审查子 Agent 的立场是"默认不信任"。agent-loop 不提供轻量/标准/严格分级；恢复、降级和审查 prompt 均按严格四维审查与既有通过标准执行。PROCEED_TO_VERIFY 需满足五条可操作标准（证据闭环/四维全覆盖/边界可核验/修正闭环/零未解决问题），不是默认结局。
 
 **3. Prompt 不是意见** — 每条修正指令含 `failure_type`（logic_error/requirement_gap/missing_edge_case/regression/quality_issue/missing_skill/weak_validation/external_blocker），主 Agent 逐条执行。
 
@@ -70,21 +135,31 @@ description: "双Agent闭环工作流。主Agent执行(ACT)→独立审查子Age
 | **备选 3** | Hermes / 任意 | Codex CLI（独立进程） | 同上 CLI 会话机制 |
 | **降级模式（兜底）** | 无 CLI 可用 | 主 Agent 角色切换模拟审查 | `[角色切换]` 协议，≤2 轮 |
 
-Codex 执行时，若可用 sub-agent/thread 续接机制，首轮必须捕获可续接 ID 并写入 `state/<slug>/auditor_id.txt`，后续轮用该 ID 续接；若当前 Codex 无可续接机制，直接使用 CLI 备选方案或降级模式，并在 `feedback.md` 说明降级原因。
+Codex 执行时，若可用 sub-agent/thread 续接机制，AUDIT 前先读 `state/session_auditor_id.txt` 并判断是否同会话、同工作目录、同系列任务；命中则复用该 ID。只有满足允许新建的例外条件时，才创建审查 Agent，捕获可续接 ID 写入 `state/session_auditor_id.txt`，并让 `state/<slug>/auditor_id.txt` 指向它；若当前 Codex 无可续接机制，直接使用 CLI 备选方案或降级模式，并在 `feedback.md` 说明降级原因。
 
 ### CLI 跨平台审查（备选 2/3）
 
 主 Agent（Hermes）通过 CLI 启动独立审查进程，利用 CLI 的会话持久能力：
 
 ```bash
-SESSION_ID=$(uuidgen)  # --session-id 要求 UUID 格式
-# 首轮：创建命名会话，审查 Agent 直接写 state/feedback.md
+# AUDIT 前：同一会话/同一工作目录/同一系列任务优先复用共享审查会话
+if [ -f state/session_auditor_id.txt ]; then
+  SESSION_ID="$(cat state/session_auditor_id.txt)"
+else
+  # 仅在无可续接共享 Agent / 工作目录变化 / 任务系列不相关 / 用户明确重置时创建
+  SESSION_ID=$(uuidgen)  # --session-id 要求 UUID 格式
+  printf "%s\n" "$SESSION_ID" > state/session_auditor_id.txt
+fi
+mkdir -p "state/$TASK_SLUG"
+printf "%s\n" "$SESSION_ID" > "state/$TASK_SLUG/auditor_id.txt"
+
+# 首次共享会话：创建命名会话，审查 Agent 直接写 state/<slug>/feedback.md
 claude -p "$(cat state/audit_prompt.md)" --session-id "$SESSION_ID"
-# 后续轮：恢复同一会话，审查 Agent 更新 state/feedback.md
+# 同系列后续轮/后续任务：恢复同一共享会话，审查 Agent 更新 state/<slug>/feedback.md
 claude -p "$(cat state/audit_continue.md)" --resume "$SESSION_ID"
 ```
 
-审查 Agent 的 CLI 进程跨轮存活（通过 `--session-id` / `--resume`），不每轮新建。主 Agent 只负责读写 state/ 文件、做路由决策。
+审查 Agent 的 CLI 进程跨轮、跨同系列任务存活（通过 `--session-id` / `--resume`），不每轮或每个 task-slug 新建。主 Agent 只负责读写 state/ 文件、做路由决策。
 
 ### 循环调度
 
