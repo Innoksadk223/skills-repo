@@ -48,6 +48,16 @@ assert_not_exists() {
     [ ! -e "$path" ] && pass "$label" || fail "$label"
 }
 
+assert_symlink() {
+    local path="$1" label="$2"
+    [ -L "$path" ] && pass "$label" || fail "$label"
+}
+
+assert_same_file() {
+    local left="$1" right="$2" label="$3"
+    cmp -s "$left" "$right" && pass "$label" || fail "$label"
+}
+
 test_help() {
     local out
     make_tmp
@@ -66,6 +76,7 @@ test_dry_run_does_not_write() {
     assert_contains "$out" "预览模式" "dry-run announces preview mode"
     assert_not_exists "$target/.skills-repo-path" "dry-run does not write install marker"
     assert_not_exists "$target/agent-loop" "dry-run does not copy skills"
+    assert_not_exists "$tmp/home/.agents/skills/agent-loop" "dry-run does not write shared skill store"
 }
 
 test_single_skill_install() {
@@ -76,7 +87,10 @@ test_single_skill_install() {
     out="$(HOME="$tmp/home" bash "$SETUP" --target codex --dir "$target" --skills agent-loop --yes)"
     assert_contains "$out" "agent-loop" "single-skill output mentions selected skill"
     assert_contains "$out" "新增 1，更新 0" "single-skill summary shows correct counts"
-    assert_exists "$target/agent-loop/SKILL.md" "single-skill install copies requested skill"
+    assert_exists "$tmp/home/.agents/skills/agent-loop/SKILL.md" "single-skill install copies requested skill to shared store"
+    assert_symlink "$target/agent-loop" "single-skill install links agent skill to shared store"
+    assert_exists "$target/agent-loop/SKILL.md" "single-skill install exposes requested skill through link"
+    assert_same_file "$ROOT_DIR/skills/agent-loop/SKILL.md" "$target/agent-loop/SKILL.md" "agent skill content matches repository"
     assert_not_exists "$target/anysearch/SKILL.md" "single-skill install skips unrequested skill"
 }
 
@@ -89,6 +103,21 @@ test_update_only_skips_new_skills() {
     assert_contains "$out" "只更新已有技能" "update-only announces update mode"
     assert_contains "$out" "新增 0，更新 0，跳过 1" "update-only summary shows skipped new skill"
     assert_not_exists "$target/agent-loop/SKILL.md" "update-only does not add new skill"
+}
+
+test_update_only_refreshes_existing_skill() {
+    local tmp target out
+    make_tmp
+    tmp="$TMP_RESULT"
+    target="$tmp/codex-skills"
+    mkdir -p "$target/agent-loop"
+    printf 'stale local skill\n' > "$target/agent-loop/SKILL.md"
+
+    out="$(HOME="$tmp/home" bash "$SETUP" --target codex --dir "$target" --skills agent-loop --update-only --yes)"
+    assert_contains "$out" "新增 0，更新 1" "update-only refreshes an existing local skill"
+    assert_exists "$tmp/home/.agents/skills/agent-loop/SKILL.md" "update-only writes refreshed skill to shared store"
+    assert_symlink "$target/agent-loop" "update-only migrates existing copied skill to shared link"
+    assert_same_file "$ROOT_DIR/skills/agent-loop/SKILL.md" "$target/agent-loop/SKILL.md" "updated local skill matches repository"
 }
 
 test_recommended_preset_is_small() {
@@ -106,6 +135,7 @@ test_help
 test_dry_run_does_not_write
 test_single_skill_install
 test_update_only_skips_new_skills
+test_update_only_refreshes_existing_skill
 test_recommended_preset_is_small
 
 printf '# %s assertions passed\n' "$PASS_COUNT"

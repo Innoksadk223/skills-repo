@@ -161,7 +161,8 @@ bash setup.sh --help                            # 查看完整选项
 - 自动检测你装了哪些 agent（支持多选 / 全选）
 - **小白模式** — 默认推荐安装，也可预览后再安装
 - **自由选择** — 可按预设、分组或单个 skill 安装
-- 直接将技能文件复制到 agent 目录（非 symlink，独立可迁移）
+- 先将仓库技能同步到 `~/.agents/skills` 主副本
+- 在 Codex / Claude / Hermes 的 skills 目录中创建指向主副本的链接
 - Hermes 自动构建分类目录（browser-use/, paperspine/, minimax/, research/, creative/ 等）
 - 已有技能自动比较更新（`diff -rq`），不一致则覆盖
 - 不删除不在本仓库里的技能
@@ -184,16 +185,16 @@ bash setup.sh --dry-run
 
 当用户要求更新本技能库时：
 
-1. 先找安装路径：检查 `~/.{agent}/skills/.skills-repo-path` 获取 repo 位置
+1. 先找安装路径：优先检查 `~/.agents/skills/.skills-repo-path`，也可检查 `~/.{agent}/skills/.skills-repo-path` 获取 repo 位置
 2. 然后执行：
 ```bash
-cd $(cat ~/.claude/skills/.skills-repo-path)
+cd $(cat ~/.agents/skills/.skills-repo-path)
 git pull
 bash setup.sh --update-only
 ```
 
 执行规则：
-- 已有技能 → 自动 `diff` 比较，不一致则覆盖更新，无需手动干预
+- 已有技能 → 自动 `diff` 比较，不一致则更新 `~/.agents/skills` 主副本，并修复 agent 目录链接
 - 新增技能 → 列出清单询问用户是否安装
 - 不在本仓库的技能 → 不删除、不覆盖
 

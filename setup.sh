@@ -3,6 +3,7 @@ set -e
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILLS_FLAT="$REPO_DIR/skills"
+AGENTS_SKILLS_DIR="${AGENTS_SKILLS_DIR:-$HOME/.agents/skills}"
 
 GROUP_KEYS=(browser paperspine minimax search academic productivity creative superpowers tools)
 GROUP_DESC=(
@@ -107,8 +108,9 @@ Inno's Skills Pack 安装器
 
 说明：
   - 不会删除不在本仓库里的技能。
-  - 默认安装到 ~/.codex/skills、~/.claude/skills、~/.hermes/skills。
-  - Hermes 会按用途分组；Codex/Claude 使用扁平目录。
+  - 仓库技能会先同步到 ~/.agents/skills 主副本。
+  - 默认在 ~/.codex/skills、~/.claude/skills、~/.hermes/skills 创建指向主副本的链接。
+  - Hermes 会按用途分组；Codex/Claude 使用扁平入口。
 EOF
 }
 
@@ -509,13 +511,39 @@ relative_for() {
     fi
 }
 
+target_points_to_shared() {
+    local dst="$1" shared="$2"
+    local link target_path resolved_target resolved_shared
+    [ -L "$dst" ] || return 1
+    [ -d "$shared" ] || return 1
+    link="$(readlink "$dst")" || return 1
+    case "$link" in
+        /*) target_path="$link" ;;
+        *) target_path="$(dirname "$dst")/$link" ;;
+    esac
+    [ -d "$target_path" ] || return 1
+    resolved_target="$(cd "$target_path" && pwd -P)" || return 1
+    resolved_shared="$(cd "$shared" && pwd -P)" || return 1
+    [ "$resolved_target" = "$resolved_shared" ]
+}
+
+shared_needs_sync() {
+    local src="$1" shared="$2"
+    [ -f "$shared/SKILL.md" ] || return 0
+    ! diff -rq "$src" "$shared" >/dev/null 2>&1
+}
+
 action_for_skill() {
-    local src="$1" dst="$2"
+    local src="$1" shared="$2" dst="$3"
     if [ ! -f "$dst/SKILL.md" ]; then
         echo "new"
         return 0
     fi
-    if diff -rq "$src" "$dst" >/dev/null 2>&1; then
+    if shared_needs_sync "$src" "$shared"; then
+        echo "update"
+        return 0
+    fi
+    if target_points_to_shared "$dst" "$shared"; then
         echo "same"
     else
         echo "update"
@@ -532,7 +560,7 @@ collect_new_skills() {
             selected_skill "$name" || continue
             src="$SKILLS_FLAT/$name"
             dst="$(destination_for "$agent" "$dir" "$name")"
-            action="$(action_for_skill "$src" "$dst")"
+            action="$(action_for_skill "$src" "$AGENTS_SKILLS_DIR/$name" "$dst")"
             if [ "$action" = "new" ]; then
                 rel="$(relative_for "$agent" "$name")"
                 NEW_LINES+=("[$agent] $rel")
@@ -565,20 +593,28 @@ confirm_new_skills() {
 }
 
 sync_skill() {
-    local src="$1" dst="$2" action="$3"
+    local src="$1" shared="$2" dst="$3" action="$4"
     if [ "$DRY_RUN" -eq 1 ]; then
+        return 0
+    fi
+    mkdir -p "$(dirname "$shared")"
+    if shared_needs_sync "$src" "$shared"; then
+        rm -rf "$shared"
+        cp -R "$src" "$shared"
+    fi
+    if [ "$dst" = "$shared" ]; then
         return 0
     fi
     mkdir -p "$(dirname "$dst")"
     if [ "$action" = "new" ] || [ "$action" = "update" ]; then
         rm -rf "$dst"
-        cp -R "$src" "$dst"
+        ln -s "$shared" "$dst"
     fi
 }
 
 install_target() {
     local agent="$1" dir="$2"
-    local name src dst rel action new upd skip
+    local name src shared dst rel action new upd skip
     new=0
     upd=0
     skip=0
@@ -589,15 +625,17 @@ install_target() {
     [ "$DRY_RUN" -eq 1 ] && echo "  模式: 预览模式，不写文件"
 
     if [ "$DRY_RUN" -eq 0 ]; then
+        mkdir -p "$AGENTS_SKILLS_DIR"
         mkdir -p "$dir"
     fi
 
     for name in $(all_skill_names); do
         selected_skill "$name" || continue
         src="$SKILLS_FLAT/$name"
+        shared="$AGENTS_SKILLS_DIR/$name"
         dst="$(destination_for "$agent" "$dir" "$name")"
         rel="$(relative_for "$agent" "$name")"
-        action="$(action_for_skill "$src" "$dst")"
+        action="$(action_for_skill "$src" "$shared" "$dst")"
 
         if [ "$action" = "new" ] && { [ "$UPDATE_ONLY" -eq 1 ] || [ "$INSTALL_NEW" != "y" ]; }; then
             echo "  - $rel (新，已跳过)"
@@ -607,12 +645,12 @@ install_target() {
 
         case "$action" in
             new)
-                sync_skill "$src" "$dst" "$action"
+                sync_skill "$src" "$shared" "$dst" "$action"
                 echo "  + $rel (新)"
                 new=$((new + 1))
                 ;;
             update)
-                sync_skill "$src" "$dst" "$action"
+                sync_skill "$src" "$shared" "$dst" "$action"
                 echo "  ↻ $rel (更新)"
                 upd=$((upd + 1))
                 ;;
@@ -623,6 +661,7 @@ install_target() {
     done
 
     if [ "$DRY_RUN" -eq 0 ]; then
+        echo "$REPO_DIR" > "$AGENTS_SKILLS_DIR/.skills-repo-path"
         echo "$REPO_DIR" > "$dir/.skills-repo-path"
     fi
 
