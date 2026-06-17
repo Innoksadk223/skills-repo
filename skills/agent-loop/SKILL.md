@@ -9,6 +9,23 @@ description: "双Agent闭环工作流。主Agent执行(ACT)→独立审查子Age
 
 一个模型审查自己的产出总是过于宽容。**分离执行者与审查者**是循环收敛的关键。主 Agent 执行，独立审查子 Agent 验证并写出可直接执行的修正指令，循环直到审查通过或触发终止。
 
+## PLAN 契约门
+
+PLAN 不是开场说明，而是进入 ACT 的硬门槛。没有 `state/<slug>/loop_contract.md` 和 `progress.md`，不得开始正式执行；用户要求跳过追问时，也必须把假设、风险和验收标准写进契约。
+
+PLAN 至少包含：
+
+- 意图：用户真正要达成什么
+- 非目标：本轮明确不做什么，防止审查扩张
+- 假设/澄清：影响路线但无法继续追问时的默认判断
+- 执行步骤：每步写“做什么 + 做到什么程度”
+- handoff 条件：产物路径、命令输出或可检查证据
+- 验收 Checklist：可量化、二元、附证据要求
+- 审查输入包：AUDIT 需要读哪些文件和证据
+- 恢复入口：下一轮从 `progress.md` 的哪些字段继续
+
+PLAN 写不清，后续做得再多也只是放大误差。审查 Agent 必须把薄弱 PLAN 视为 `weak_validation`：目标不清、Checklist 不可验证、步骤没有 handoff、非目标缺失、假设未落盘，均不得 `PROCEED_TO_VERIFY`。
+
 ## 审查 Handoff
 
 每轮 AUDIT 前，主 Agent 必须把同一个审查 Agent 需要的最小上下文包交清楚：
@@ -21,16 +38,16 @@ description: "双Agent闭环工作流。主Agent执行(ACT)→独立审查子Age
 - 上轮反馈或上诉：`feedback.md` / `appeal.md` 路径，无则写“首轮无上轮反馈”
 - 审查 Agent 作用域：当前会话、工作目录、任务系列、共享审查 Agent ID
 
-审查子 Agent 只能按 `loop_contract.md`、当前轮任务和上述证据审核；缺少这些输入时，先要求补齐 handoff，不凭空扩展任务。AUDIT 前必须先查共享审查 Agent ID，不能因为 task-slug 变化就默认新建审查 Agent。
+审查子 Agent 只能按 `loop_contract.md`、当前轮任务和上述证据审核；缺少这些输入时，先要求补齐 handoff，不凭空扩展任务。AUDIT 还必须先审 PLAN 本身：契约不完整、验收不可判定、handoff 不可检查、范围边界缺失时，先退回修 PLAN，不继续审产物。AUDIT 前必须先查共享审查 Agent ID，不能因为 task-slug 变化就默认新建审查 Agent。
 
 ## 工作流
 
 | 步 | 谁做 | 做什么 | 产物 |
 |----|------|--------|------|
-| 1. PLAN | 主 Agent | 苏格拉底式追问 → 步骤设计 → handoff/Checklist → 生成 task-slug → 契约落盘 | `state/<slug>/loop_contract.md` + `progress.md` |
+| 1. PLAN | 主 Agent | 苏格拉底式追问/显式假设 → 步骤设计 → handoff/Checklist → 生成 task-slug → 契约落盘；未完成不得 ACT | `state/<slug>/loop_contract.md` + `progress.md` |
 | 2. ACT | 主 Agent | 执行步骤，满足 handoff 条件，产出落盘；更新进度脊柱 | 产出文件 + `progress.md` |
-| 3. AUDIT | **审查子 Agent** | 四维审查(需求/问题/质量/回归) + failure_type 分类 → DECISION 三态裁决 | `state/<slug>/feedback.md` |
-| 4. LOOP | 主 Agent | 读 DECISION → CONTINUE_FIX 则逐条执行修正指令（可[APPEAL]误判指令）→ 更新 progress → 重新提交审查 | 迭代至终止 |
+| 3. AUDIT | **审查子 Agent** | 先审 PLAN 质量，再做四维审查(需求/问题/质量/回归) + failure_type 分类 → DECISION 三态裁决 | `state/<slug>/feedback.md` |
+| 4. LOOP | 主 Agent | 读 DECISION → CONTINUE_FIX 则逐条执行修正指令（可[APPEAL]误判指令）→ 必要时输出 Plan Delta → 更新 progress → 重新提交审查 | 迭代至终止 |
 | 5. VERIFY | 主 Agent | 对照 Checklist 逐项验收 → 理解交付 → 询问用户是否保留或清理 state | 验收结果 + 理解交付 + `progress.md` |
 
 ### 长期状态脊柱
@@ -72,13 +89,15 @@ description: "双Agent闭环工作流。主Agent执行(ACT)→独立审查子Age
 
 ### 恢复规则
 
-恢复 loop 时，先读 `state/<slug>/progress.md` 的 `next/open/user-confirm/cost` 和 `state/inbox.md`，再决定路由：
+恢复 loop 时，先读 `state/<slug>/loop_contract.md`、`state/<slug>/progress.md` 的 `next/open/user-confirm/cost` 和 `state/inbox.md`，再决定路由：
 
 - `user-confirm` 非空：先问用户，暂停自动执行
 - 有上诉待处理：恢复同一审查会话处理上诉
-- `next` 指向未完成修正：继续 ACT
+- `next` 指向未完成修正：先确认是否需要 Plan Delta，再继续 ACT
 - 上轮 `DECISION: PROCEED_TO_VERIFY`：进入 VERIFY
 - `cost` 或停止原因显示低收益、硬上限、上诉死锁或阻塞：停止并汇报
+
+凡是需求、范围、步骤、验收项或 handoff 条件发生变化，必须先更新 `loop_contract.md` 或写 Plan Delta，再执行修正。只改产物、不改契约，是下一轮 AUDIT 的 `weak_validation`。
 
 ### 理解交付
 
