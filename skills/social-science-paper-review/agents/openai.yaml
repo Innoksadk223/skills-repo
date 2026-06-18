@@ -1,0 +1,4 @@
+interface:
+  display_name: "Social Science Paper Review"
+  short_description: "Review social-science papers with revision guidance"
+  default_prompt: "Use $social-science-paper-review to review a social-science manuscript and produce strict peer-review feedback plus revision guidance."
