@@ -1,6 +1,6 @@
 ---
 name: agent-loop
-description: "双Agent闭环工作流。主Agent执行(ACT)→独立审查子Agent四维审查+输出DECISION/failure_type修正指令(AUDIT)→主Agent逐条修正后重新提交(LOOP)→直到PROCEED_TO_VERIFY或触发终止条件。审查子Agent持久交互跨轮存活。触发:/agent-loop,或多轮迭代+独立验证的高质量任务。"
+description: "双Agent闭环工作流。主Agent执行(ACT)→独立审查子Agent四门审查+输出DECISION/failure_type修正指令(AUDIT)→主Agent逐条修正后重新提交(LOOP)→审查子Agent最终验收(VERIFY)→主Agent交付(DELIVER)。触发:/agent-loop,或多轮迭代+独立验证的高质量任务。"
 ---
 
 # Agent Loop
@@ -46,9 +46,55 @@ PLAN 写不清，后续做得再多也只是放大误差。审查 Agent 必须�
 |----|------|--------|------|
 | 1. PLAN | 主 Agent | 苏格拉底式追问/显式假设 → 步骤设计 → handoff/Checklist → 生成 task-slug → 契约落盘；未完成不得 ACT | `state/<slug>/loop_contract.md` + `progress.md` |
 | 2. ACT | 主 Agent | 执行步骤，满足 handoff 条件，产出落盘；更新进度脊柱 | 产出文件 + `progress.md` |
-| 3. AUDIT | **审查子 Agent** | 先审 PLAN 质量，再做四维审查(需求/问题/质量/回归) + failure_type 分类 → DECISION 三态裁决 | `state/<slug>/feedback.md` |
+| 3. AUDIT | **审查子 Agent** | 先审 PLAN 质量，再按四门审查(契约/完成度/正确性/证据回归) + failure_type 分类 → DECISION 三态裁决 | `state/<slug>/feedback.md` |
 | 4. LOOP | 主 Agent | 读 DECISION → CONTINUE_FIX 则逐条执行修正指令（可[APPEAL]误判指令）→ 必要时输出 Plan Delta → 更新 progress → 重新提交审查 | 迭代至终止 |
-| 5. VERIFY | 主 Agent | 对照 Checklist 逐项验收 → 理解交付 → 询问用户是否保留或清理 state | 验收结果 + 理解交付 + `progress.md` |
+| 5. VERIFY | **审查子 Agent** | 对照 Checklist 逐项最终验收，确认所有阻塞问题关闭，输出可否交付裁决 | `state/<slug>/final_verify.md` |
+| 6. DELIVER | 主 Agent | 读取 `final_verify.md`，做理解交付，询问用户是否保留或清理 state | 最终回复 + `progress.md` |
+
+### 审查输出格式
+
+AUDIT 只保留四个检查门，避免散文式审查：
+
+- 契约：PLAN、Checklist、handoff、非目标和假设是否可检查
+- 完成度：是否满足用户目标，是否遗漏重点或越界扩张
+- 正确性：逻辑、边界、质量、可维护性和精简性是否有直接影响完成判定的问题；能删而不损失目标、重点和可验证性的内容，必须要求删减
+- 证据回归：是否有文件路径、diff、命令输出或产物证据，是否破坏既有行为
+
+`feedback.md` 必须使用固定格式：
+
+```md
+DECISION: PROCEED_TO_VERIFY | CONTINUE_FIX | STOP_WITH_BLOCKER
+ISSUE_COUNT: <number>
+
+PLAN_CHECK:
+- verdict: PASS | FAIL
+- evidence:
+- notes:
+
+GATES:
+- contract: PASS | FAIL
+- completeness: PASS | FAIL
+- correctness: PASS | FAIL
+- evidence_regression: PASS | FAIL
+
+ISSUES:
+1. failure_type: logic_error | requirement_gap | missing_edge_case | regression | quality_issue | missing_skill | weak_validation | external_blocker
+   severity: blocker | major | minor
+   evidence:
+   fix_instruction:
+
+APPEALS:
+- item:
+  ruling: UPHELD | OVERRULED | CLARIFIED
+  reason:
+
+VERIFY_HANDOFF:
+- checklist_items_ready:
+- evidence_paths:
+- unresolved:
+```
+
+`PROCEED_TO_VERIFY` 只能在 `ISSUE_COUNT: 0`、四门全 PASS、`VERIFY_HANDOFF.unresolved` 为空时给出。非阻塞建议可写入 notes，但不得伪装成必须修复的问题。
 
 ### 长期状态脊柱
 
@@ -94,14 +140,40 @@ PLAN 写不清，后续做得再多也只是放大误差。审查 Agent 必须�
 - `user-confirm` 非空：先问用户，暂停自动执行
 - 有上诉待处理：恢复同一审查会话处理上诉
 - `next` 指向未完成修正：先确认是否需要 Plan Delta，再继续 ACT
-- 上轮 `DECISION: PROCEED_TO_VERIFY`：进入 VERIFY
+- 上轮 `DECISION: PROCEED_TO_VERIFY`：恢复同一审查 Agent 进入 VERIFY
+- 已有 `final_verify.md` 且结论为 `VERDICT: VERIFIED`：进入 DELIVER
+- 已有 `final_verify.md` 且结论为 `VERDICT: RETURN_TO_LOOP`：读取 `OPEN_ISSUES`，回到 LOOP 修正
 - `cost` 或停止原因显示低收益、硬上限、上诉死锁或阻塞：停止并汇报
 
 凡是需求、范围、步骤、验收项或 handoff 条件发生变化，必须先更新 `loop_contract.md` 或写 Plan Delta，再执行修正。只改产物、不改契约，是下一轮 AUDIT 的 `weak_validation`。
 
-### 理解交付
+### 最终验收与交付
 
-VERIFY 不是只报“通过”。最终交付缺少以下任一项，不得视为完成：
+VERIFY 不是主 Agent 自证通过；最终验收由审查子 Agent 执行。`final_verify.md` 必须使用固定格式：
+
+```md
+VERDICT: VERIFIED | RETURN_TO_LOOP | STOP_WITH_BLOCKER
+
+CHECKLIST:
+1. item:
+   verdict: PASS | FAIL
+   evidence:
+
+OPEN_ISSUES:
+- failure_type:
+  evidence:
+  fix_instruction:
+
+DELIVERABLE_SUMMARY:
+- changed:
+- why:
+- risks_or_limits:
+- user_should_know:
+```
+
+`VERIFIED` 只能在 Checklist 全 PASS、无 open issues、证据可检查时给出。若发现新问题，返回 `RETURN_TO_LOOP` 并写入可执行修正指令；主 Agent 不得自行覆盖该裁决。
+
+DELIVER 由主 Agent 执行。最终交付缺少以下任一项，不得视为完成：
 
 - 改了什么
 - 为什么这样做
@@ -118,7 +190,7 @@ VERIFY 不是只报“通过”。最终交付缺少以下任一项，不得视�
 
 ### 终止条件 (满足其一即停)
 
-1. PROCEED_TO_VERIFY — 审查通过
+1. VERIFIED — 审查子 Agent 最终验收通过
 2. STOP_WITH_BLOCKER — 无法自动修复的阻塞
 3. 边际改进 < 10% — 收敛，交付当前最优版本（上诉轮不触发收敛）
 4. 3 轮修正硬上限 — 强制交付（每有 1 轮上诉则上限 +1）
@@ -130,7 +202,7 @@ VERIFY 不是只报“通过”。最终交付缺少以下任一项，不得视�
 
 **1. 持久化审查** — 同一会话、同一工作目录、同一系列任务必须复用同一个审查 Agent。`state/<slug>/` 继续隔离任务产物，但审查 Agent 身份按 session/workdir/series 复用。共享 ID 写入 `state/session_auditor_id.txt`；`state/<slug>/auditor_id.txt` 只是指向该共享审查 Agent 的指针或拷贝，不代表每个 task-slug 都新建 Agent。后续轮**严禁新建 Agent**，必须 `SendMessage` 续对话（或 CLI `--resume`）。只有没有可续接共享审查 Agent、工作目录变化、任务系列不相关、用户明确要求重置时，才允许创建新审查 Agent。新建 = 丢失审查记忆 = 违规。
 
-**2. 固定严格** — 审查子 Agent 的立场是"默认不信任"。agent-loop 不提供轻量/标准/严格分级；恢复、降级和审查 prompt 均按严格四维审查与既有通过标准执行。PROCEED_TO_VERIFY 需满足五条可操作标准（证据闭环/四维全覆盖/边界可核验/修正闭环/零未解决问题），不是默认结局。
+**2. 固定严格** — 审查子 Agent 的立场是"默认不信任"。agent-loop 不提供轻量/标准/严格分级；恢复、降级和审查 prompt 均按严格四门审查与既有通过标准执行。PROCEED_TO_VERIFY 需满足证据闭环、四门全 PASS、边界可核验、修正闭环、零未解决问题；VERIFIED 还必须逐项通过最终 Checklist，不是默认结局。
 
 **3. Prompt 不是意见** — 每条修正指令含 `failure_type`（logic_error/requirement_gap/missing_edge_case/regression/quality_issue/missing_skill/weak_validation/external_blocker），主 Agent 逐条执行。
 
@@ -138,7 +210,7 @@ VERIFY 不是只报“通过”。最终交付缺少以下任一项，不得视�
 
 **5. 上诉权** — 主 Agent 可对认为误判的修正指令提 `[APPEAL]`，写 `state/appeal.md` 附理由和反证。审查子 Agent 必须在下一轮逐条裁决 UPHELD/OVERRULED/CLARIFIED。被 OVERRULED 的指令不执行且不计入修正轮数。上诉不是让主 Agent 替代审查——只是标记明显误判请求复核。
 
-**6. 范围刹车** — 审查严格不等于无限加功能。修正指令只能针对契约、证据、回归或质量中直接影响完成判定的问题；用户未要求的功能、runner 自动化、新脚本、复杂模块化只能作为非阻塞备注，不计入 ISSUE_COUNT。
+**6. 范围刹车** — 审查严格不等于无限加功能。修正指令只能针对契约、证据、回归或质量中直接影响完成判定的问题；用户未要求的功能、runner 自动化、新脚本、复杂模块化只能作为非阻塞备注，不计入 ISSUE_COUNT。审查 Agent 还必须检查产物是否过度膨胀：不损失目标、重点和可验证性的删减应作为 `quality_issue` 要求执行。
 
 ## 平台适配
 
