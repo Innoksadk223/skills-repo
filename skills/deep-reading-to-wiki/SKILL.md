@@ -11,6 +11,8 @@ This skill is a pre-wiki deep-reading layer. It reads a long source with a limit
 
 It does not replace `karpathy-wiki`, does not write formal wiki pages, and does not treat the dossier as raw evidence.
 
+The point of depth is to give future wiki nodes depth and richness: definitions with boundaries, claims with support and limits, relationships to existing pages, and raw anchors that preserve context. A dossier that only lists possible page paths is too thin.
+
 It may start from an explicit raw file or from a user-directed expansion shortlist produced by `SiliconFlow-rag`, such as "补充儿童教育" → candidate `wiki/raw/` sources.
 
 ## Output Contract
@@ -109,6 +111,24 @@ Never default to full-book reading. Use the cheapest level that can answer the q
 
 Only move upward when the lower level cannot support a candidate with enough context.
 
+## Structure-First Reading
+
+Read structure-first, value-second. Do not build the candidate pool from isolated passages that only look interesting.
+
+Before selecting high-value candidates:
+
+1. Map the source's major units: chapters, sections, argument phases, or document headings.
+2. Give every major unit an L0 classification: function, likely wiki relevance, selected/skipped reason, and re-trigger condition.
+3. In the structure/problem map, answer for each major unit: what problem it solves, what source-level thread it advances, and which wiki gap it touches.
+4. For each high-value candidate, record a compact layered path: whole source → part or argument phase → chapter or section → candidate point.
+5. Apply L1 sampling to units that define terms, state a thesis, summarize evidence, mark transitions, raise objections, or carry the user's target topic.
+6. Select high-value areas only when they have both wiki relevance and a clear structural role in the source.
+7. Escalate to L2/L3 only for structurally justified candidates, not because a passage is rhetorically attractive.
+
+Structure coverage is not full-source reading. L0 covers the map; L1 samples key points; L2/L3 remain local exceptions.
+
+Do not jump from raw excerpt to wiki claim. A high-value candidate must preserve its compact layered path.
+
 ## Minimum Dossier Blocks
 
 Every dossier must include only these default blocks:
@@ -164,6 +184,7 @@ The final section must tell the next agent:
 - which new `concepts/`, `claims/`, `comparisons/`, or `entities/` pages may be needed;
 - which candidates are too weak for wiki entry;
 - which raw anchors must be checked before formal compilation;
-- which context risks must be preserved in formal wiki pages.
+- which context risks must be preserved in formal wiki pages;
+- for each recommended wiki target, the node depth packet: core contribution, nuance or boundary, relationship/backlink suggestions, required raw anchors, entry condition, and what would make the node shallow or misleading.
 
 Formal wiki writing remains the job of `karpathy-wiki`.
