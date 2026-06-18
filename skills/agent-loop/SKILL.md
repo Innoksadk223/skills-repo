@@ -1,6 +1,6 @@
 ---
 name: agent-loop
-description: "双Agent闭环工作流。主Agent执行(ACT)→独立审查子Agent四门审查+输出DECISION/failure_type修正指令(AUDIT)→主Agent逐条修正后重新提交(LOOP)→审查子Agent最终验收(VERIFY)→主Agent交付(DELIVER)。触发:/agent-loop,或多轮迭代+独立验证的高质量任务。"
+description: "双Agent闭环工作流。主Agent执行(ACT)→独立审查子Agent五门审查+输出DECISION/failure_type修正指令(AUDIT)→主Agent逐条修正后重新提交(LOOP)→审查子Agent最终验收(VERIFY)→主Agent交付(DELIVER)。触发:/agent-loop,或多轮迭代+独立验证的高质量任务。"
 ---
 
 # Agent Loop
@@ -21,6 +21,7 @@ PLAN 至少包含：
 - 执行步骤：每步写“做什么 + 做到什么程度”
 - handoff 条件：产物路径、命令输出或可检查证据
 - 验收 Checklist：可量化、二元、附证据要求
+- 预算/成本边界：时间、工具/agent 调用、继续价值或停止信号；用户未给预算时写默认成本判断
 - 审查输入包：AUDIT 需要读哪些文件和证据
 - 恢复入口：下一轮从 `progress.md` 的哪些字段继续
 
@@ -35,6 +36,7 @@ PLAN 写不清，后续做得再多也只是放大误差。审查 Agent 必须�
 - 计划：`state/<slug>/loop_contract.md` 中的步骤与验收 Checklist
 - 当前轮任务：本轮是在首轮执行、修正、上诉还是最终验证
 - 变更证据：文件路径、diff 摘要、命令输出或产出物路径
+- 预算证据：`progress.md` 的 cost、工具/agent 调用、耗时、继续价值或停止原因
 - 上轮反馈或上诉：`feedback.md` / `appeal.md` 路径，无则写“首轮无上轮反馈”
 - 审查 Agent 作用域：当前会话、工作目录、任务系列、共享审查 Agent ID
 
@@ -46,18 +48,19 @@ PLAN 写不清，后续做得再多也只是放大误差。审查 Agent 必须�
 |----|------|--------|------|
 | 1. PLAN | 主 Agent | 苏格拉底式追问/显式假设 → 步骤设计 → handoff/Checklist → 生成 task-slug → 契约落盘；未完成不得 ACT | `state/<slug>/loop_contract.md` + `progress.md` |
 | 2. ACT | 主 Agent | 执行步骤，满足 handoff 条件，产出落盘；更新进度脊柱 | 产出文件 + `progress.md` |
-| 3. AUDIT | **审查子 Agent** | 先审 PLAN 质量，再按四门审查(契约/完成度/正确性/证据回归) + failure_type 分类 → DECISION 三态裁决 | `state/<slug>/feedback.md` |
+| 3. AUDIT | **审查子 Agent** | 先审 PLAN 质量，再按五门审查(契约/完成度/正确性/预算/证据回归) + failure_type 分类 → DECISION 三态裁决 | `state/<slug>/feedback.md` |
 | 4. LOOP | 主 Agent | 读 DECISION → CONTINUE_FIX 则逐条执行修正指令（可[APPEAL]误判指令）→ 必要时输出 Plan Delta → 更新 progress → 重新提交审查 | 迭代至终止 |
 | 5. VERIFY | **审查子 Agent** | 对照 Checklist 逐项最终验收，确认所有阻塞问题关闭，输出可否交付裁决 | `state/<slug>/final_verify.md` |
 | 6. DELIVER | 主 Agent | 读取 `final_verify.md`，做理解交付，询问用户是否保留或清理 state | 最终回复 + `progress.md` |
 
 ### 审查输出格式
 
-AUDIT 只保留四个检查门，避免散文式审查：
+AUDIT 只保留五个检查门，避免散文式审查：
 
 - 契约：PLAN、Checklist、handoff、非目标和假设是否可检查
 - 完成度：是否满足用户目标，是否遗漏重点或越界扩张
 - 正确性：逻辑、边界、质量、可维护性和精简性是否有直接影响完成判定的问题；能删而不损失目标、重点和可验证性的内容，必须要求删减
+- 预算：是否记录并遵守时间、工具/agent 调用、token/成本、继续价值和停止信号；投入明显超过收益、可降级或应停问用户时，必须指出
 - 证据回归：是否有文件路径、diff、命令输出或产物证据，是否破坏既有行为
 
 `feedback.md` 必须使用固定格式：
@@ -75,10 +78,11 @@ GATES:
 - contract: PASS | FAIL
 - completeness: PASS | FAIL
 - correctness: PASS | FAIL
+- budget: PASS | FAIL
 - evidence_regression: PASS | FAIL
 
 ISSUES:
-1. failure_type: logic_error | requirement_gap | missing_edge_case | regression | quality_issue | missing_skill | weak_validation | external_blocker
+1. failure_type: logic_error | requirement_gap | missing_edge_case | regression | quality_issue | budget_issue | missing_skill | weak_validation | external_blocker
    severity: blocker | major | minor
    evidence:
    fix_instruction:
@@ -94,7 +98,17 @@ VERIFY_HANDOFF:
 - unresolved:
 ```
 
-`PROCEED_TO_VERIFY` 只能在 `ISSUE_COUNT: 0`、四门全 PASS、`VERIFY_HANDOFF.unresolved` 为空时给出。非阻塞建议可写入 notes，但不得伪装成必须修复的问题。
+### 二轮后审查
+
+从第二轮 AUDIT 开始，审查 Agent 不得只复核上一轮 `ISSUES` 是否已修。每轮都必须先验旧账、再查新账：
+
+- 旧账：逐条确认上一轮 `ISSUES`、`OPEN_ISSUES`、上诉裁决和 Plan Delta 是否闭环
+- 新账：重新执行完整五门审查，检查修复是否引入新问题、回归、范围扩张、预算超支或证据断裂
+- 裁决：只有旧账全关、新账为零、五门全 PASS，才允许 `PROCEED_TO_VERIFY`
+
+如果第二轮之后的 `feedback.md` 只写“上轮问题已修复”而没有新一轮五门审查结果，必须判为 `weak_validation`。
+
+`PROCEED_TO_VERIFY` 只能在 `ISSUE_COUNT: 0`、五门全 PASS、`VERIFY_HANDOFF.unresolved` 为空时给出。非阻塞建议可写入 notes，但不得伪装成必须修复的问题。
 
 ### 长期状态脊柱
 
@@ -202,9 +216,9 @@ DELIVER 由主 Agent 执行。最终交付缺少以下任一项，不得视为�
 
 **1. 持久化审查** — 同一会话、同一工作目录、同一系列任务必须复用同一个审查 Agent。`state/<slug>/` 继续隔离任务产物，但审查 Agent 身份按 session/workdir/series 复用。共享 ID 写入 `state/session_auditor_id.txt`；`state/<slug>/auditor_id.txt` 只是指向该共享审查 Agent 的指针或拷贝，不代表每个 task-slug 都新建 Agent。后续轮**严禁新建 Agent**，必须 `SendMessage` 续对话（或 CLI `--resume`）。只有没有可续接共享审查 Agent、工作目录变化、任务系列不相关、用户明确要求重置时，才允许创建新审查 Agent。新建 = 丢失审查记忆 = 违规。
 
-**2. 固定严格** — 审查子 Agent 的立场是"默认不信任"。agent-loop 不提供轻量/标准/严格分级；恢复、降级和审查 prompt 均按严格四门审查与既有通过标准执行。PROCEED_TO_VERIFY 需满足证据闭环、四门全 PASS、边界可核验、修正闭环、零未解决问题；VERIFIED 还必须逐项通过最终 Checklist，不是默认结局。
+**2. 固定严格** — 审查子 Agent 的立场是"默认不信任"。agent-loop 不提供轻量/标准/严格分级；恢复、降级和审查 prompt 均按严格五门审查与既有通过标准执行。PROCEED_TO_VERIFY 需满足证据闭环、五门全 PASS、边界可核验、修正闭环、零未解决问题；VERIFIED 还必须逐项通过最终 Checklist，不是默认结局。
 
-**3. Prompt 不是意见** — 每条修正指令含 `failure_type`（logic_error/requirement_gap/missing_edge_case/regression/quality_issue/missing_skill/weak_validation/external_blocker），主 Agent 逐条执行。
+**3. Prompt 不是意见** — 每条修正指令含 `failure_type`（logic_error/requirement_gap/missing_edge_case/regression/quality_issue/budget_issue/missing_skill/weak_validation/external_blocker），主 Agent 逐条执行。
 
 **4. 证据零容忍** — 口头 PASS 无文件路径或命令输出 = FAIL。
 
