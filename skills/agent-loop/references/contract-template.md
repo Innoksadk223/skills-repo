@@ -1,6 +1,6 @@
 # Loop Contract 模板
 
-> 复制此文件到 `state/loop_contract.md`，填入任务参数。这是 Agent Loop 的唯一配置入口。
+> 复制此文件到 `state/[task-slug]/loop_contract.md`，填入任务参数。这是 Agent Loop 的唯一配置入口。
 
 ---
 
@@ -80,7 +80,9 @@
 - 若 `user-confirm` 非空：先问用户，暂停自动执行
 - 若存在上诉待处理：恢复同一审查会话处理上诉
 - 若 `next` 指向未完成修正：继续 ACT
-- 若上轮 `DECISION: PROCEED_TO_VERIFY`：进入 VERIFY
+- 若上轮 `DECISION: PROCEED_TO_VERIFY`：恢复同一审查 Agent 进入 VERIFY，输出 `state/[task-slug]/final_verify.md`
+- 若已有 `final_verify.md` 且 `VERDICT: VERIFIED`：进入 DELIVER
+- 若已有 `final_verify.md` 且 `VERDICT: RETURN_TO_LOOP`：读取 `OPEN_ISSUES` 后回到 LOOP
 - 若 `cost` 或停止原因显示低收益、硬上限、上诉死锁或阻塞：停止并汇报
 
 ## 成本 / 预算观测
@@ -89,7 +91,8 @@
 - 本轮耗时：[例如：12min]
 - 调用的 agent / 工具：[例如：auditor agent, pytest, rg]
 - 是否值得继续：[是 / 否；理由]
-- 停止原因（如适用）：[PROCEED_TO_VERIFY / STOP_WITH_BLOCKER / 改进<10% / 硬上限 / 上诉死锁]
+- 停止原因（如适用）：[PROCEED_TO_VERIFY / VERIFIED / STOP_WITH_BLOCKER / 改进<10% / 硬上限 / 上诉死锁]
+- 预算风险：[是否出现工具/agent 调用过多、耗时过高、继续收益低、应降级或应询问用户]
 
 ## 执行步骤
 

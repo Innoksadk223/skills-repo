@@ -1,422 +1,263 @@
-# PLAN → ACT → AUDIT → LOOP → VERIFY — 完整执行规范
+# PLAN -> ACT -> AUDIT -> LOOP -> VERIFY 完整执行规范
 
-> SKILL.md 仅保留概览表。执行工作流时加载本文档。
+> `SKILL.md` 保留核心规则。需要完整执行规范、审查 prompt 或降级细节时加载本文档。
 
----
-
-## 1. PLAN（需求收敛与契约落盘）
+## 1. PLAN
 
 **谁做**：主 Agent
 
-### 1.1 苏格拉底式追问（首轮必须）
+PLAN 是进入 ACT 的硬门槛，不是开场说明。用户要求跳过追问时，也必须把假设、风险和验收标准写进 `state/<slug>/loop_contract.md`。
 
-1. **诊断**：用一句话说出你认为用户真正要的结果
-2. **点破模糊点**：指出 1-3 个会改变路线的不确定性
-3. **追问取舍**：用具体选项确认优先级、边界、质量标准
-4. **收敛落盘**：用户回答后转为 Loop Contract + Checklist 输出 PLAN
+### 输出
 
-只问影响执行的问题。用户要求跳过时在 PLAN 中显式写假设和风险。
-
-### 1.2 PLAN 输出格式
-
-```markdown
-## Plan（第 1 轮）
+```md
+## Plan
 
 ### Loop Contract
-- 意图：[一句话]
-- 完成判定：[可验证]
-- 停止护栏：最大修正 3 轮 / 改进<10%收敛 / 资源预算[可选]
-- 任务标识：[task-slug]（唯一，防止多次运行 state 冲突）
-- Worktree: state/[task-slug]/
-- Progress: state/[task-slug]/progress.md
-- Auditor scope: session/workdir/series（同一目标的连续追加请求也算同一系列）
+- 意图：
+- 完成判定：
+- 非目标：
+- 假设/澄清：
+- 停止护栏：最大修正 3 轮 / 改进<10%收敛 / 预算边界
+- task-slug：
+- Worktree: state/<slug>/
+- Progress: state/<slug>/progress.md
 - Shared auditor id: state/session_auditor_id.txt
-- Task auditor pointer: state/[task-slug]/auditor_id.txt
+- Task auditor pointer: state/<slug>/auditor_id.txt
 
 ### 执行步骤
-1. [步骤名] — 做什么 + 做到什么程度 → handoff: [文件路径/验证命令]
-2. [步骤名] — 做什么 + 做到什么程度 → handoff: [...]
+1. [步骤名] - 做什么 + 做到什么程度 -> handoff: [文件路径/验证命令]
 
 ### 验收 Checklist
-- [ ] 标准（可量化、二元、附证据）
+- [ ] 标准 - 可量化、二元、附证据要求
 
 ### 需加载的技能
-- [skill] — [用途]
+- [skill] - [用途]
 ```
 
-同时创建 `state/[task-slug]/progress.md`，至少包含：done / tried / next / open / user-confirm / cost。`cost` 记录本轮耗时、调用的 agent/工具、是否值得继续、停止原因（如适用）。
+同时创建 `progress.md`，至少包含：done / tried / next / open / user-confirm / cost。`cost` 必须记录本轮耗时、调用的 agent/工具、是否值得继续、停止原因（如适用）。
 
-### 1.3 步骤与 Handoff 设计规则
+### Plan Delta
 
-- **步骤 = 做什么 + 做到什么程度**。不写"写登录"，写"实现 POST /login 返回 JWT，错误返回 `{error:...}`"
-- **每个步骤 ≥ 1 个 Checklist 项**，交叉覆盖不留盲区
-- **Handoff 条件可自动判定**：文件存在/命令退出码/验证命令输出。handoff ≠ 验收（handoff 管"产出物存在"，质量交审查子 Agent）
-- **Checklist 每项**：可量化（"pytest 0 failures"非"测试通过"）、二元（PASS/FAIL）、附证据要求
+第二轮起，只写变更部分。凡是需求、范围、步骤、验收项或 handoff 条件变化，先更新契约或写 Plan Delta，再执行。
 
-### 1.4 第 2 轮起 Delta 格式
-
-只输出变更部分：
-
-```markdown
-## Plan Delta（第 N 轮）
-### 保持不变的步骤
-- 步骤 1–2 不变（上轮已 PASS）
-### 变更步骤
-3. [修正描述] — 修正指令见 state/feedback.md — 变更原因：[审查诊断]
-### 更新 Checklist
-- [unchanged] 标准 1
-- [ ] 标准 2 — [修正后新标准]
+```md
+## Plan Delta
+- 保持不变：
+- 变更：
+- 更新 Checklist：
+- 变更原因：
 ```
 
-首轮 PLAN 向用户确认后进入 ACT。后续 Delta 轮不询问。
-
----
-
-## 2. ACT（主 Agent 执行）
+## 2. ACT
 
 **谁做**：主 Agent
 
-- 首轮：读 `state/loop_contract.md` 和 `state/<slug>/progress.md`，执行步骤，满足 handoff 条件
-- 后续轮：读 `state/feedback.md` 与 `state/<slug>/progress.md`，逐条执行 CONTINUE_FIX 修正指令
-- **Skill-First**：执行前检索加载领域技能，禁止纯 Prompt 猜测
-- **TaskCreate/TaskUpdate** 拆分工作
-- 产出落盘 `state/`
-- 每轮结束后更新 `progress.md`：done/tried/next/open/user-confirm/cost。`cost` 必须记录本轮耗时、调用的 agent/工具、是否值得继续、停止原因（如适用）
-- 不能自动继续的事项写入 `state/inbox.md`：需要用户确认、外部阻塞、低收益暂停、硬上限、上诉死锁、后续风险。主 Agent 写，审查 Agent 只读并在 `feedback.md` 指出遗漏
+- 首轮读 `loop_contract.md` 和 `progress.md`，执行步骤，满足 handoff 条件。
+- 后续轮读 `feedback.md`、`final_verify.md` 的 `OPEN_ISSUES`（如有）和 `progress.md`，逐条执行修正指令。
+- 执行前加载相关 skill，不用纯 prompt 猜测。
+- 产出落盘，并在每轮结束后更新 `progress.md` 的 done/tried/next/open/user-confirm/cost。
+- 不能自动继续的事项写入 `state/inbox.md`。
 
-### 2.1 WAITING_FOR_AUDIT（等待审查期间）
+### 等待审查期间
 
-**谁做**：主 Agent
+审查 Agent 正在 AUDIT 时，主 Agent 可维护状态，但不得改变已提交审查的正式产物。
 
-审查 Agent 正在处理 AUDIT 时，主 Agent 可并行做轻量状态维护，但不得改变审查对象。
+允许：更新 `progress.md`、补写 `inbox.md`、整理 handoff 证据、记录成本与阻塞、检查共享审查 Agent ID。
 
-允许：
+禁止：修改已提交审查的产物、新增未进契约的功能或自动化、预判审查结论、覆写 `feedback.md`。
 
-- 更新 `state/<slug>/progress.md` 的 done/tried/next/open/user-confirm/cost
-- 补写 `state/inbox.md` 中的阻塞、用户确认项、后续风险
-- 整理本轮 handoff 证据路径、命令输出摘要、耗时与工具记录
-- 检查 `state/session_auditor_id.txt` 与 `state/<slug>/auditor_id.txt` 是否指向同一共享审查 Agent
+## 3. RESUME
 
-禁止：
+恢复 loop 时先读：
 
-- 修改已经提交给审查 Agent 的正式产出文件
-- 新增未写入契约的功能、脚本、runner 或自动化
-- 替审查 Agent 预判 DECISION、提前执行假想修正
-- 覆写 `feedback.md` 或把审查意见改写成主 Agent 自己的判断
+- `state/session_auditor_id.txt`
+- `state/<slug>/auditor_id.txt`
+- `state/<slug>/progress.md`
+- `state/inbox.md`
+- 上轮 `feedback.md`
+- `final_verify.md`（如有）
 
-审查 Agent 在 `feedback.md` 中检查状态文件是否完整；若发现 `progress.md`、`inbox.md`、成本观测或 handoff 证据缺失，按 `weak_validation` 或对应 failure_type 指出。小项目默认由主 Agent 做这项维护，不新增独立记忆维护 Agent。
+路由：
 
----
+- `user-confirm` 非空 -> 先问用户
+- 有上诉待处理 -> 恢复同一审查 Agent 处理上诉
+- `next` 指向未完成修正 -> 继续 ACT
+- 上轮 `DECISION: PROCEED_TO_VERIFY` -> 恢复同一审查 Agent 进入 VERIFY
+- `final_verify.md` 为 `VERDICT: VERIFIED` -> DELIVER
+- `final_verify.md` 为 `VERDICT: RETURN_TO_LOOP` -> 读取 `OPEN_ISSUES` 后 LOOP
+- `cost` 或停止原因显示低收益、硬上限、上诉死锁或阻塞 -> 停止并汇报
 
-## 2.5 RESUME（恢复入口）
+## 4. AUDIT
 
-**谁做**：主 Agent
+**谁做**：审查子 Agent
 
-恢复 loop 时先读 `state/session_auditor_id.txt`、`state/<slug>/auditor_id.txt`、`state/<slug>/progress.md`、`state/inbox.md`、上轮 `feedback.md`，再路由：
+审查 Agent 必须跨轮、跨同系列任务存活。共享 ID 写入 `state/session_auditor_id.txt`；`state/<slug>/auditor_id.txt` 只是当前任务指针。只有无可续接共享 Agent、工作目录变化、任务系列不相关、用户明确要求重置时，才允许新建。
 
-1. `user-confirm` 非空 → 先问用户，暂停自动执行
-2. 存在上诉待处理 → 恢复同一审查会话处理上诉
-3. `next` 指向未完成修正 → 继续 ACT
-4. 上轮 `DECISION: PROCEED_TO_VERIFY` → 进入 VERIFY
-5. `cost` 或停止原因显示低收益、硬上限、上诉死锁或阻塞 → 停止并汇报
+### 五门审查
 
-恢复不是新建任务。必须沿用同一 `task-slug`、同一 `progress.md`，并先判断当前任务是否属于同一会话、同一工作目录、同一系列任务；同一目标的连续追加请求也算同一系列。属于同系列时必须续用 `state/session_auditor_id.txt` 指向的共享审查 Agent。
+1. **contract**：PLAN、Checklist、handoff、非目标、假设和审查输入包是否可检查；薄弱 PLAN 是 `weak_validation`。
+2. **completeness**：是否满足用户目标，是否遗漏重点或越界扩张。
+3. **correctness**：逻辑、边界、质量、可维护性和精简性是否影响完成判定；能删而不损失目标、重点和可验证性的内容，标为 `quality_issue`。
+4. **budget**：是否记录并遵守时间、工具/agent 调用、token/成本、继续价值和停止信号；超预算、可降级或应停问用户时，标为 `budget_issue`。
+5. **evidence_regression**：是否有文件路径、diff、命令输出或产物证据，是否破坏既有行为。
 
----
+### 二轮后审查
 
-## 3. AUDIT（持久化审查子 Agent）
+从第二轮 AUDIT 开始，必须先验旧账、再查新账：
 
-**谁做**：审查子 Agent（`Agent` 工具派发）。核心：分离执行与审查。
+- 旧账：逐条确认上一轮 `ISSUES`、`OPEN_ISSUES`、上诉裁决和 Plan Delta 是否闭环。
+- 新账：重新执行完整五门审查，检查修复是否引入新问题、回归、范围扩张、预算超支或证据断裂。
+- 裁决：只有旧账全关、新账为零、五门全 PASS，才允许 `PROCEED_TO_VERIFY`。
 
-### 主 Agent 操作（按环境选方案）
+只写“上轮问题已修复”但没有新一轮五门审查结果，判为 `weak_validation`。
 
-**持久化硬规则（所有方案通用）**：
-
-- 审查 Agent 必须跨轮、跨同系列任务存活，**严禁每轮或每个 task-slug 新建**。同一会话、同一工作目录、同一系列任务始终复用同一个 Agent 实例；同一目标的连续追加请求也按同系列处理。
-- 共享审查 Agent ID 写入 `state/session_auditor_id.txt`；当前任务的 `state/<slug>/auditor_id.txt` 只是指向或复制该共享 ID。
-- 主 Agent 在每轮 AUDIT 前必须先验证 `state/session_auditor_id.txt` 或 `state/<slug>/auditor_id.txt` 存在，并判断是否同会话/同工作目录/同系列。如果同系列且 ID 存在，必须续用。
-- 只有没有可续接共享审查 Agent、工作目录变化、任务系列不相关、用户明确要求重置时，才允许创建新审查 Agent。创建后必须写入 `state/session_auditor_id.txt`，并让当前 task-slug 的 `auditor_id.txt` 指向它。
-- 新 Agent = 新上下文 = 丢失审查记忆 = 违反铁律 #1。
-
-**方案 A — Claude Code 原生（默认）**：
-
-1. AUDIT 前先读 `state/session_auditor_id.txt`；若当前 task 属于同会话/同工作目录/同系列且共享 ID 存在，直接 `SendMessage(to: read("state/session_auditor_id.txt"), ...)`。
-2. 只有满足允许新建的例外条件时，才 `Agent()` 派发 → 从返回值取 `agentId` → 写入 `state/session_auditor_id.txt`，并复制/指向到 `state/<slug>/auditor_id.txt`。
-3. **后续轮严禁 `Agent()` 新建**。如同系列共享 ID 丢失 → STOP_WITH_BLOCKER（不可自动恢复，需用户确认是否重置审查 Agent）。
-4. 读 `state/feedback.md` 提取裁决
-
-**方案 B — CLI 跨平台审查（Hermes 等无原生子 Agent 的环境）**：
-
-审查 Agent 是一个独立 CLI 进程，通过 `--session-id` / `--resume` 跨轮、跨同系列任务存活。主 Agent 无需在同一个平台。
-
-```bash
-# AUDIT 前：优先复用同会话/同目录/同系列的共享审查会话
-if [ -f state/session_auditor_id.txt ]; then
-  SESSION_ID="$(cat state/session_auditor_id.txt)"
-else
-  # 仅在无可续接共享 Agent / 工作目录变化 / 任务系列不相关 / 用户明确重置时创建
-  SESSION_ID="$(uuidgen)"
-  printf "%s\n" "$SESSION_ID" > state/session_auditor_id.txt
-fi
-mkdir -p "state/$TASK_SLUG"
-printf "%s\n" "$SESSION_ID" > "state/$TASK_SLUG/auditor_id.txt"
-
-# 首次共享会话：审查 Agent 的 prompt 要求它把结果写入 state/<slug>/feedback.md
-cat > state/audit_prompt.md << 'PROMPT'
-[子 Agent prompt 模板，含四维度+输出格式+要求写入 state/feedback.md]
-PROMPT
-claude -p "$(cat state/audit_prompt.md)" --session-id "$SESSION_ID"
-# 审查 Agent 已直接将结果写入 state/<slug>/feedback.md，主 Agent 直接读取
-
-# 同系列后续轮/后续任务：恢复同一共享会话
-cat > state/audit_continue.md << 'PROMPT'
-审查 Round N。主 Agent 已逐条执行你上一轮的修正指令。
-本轮变更: [列出文件+改动]
-请重新验证，更新 ISSUE_COUNT 和 IMPROVEMENT，更新 state/feedback.md。
-PROMPT
-claude -p "$(cat state/audit_continue.md)" --resume "$SESSION_ID"
-# 审查 Agent 保持全部对话历史，只收增量，更新 state/feedback.md
-```
-
-**关键**：审查 Agent（无论方案 A 子 Agent 还是方案 B CLI）都**直接写 state/feedback.md**。主 Agent 只读取，不代为转换。这保持了分离令——主 Agent 不加工审查结果。
-
-CLI 的 `--session-id` / `--resume` 提供持久化。`--session-id` 要求 UUID 格式（用 `uuidgen` 生成）。Codex CLI 同理（具体 flag 名参考其文档）。
-
-**方案 C — 本地角色切换（无 CLI 可用时的兜底）**：
-
-见第 6 节降级模式。
-
-### 审查子 Agent Prompt 模板
+### 审查 Prompt 模板
 
 ```text
-Agent(description: "AUDIT 审查子 Agent", subagent_type: "general-purpose", prompt: """
 你是独立审查员，跨轮存活，只审查不动手修改。
 
-## 你的立场：固定严格审查
+立场：默认不信任。主 Agent 的产出在证明正确前视为有问题。不确定就是 CONTINUE_FIX。
 
-审查标准：主 Agent 的产出在证明自己正确之前，默认视为有问题。agent-loop 不提供轻量/标准/严格分级；恢复、降级和审查 prompt 均按严格四维审查与既有通过标准执行。你的工作是深度审查——如果确实没问题，给出 PASS 并附上每条维度的审查证据；如果有问题，写清修正指令。
+范围：只围绕 loop_contract.md、当前轮任务、验收 Checklist、变更证据、预算证据、上轮反馈或上诉审查。不得要求新增用户未要求的功能、runner 自动化、新脚本或复杂模块；范围外建议不得计入 ISSUE_COUNT。
 
-## 范围护栏
+AUDIT 步骤：
+1. 读 state/<slug>/loop_contract.md、progress.md、inbox.md、上轮 feedback.md/appeal.md（如有）。
+2. 先审 PLAN 质量。
+3. 第二轮后先验旧账、再查新账。
+4. 执行五门审查：contract / completeness / correctness / budget / evidence_regression。
+5. 写 state/<slug>/feedback.md，严格使用固定格式。
 
-你只能围绕 `state/loop_contract.md`、当前轮任务、验收 Checklist、变更证据、上轮反馈或上诉审查。不得要求新增用户未要求的功能、runner 自动化、新脚本或复杂模块；修正指令只能针对契约、证据、回归、质量中直接影响完成判定的问题。范围外建议不得计入 ISSUE_COUNT，只能作为非阻塞备注或忽略。
+PROCEED_TO_VERIFY 条件：
+- ISSUE_COUNT: 0
+- PLAN_CHECK verdict PASS
+- 五门全 PASS
+- VERIFY_HANDOFF.unresolved 为空
+- 证据可检查
+```
 
-**PROCEED_TO_VERIFY 的可操作标准（全部满足才给）**：
+### feedback.md 固定格式
 
-以下5条均为结构化可核验标准——每条均可通过解析 feedback.md 自动判定，不依赖审查员主观判断：
-
-1. **证据闭环**：每条 Checklist 验收项在审查报告中有 ≥1 个文件路径引用 + ≥1 个命令输出证据。无证据的口头声称 = FAIL。
-2. **四维全覆盖**：需求核对/问题分析/质量审查/回归检查各维度在审查报告中有 ≥1 行审查记录，即使结论是"无问题"也必须有记录。
-3. **边界可核验**：契约中指定的边界场景（空输入/异常输入/边界值）有实际测试命令及输出。未指定边界的，审查员至少构造 1 个边界输入并记录结果。
-4. **修正闭环**：上轮所有修正指令在本轮有文件级变更证据（diff 片段或文件内容引用）。首轮此项自动通过。
-5. **零未解决问题**：ISSUE_COUNT = 0，且审查报告不包含任何未归类为 issue 的怀疑项。
-
-标准 1-4 是过程检查（"审查员是否做了该做的事"），标准 5 是结果检查（"是否还有未解决的问题"）。全部满足 = 审查通过。任何一条不满足 = CONTINUE_FIX 并写明具体哪条未满足。
-
-如果你不确定某条是否满足，那是 CONTINUE_FIX，不是 PROCEED_TO_VERIFY。但五条全部满足后，必须给 PROCEED_TO_VERIFY——不给同样是失职。
-
-## 审查四维度
-
-1. **需求核对** — 逐条对照 state/loop_contract.md Checklist。不光检查"有没有"，还要检查"对不对"、"全不全"。附证据(文件路径+命令输出)。口头声称无证据 = FAIL。需求理解偏差也算问题。
-2. **问题分析** — 不只列现象，深挖根因。标注 failure_type:
-   logic_error | requirement_gap | missing_edge_case | regression | quality_issue | missing_skill | weak_validation | external_blocker
-   多个问题有共同根因时合并分析，不要碎片化列举。
-3. **质量审查** — 不仅跑 linter/type checker。审视：结构是否合理、有无冗余代码、命名是否准确、错误处理是否真正管用（不是写了 try 就算）、边界条件是否覆盖。主动构造边界输入验证。
-4. **回归检查** — 不仅跑已有测试。思考：这个改动可能影响哪些看似无关的模块？主动补充回归测试场景。测试覆盖不足本身就是问题。
-
-## 常见陷阱（这些都是你的责任发现）
-
-- PLAN 步骤写"实现登录"而非"POST /login 返回 JWT，错误返回 {error:...}" → weak_validation
-- Checklist 项无法量化（"代码正确"）→ weak_validation
-- 主 Agent 口头声称完成但无文件路径 → 证据不足，FAIL
-- 测试只覆盖 happy path，无边界/异常测试 → missing_edge_case
-- 本轮改动修复了 A 但破坏了 B → regression
-- CLI 参数未经实际验证（应跑 --help 确认）→ logic_error
-
-## 每轮步骤
-1. 读 state/loop_contract.md + progress.md → 2. 审查本轮变更文件 → 3. 运行测试+主动补充验证(跑 linter, 构造边界输入, 跑 --help 验证 CLI 参数) → 4. 统计 ISSUE_COUNT，对比上轮 → 5. 写 feedback.md → 6. 确认主 Agent 在本轮后更新 progress.md 的 done/tried/next/open/user-confirm/cost
-
-## 输出格式(严格遵循)
-
-# 审查报告 — Round N
-
+```md
 DECISION: PROCEED_TO_VERIFY | CONTINUE_FIX | STOP_WITH_BLOCKER
-ISSUE_COUNT: N
-PREV_ISSUE_COUNT: N
-IMPROVEMENT: X% 或 N/A
-(公式: (PREV_ISSUE_COUNT - ISSUE_COUNT) / PREV_ISSUE_COUNT × 100%，首轮写 N/A。仅填数字+%，不要附加文字)
+ISSUE_COUNT: <number>
 
-## 1. 需求核对
-| 验收项 | 状态 | 证据 |
-|--------|------|------|
-| 契约第1条: xxx | ✅/❌ | state/xxx.py:42 或命令输出 |
+PLAN_CHECK:
+- verdict: PASS | FAIL
+- evidence:
+- notes:
 
-## 2. 问题分析
-根因: [共同根因说明]
+GATES:
+- contract: PASS | FAIL
+- completeness: PASS | FAIL
+- correctness: PASS | FAIL
+- budget: PASS | FAIL
+- evidence_regression: PASS | FAIL
 
-## 3. 质量审查
-| 维度 | 评估 | 问题 |
-|------|------|------|
-| 结构/健壮性/可维护性 | ✅/⚠️/❌ | [说明] |
+ISSUES:
+1. failure_type: logic_error | requirement_gap | missing_edge_case | regression | quality_issue | budget_issue | missing_skill | weak_validation | external_blocker
+   severity: blocker | major | minor
+   evidence:
+   fix_instruction:
 
-## 4. 回归检查
-| 测试 | 结果 | 来源 |
-|------|------|------|
+APPEALS:
+- item:
+  ruling: UPHELD | OVERRULED | CLARIFIED
+  reason:
 
-## 修正指令(仅 CONTINUE_FIX)
-### 指令 N: [标题]
-**failure_type**: [类型]
-**位置**: file:line
-**根因**: [一句话]
-**修正**: [可直接执行的操作。不要写"改进XX"，写"将第N行 XX 改为 YY"]
-
-## 判定规则
-- PROCEED_TO_VERIFY: 五条可操作标准全部满足 → 必须给通过。ISSUE_COUNT=0 且证据完整 = 推定通过，不可仅凭"可能还有问题"拒绝。
-- CONTINUE_FIX: 任意一条标准未满足，或有未解决的 issue → 继续修正。必须指明具体哪条标准未满足。范围外建议不得计入 ISSUE_COUNT，只能作为非阻塞备注或忽略。
-- STOP_WITH_BLOCKER: 外部依赖/权限/需求矛盾等，主 Agent 无法自行修复。必须指明具体阻塞原因。
-
-## 上诉处理(收到 [APPEAL] 时)
-审查续轮消息中如含 [APPEAL] 标记的指令，你必须逐一裁决：
-- UPHELD — 原修正指令成立，主 Agent 必须执行
-- OVERRULED — 同意主 Agent，撤回该指令（不计入 ISSUE_COUNT）
-- CLARIFIED — 原指令表述不清，重写为更精确的修正指令
-对每条 [APPEAL] 给出裁决和理由。
-""")
+VERIFY_HANDOFF:
+- checklist_items_ready:
+- evidence_paths:
+- unresolved:
 ```
 
 ### 裁决路由
 
-```
-decision = grep "DECISION:" state/feedback.md
-if PROCEED_TO_VERIFY → VERIFY
-elif STOP_WITH_BLOCKER → 报告阻塞, 交付当前版本
-elif CONTINUE_FIX:
-    if fix_round >= 3 → 硬上限交付
-    elif IMPROVEMENT < 10% → 收敛交付
-    else → LOOP(逐条执行修正指令, 重新提交审查)
-```
-
-每次路由后都更新 `progress.md` 的 `cost`：耗时、调用的 agent/工具、是否值得继续、停止原因（如适用）。如果因为硬上限、改进<10%、上诉死锁或阻塞停止，停止原因必须写入 `progress.md` 和最终报告。
-需要用户确认、外部阻塞、低收益暂停、硬上限、上诉死锁或后续风险时，同时写入 `state/inbox.md`。每条 inbox 记录包含任务标识、优先级、原因、当前状态、建议动作、来源文件。
-
----
-
-## 4. LOOP（迭代循环 + 上诉）
-
-**谁做**：主 Agent（路由 + 上诉）+ 审查子 Agent（审查 + 上诉裁决）
-
-### 上诉机制
-
-主 Agent 不是审查子 Agent 的盲从执行器。如果认为某条修正指令是误判，可以上诉。
-
-**上诉流程**：
-
-1. 主 Agent 读 `state/feedback.md`，遇到认为有误的修正指令时，不直接执行
-2. 写 `state/appeal.md`，逐条标注 `[APPEAL]`，附理由和反证
-3. 在 SendMessage 恢复审查会话时，将 appeal.md 内容附在消息中
-4. 审查子 Agent 逐条裁决：UPHELD / OVERRULED / CLARIFIED
-5. 主 Agent 读裁决结果：
-   - OVERRULED 的指令 — 不执行，不计入该轮修正
-   - UPHELD 的指令 — 原样执行
-   - CLARIFIED 的指令 — 按重写后版本执行
-
-```markdown
-# state/appeal.md
-
-## [APPEAL] 指令 3: 修复 SKILL.md 铁律标题数量
-**原指令**: 将 `## 四条铁律` 改为 `## 五条铁律`
-**上诉理由**: 铁律0是"分离令"元规则，与其他4条性质不同。保守方案：改为"## 铁律（共5条）"不标注数字。
-**反证**: 见 state/loop_contract.md 铁律#0 的语义——它是元规则而非约束规则。
+```text
+if DECISION == PROCEED_TO_VERIFY:
+    VERIFY by same auditor agent
+elif DECISION == STOP_WITH_BLOCKER:
+    report blocker and current state
+elif DECISION == CONTINUE_FIX:
+    if fix_round >= 3 + appeal_rounds: stop with hard limit
+    elif marginal_improvement < 10% and no appeal round: converge and deliver current best
+    else: LOOP
 ```
 
-**上诉轮不消耗修正轮数**（但计入总 AUDIT 轮数防止无限上诉）。被 OVERRULED 的指令不要求主 Agent 执行。
+每次路由后更新 `progress.md` 的 cost。低收益暂停、硬上限、上诉死锁、阻塞或需要用户确认时，同时写入 `state/inbox.md`。
 
-### 循环伪码
+## 5. LOOP 与上诉
 
-```
-fix_round = 0
-appeal_rounds = 0
-while True:
-    ACT: 读 feedback.md
-         for each 修正指令:
-             if 指令疑似误判:
-                 appeal_rounds += 1
-                 write state/appeal.md  # 标注 [APPEAL] + 理由
-             else:
-                 逐条执行
-    AUDIT: SendMessage(msg含appeal.md) → 审查子 Agent 重新验证 + 上诉裁决 → 更新 feedback.md
-    fix_round += 1
-    read DECISION, IMPROVEMENT
-    if PROCEED_TO_VERIFY or STOP_WITH_BLOCKER: break
-    if fix_round >= 3 + appeal_rounds: break  # 硬上限，上诉轮额外
-    if IMPROVEMENT < 10% and appeal_rounds == 0: break  # 收敛(上诉轮不触发收敛)
+**谁做**：主 Agent 路由与执行；审查子 Agent 审查与裁决。
+
+主 Agent 可对明显误判写 `state/<slug>/appeal.md`，但不得替审查 Agent 改写结论。
+
+```md
+## [APPEAL] 指令 3
+原指令：
+上诉理由：
+反证：
 ```
 
-**主 Agent 只做路由决策和上诉标注，不自行分析问题。** 上诉不是让主 Agent 替代审查员——只是标记明显的误判请求复核。
+审查 Agent 对每条上诉裁决：
 
-自动化：`CronCreate`/`ScheduleWakeup`（CC）或 `runner-template.py`（通用）。
+- `UPHELD`：原指令成立，主 Agent 执行。
+- `OVERRULED`：撤回，不计入修正轮。
+- `CLARIFIED`：重写为更精确的修正指令。
 
----
+连续 2 轮仅含上诉无实际修正，视为上诉死锁。
 
-## 5. VERIFY（最终验收）
+## 6. VERIFY
+
+**谁做**：同一审查子 Agent
+
+VERIFY 不是主 Agent 自证通过。审查子 Agent 对照 Checklist、`feedback.md` 和证据逐项最终验收，输出 `state/<slug>/final_verify.md`。
+
+```md
+VERDICT: VERIFIED | RETURN_TO_LOOP | STOP_WITH_BLOCKER
+
+CHECKLIST:
+1. item:
+   verdict: PASS | FAIL
+   evidence:
+
+OPEN_ISSUES:
+- failure_type:
+  evidence:
+  fix_instruction:
+
+DELIVERABLE_SUMMARY:
+- changed:
+- why:
+- risks_or_limits:
+- user_should_know:
+```
+
+- `VERIFIED`：主 Agent 进入 DELIVER。
+- `RETURN_TO_LOOP`：主 Agent 读取 `OPEN_ISSUES` 后回到 LOOP。
+- `STOP_WITH_BLOCKER`：主 Agent 汇报阻塞和当前状态。
+
+## 7. DELIVER
 
 **谁做**：主 Agent
-
-对照 Checklist 逐项验收 state/ 产出物：
-
-```markdown
-## Verification
-- [x] 标准 1 — PASS（证据: state/xxx.py:42 + pytest 12 passed）
-- [x] 标准 2 — PASS（证据: curl /login 返回 200）
-结果：3/3 PASS | 修正 1 轮
-```
-
-- PROCEED_TO_VERIFY → 交付产出物清单 + 验收结果 + 修正历史 + 理解交付 → 询问用户保留或清理 `state/<slug>/`
-- 收敛/硬上限 → 交付当前最优版本 + 标注未达标项 + 终止原因
-- STOP_WITH_BLOCKER → 交付当前版本 + 阻塞原因
-
-### 理解交付（必填）
 
 最终交付必须包含：
 
 - 改了什么
 - 为什么这样做
+- 结果是否达标
 - 风险/限制
 - 用户后续需要知道什么
-
-缺任一项不得视为完成交付。最终报告还必须引用 `progress.md` 中的当前状态、停止原因和成本/预算观测。
-
-### 老板汇报式摘要（必填）
-
-像产品经理向老板汇报，最终摘要必须包含：
-
-- 本次完成了什么
-- 为什么这样做
-- 结果是否达标
-- 风险与遗留问题
 - 下一步建议
 
-摘要先讲结果，再讲依据和下一步；避免只堆技术细节。
+交付依据来自 `final_verify.md` 和 `progress.md`，不能由主 Agent 自行覆盖审查裁决。
 
----
+## 8. 降级模式
 
-## 6. 降级模式（无 CLI 也无子 Agent 时的最后兜底）
+优先使用子 Agent 或 CLI 独立审查。只有无可续接子 Agent 且 CLI 不可用时，才允许本地角色切换模拟审查，并在 `feedback.md` 明确写明降级原因。
 
-**优先用 CLI 跨平台审查（第 3 节方案 B），不要直接降级。** 只有 CLI 也不可用时，才由主 Agent 角色切换模拟审查。
-
+```text
+[角色切换：主 Agent -> 审查员]
+读 state/ -> 必要验证 -> 五门审查 -> 写 feedback.md
+[角色切换：审查员 -> 主 Agent]
 ```
-[角色切换：主 Agent → 审查员]
-读 state/ → 跑测试 → 四维审查 → 写 feedback.md(格式同子Agent版)
-[角色切换：审查员 → 主 Agent]
-```
-
-| 方案 | 审查 Agent | 上下文隔离 | 持久化 | 推荐度 |
-|------|-----------|----------|--------|--------|
-| A. CC 原生 `Agent` | 子 Agent | 天然 | `SendMessage` | 首选 |
-| B. CLI 跨平台 | 独立 CLI 进程 | 天然 | `--session-id`/`--resume` | Hermes 推荐 |
-| C. 本地角色切换 | 主 Agent 自己 | 无 | 无 | 最后兜底 |
-
-| 差异 | 子 Agent / CLI 版 | 本地角色切换 |
-|------|-----------------|------------|
-| 上下文 | 天然隔离 | 需角色切换声明 |
-| 修正轮数 | ≤3 | 建议 ≤2（防上下文膨胀） |
-| 审查质量 | 独立视角客观 | 同一模型可能偏宽松 |

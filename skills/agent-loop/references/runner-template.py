@@ -1,19 +1,9 @@
 #!/usr/bin/env python3
 """
-Agent Loop 调度脚本模板 — PLAN → ACT → AUDIT → LOOP → VERIFY。
+Agent Loop CLI 调度模板。
 
-职责：
-  1. 维护迭代循环，直到触发终止条件
-  2. 每轮：主 Agent 执行（可对误判指令提 APPEAL）→ 审查 Agent 独立验证 → 路由决策
-  3. 终止条件：PROCEED_TO_VERIFY / STOP_WITH_BLOCKER / 改进<10% / 3轮硬上限 / 连续2轮仅上诉死锁
-
-用法：
-  python loop_runner.py --contract state/loop_contract.md --task "任务描述"
-
-平台：
-  - Claude Code: 用 CronCreate 定时触发本脚本
-  - Hermes / 通用: 本脚本驱动 CLI 会话（--session-id + --resume）
-  - 关键: 审查 Agent 跨轮持久存活，不每轮新建
+实验性参考：使用前必须按当前平台检查 CLI 参数、会话恢复方式和写入路径。
+核心约束：主 Agent ACT，独立审查 Agent AUDIT/VERIFY，同系列任务复用同一审查会话。
 """
 
 import argparse
@@ -21,267 +11,255 @@ import shutil
 import subprocess
 import sys
 import uuid
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 STATE_DIR = Path("state")
-LOG_FILE = None  # 由 main() 在创建任务目录后设置
 CLAUDE_BIN = "claude"
 MAX_FIX_ROUNDS = 3
-MAX_CONSECUTIVE_APPEAL_ONLY = 2  # 连续仅上诉轮数上限，防死锁
+MAX_CONSECUTIVE_APPEAL_ONLY = 2
+LOG_FILE: Path | None = None
 
 
-def log(msg: str) -> None:
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    line = f"[{timestamp}] {msg}"
+def log(message: str) -> None:
+    line = f"[{datetime.now().strftime('%H:%M:%S')}] {message}"
     print(line)
-    with open(LOG_FILE, "a") as f:
-        f.write(line + "\n")
+    if LOG_FILE is not None:
+        with LOG_FILE.open("a", encoding="utf-8") as handle:
+            handle.write(line + "\n")
 
 
-def read_feedback(feedback_file: Path) -> dict:
-    """从 feedback.md 提取 DECISION / ISSUE_COUNT / IMPROVEMENT。"""
-    if not feedback_file.exists():
-        return {"decision": "UNKNOWN", "issues": 0, "improvement": None}
-    lines = feedback_file.read_text().split("\n")
-    result = {"decision": "UNKNOWN", "issues": 0, "improvement": None}
-    for line in lines:
+def read_feedback(path: Path) -> dict:
+    """Extract routing fields from fixed-format feedback.md."""
+    if not path.exists():
+        return {"decision": "UNKNOWN", "issues": 0, "gates_pass": False}
+
+    result = {"decision": "UNKNOWN", "issues": 0, "gates_pass": False}
+    gate_lines: list[str] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
         if line.startswith("DECISION:"):
-            raw = line.split(":", 1)[1].strip()
-            if raw in ("PROCEED_TO_VERIFY", "CONTINUE_FIX", "STOP_WITH_BLOCKER"):
-                result["decision"] = raw
+            decision = line.split(":", 1)[1].strip()
+            if decision in {"PROCEED_TO_VERIFY", "CONTINUE_FIX", "STOP_WITH_BLOCKER"}:
+                result["decision"] = decision
         elif line.startswith("ISSUE_COUNT:"):
             try:
                 result["issues"] = int(line.split(":", 1)[1].strip())
             except ValueError:
                 pass
-        elif line.startswith("IMPROVEMENT:"):
-            val = line.split(":", 1)[1].strip()
-            if val != "N/A" and "%" in val:
-                try:
-                    num = val.split("%")[0].strip()
-                    result["improvement"] = float(num) / 100
-                except (ValueError, IndexError):
-                    pass
+        elif line.startswith("- ") and any(
+            key in line
+            for key in ("contract:", "completeness:", "correctness:", "budget:", "evidence_regression:")
+        ):
+            gate_lines.append(line)
+
+    result["gates_pass"] = len(gate_lines) >= 5 and all("PASS" in line for line in gate_lines)
     return result
 
 
-def read_appeal(appeal_file: Path) -> str | None:
-    """读取上诉文件内容，无上诉返回 None。"""
-    if appeal_file.exists():
-        return appeal_file.read_text()
-    return None
+def read_optional(path: Path) -> str | None:
+    return path.read_text(encoding="utf-8") if path.exists() else None
 
 
-def build_audit_prompt(round_num: int, contract_path: str, prev_feedback: dict, appeal_text: str | None = None) -> str:
-    """构建审查 Agent 的完整 prompt（含四维度+输出格式+上诉裁决）。"""
-    if round_num == 1:
-        return f"""你是独立审查员，跨轮存活，只审查不动手修改。
+def audit_prompt(round_num: int, task_slug: str, appeal_text: str | None = None) -> str:
+    base = f"""你是独立审查员，跨轮存活，只审查不动手修改。
 
-## 立场：严格审查
-主 Agent 的产出在证明正确前默认视为有问题。你的工作是深度审查：
-- 确实没问题 → 给 PASS 并附每条维度的审查证据
-- 发现问题 → 写清修正指令
-- 不确定 → CONTINUE_FIX（不是 PROCEED_TO_VERIFY）
+任务目录：state/{task_slug}
 
-## PROCEED_TO_VERIFY 可操作标准(全部满足才给)
-1. 证据闭环: 每条Checklist在报告中有文件路径+命令输出证据。无证据=FAIL
-2. 四维全覆盖: 需求核对/问题分析/质量审查/回归检查各≥1行记录
-3. 边界可核验: 指定边界场景有实际测试命令及输出，至少1个边界输入
-4. 修正闭环: 上轮修正指令有文件级变更证据(diff或内容引用)，首轮自动通过
-5. 零未解决问题: ISSUE_COUNT=0，无未归类怀疑项
+立场：默认不信任。主 Agent 的产出在证明正确前视为有问题。不确定就是 CONTINUE_FIX。
 
-## 审查四维度
-1. 需求核对 — 逐条对照 {contract_path} Checklist，不光检查"有没有"还要"对不对""全不全"。口头无证据=FAIL
-2. 问题分析 — 根因分析，标注 failure_type (logic_error|requirement_gap|missing_edge_case|regression|quality_issue|missing_skill|weak_validation|external_blocker)
-3. 质量审查 — 结构/健壮性/可维护性，主动跑linter，构造边界输入
-4. 回归检查 — 改动是否破坏已有功能，主动补充回归测试
+范围：只围绕 loop_contract.md、当前轮任务、验收 Checklist、变更证据、预算证据、上轮反馈或上诉审查。不得要求新增用户未要求的功能、runner 自动化、新脚本或复杂模块；范围外建议不得计入 ISSUE_COUNT。
 
-## 输出格式(写入 state/feedback.md)
+审查步骤：
+1. 读 state/{task_slug}/loop_contract.md、progress.md、inbox.md（如有）、上轮 feedback.md/appeal.md（如有）。
+2. 先审 PLAN 质量。
+3. 第二轮后先验旧账、再查新账。
+4. 执行五门审查：contract / completeness / correctness / budget / evidence_regression。
+5. 写 state/{task_slug}/feedback.md，严格使用固定格式。
+
+PROCEED_TO_VERIFY 条件：
+- ISSUE_COUNT: 0
+- PLAN_CHECK verdict PASS
+- 五门全 PASS
+- VERIFY_HANDOFF.unresolved 为空
+- 证据可检查
+
+feedback.md 固定格式：
 DECISION: PROCEED_TO_VERIFY | CONTINUE_FIX | STOP_WITH_BLOCKER
-ISSUE_COUNT: N
-PREV_ISSUE_COUNT: 0
-IMPROVEMENT: N/A
-(公式: (PREV_ISSUE_COUNT-ISSUE_COUNT)/PREV_ISSUE_COUNT×100%)
+ISSUE_COUNT: <number>
 
-## 1. 需求核对
-| 验收项 | 状态 | 证据 |
-(逐条核对)
+PLAN_CHECK:
+- verdict: PASS | FAIL
+- evidence:
+- notes:
 
-## 2. 问题分析
-## 3. 质量审查
-## 4. 回归检查
+GATES:
+- contract: PASS | FAIL
+- completeness: PASS | FAIL
+- correctness: PASS | FAIL
+- budget: PASS | FAIL
+- evidence_regression: PASS | FAIL
 
-## 修正指令(仅 CONTINUE_FIX)
-### 指令 N: [标题]
-**failure_type**: [类型]
-**位置**: file:line
-**修正**: [可直接执行的操作]"""
-    else:
-        base = f"""审查 Round {round_num}。主 Agent 已逐条执行你上一轮的非上诉修正指令。
-本轮变更: 见 state/ 目录中修改的文件。
-请重新四维审查（标准与首轮一致），更新 ISSUE_COUNT、PREV_ISSUE_COUNT={prev_feedback.get('issues', 0)}、IMPROVEMENT，写入 state/feedback.md。
-IMPROVEMENT = (PREV_ISSUE_COUNT - ISSUE_COUNT) / max(PREV_ISSUE_COUNT, 1) * 100%"""
-        if appeal_text:
-            base += f"""
+ISSUES:
+1. failure_type: logic_error | requirement_gap | missing_edge_case | regression | quality_issue | budget_issue | missing_skill | weak_validation | external_blocker
+   severity: blocker | major | minor
+   evidence:
+   fix_instruction:
 
-## 上诉裁决(必须)
-主 Agent 对以下修正指令提出上诉。请逐条裁决：
-{appeal_text}
+APPEALS:
+- item:
+  ruling: UPHELD | OVERRULED | CLARIFIED
+  reason:
 
-裁决格式（写回 feedback.md 的独立小节）：
-## 上诉裁决
-| 指令 | 裁决 | 理由 |
-|------|------|------|
-| 指令 N: [标题] | UPHELD / OVERRULED / CLARIFIED | [理由] |
-
-- UPHELD: 原修正指令成立，主 Agent 必须执行
-- OVERRULED: 同意主 Agent，撤回该指令
-- CLARIFIED: 原指令表述不清，重写为更精确的修正指令（另附）
+VERIFY_HANDOFF:
+- checklist_items_ready:
+- evidence_paths:
+- unresolved:
 """
-        return base
+    if round_num > 1:
+        base += "\n第二轮后要求：先确认旧账闭环，再重新做完整五门审查，不能只写上轮问题已修。\n"
+    if appeal_text:
+        base += f"\n上诉内容如下，请逐条裁决 UPHELD / OVERRULED / CLARIFIED：\n{appeal_text}\n"
+    return base
 
 
-def run_act(task: str, feedback: dict) -> None:
-    """ACT: 主 Agent 执行。实际使用时替换为真正的 Agent 调用。"""
-    if feedback.get("decision") == "CONTINUE_FIX":
-        prompt = f"根据 state/feedback.md 中的修正指令执行本轮 ACT，逐条修改，产出更新到 state/"
-    else:
-        prompt = task
-    log(f"ACT prompt: {prompt[:100]}...")
-    result = subprocess.run(
-        [CLAUDE_BIN, "-p", prompt],
-        capture_output=True, text=True, timeout=600,
+def verify_prompt(task_slug: str) -> str:
+    return f"""你是同一个独立审查员，现在进入 VERIFY。
+
+读取 state/{task_slug}/loop_contract.md、progress.md、feedback.md 和所有证据。
+逐项验收 Checklist，输出 state/{task_slug}/final_verify.md：
+
+VERDICT: VERIFIED | RETURN_TO_LOOP | STOP_WITH_BLOCKER
+
+CHECKLIST:
+1. item:
+   verdict: PASS | FAIL
+   evidence:
+
+OPEN_ISSUES:
+- failure_type:
+  evidence:
+  fix_instruction:
+
+DELIVERABLE_SUMMARY:
+- changed:
+- why:
+- risks_or_limits:
+- user_should_know:
+"""
+
+
+def run_cli(prompt: str, session_id: str, resume: bool) -> int:
+    args = [CLAUDE_BIN, "-p", prompt, "--resume" if resume else "--session-id", session_id]
+    result = subprocess.run(args, capture_output=True, text=True, timeout=600)
+    if result.returncode != 0:
+        log(f"CLI failed: {result.stderr[:300]}")
+    return result.returncode
+
+
+def write_blocker_feedback(path: Path, reason: str) -> None:
+    path.write_text(
+        "DECISION: STOP_WITH_BLOCKER\n"
+        "ISSUE_COUNT: 1\n\n"
+        "PLAN_CHECK:\n- verdict: FAIL\n- evidence: 审查 Agent CLI 失败\n- notes:\n\n"
+        "GATES:\n- contract: FAIL\n- completeness: FAIL\n- correctness: FAIL\n- budget: PASS\n- evidence_regression: FAIL\n\n"
+        "ISSUES:\n"
+        "1. failure_type: external_blocker\n"
+        "   severity: blocker\n"
+        f"   evidence: {reason}\n"
+        "   fix_instruction: 检查 CLI 可用性、会话参数和写入路径后重试\n\n"
+        "APPEALS:\n- item:\n  ruling:\n  reason:\n\n"
+        "VERIFY_HANDOFF:\n- checklist_items_ready:\n- evidence_paths:\n- unresolved: 审查 Agent CLI 失败\n",
+        encoding="utf-8",
     )
-    if result.returncode != 0:
-        log(f"ACT 失败: {result.stderr[:200]}")
 
 
-def run_audit(round_num: int, contract_path: str, prev_feedback: dict, session_id: str, feedback_file: Path, appeal_text: str | None = None) -> None:
-    """AUDIT: 独立审查 Agent。首轮创建会话，后续恢复同一会话。"""
-    prompt = build_audit_prompt(round_num, contract_path, prev_feedback, appeal_text)
-
-    if round_num == 1:
-        log(f"创建审查会话 {session_id}")
-        result = subprocess.run(
-            [CLAUDE_BIN, "-p", prompt, "--session-id", session_id],
-            capture_output=True, text=True, timeout=600,
-        )
-    else:
-        log(f"恢复审查会话 {session_id}")
-        result = subprocess.run(
-            [CLAUDE_BIN, "-p", prompt, "--resume", session_id],
-            capture_output=True, text=True, timeout=600,
-        )
-
-    if result.returncode != 0:
-        log(f"AUDIT 失败 (exit={result.returncode}): {result.stderr[:200]}")
-        # 审计 Agent 崩溃时 feedback.md 可能未写入，写入降级裁决防止无限循环
-        if not feedback_file.exists():
-            feedback_file.write_text(
-                "DECISION: STOP_WITH_BLOCKER\nISSUE_COUNT: 1\n"
-                "PREV_ISSUE_COUNT: 0\nIMPROVEMENT: N/A\n"
-                "## 阻塞原因: 审查 Agent CLI 进程异常退出\n"
-            )
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Agent Loop 调度器")
-    parser.add_argument("--contract", default="state/loop_contract.md")
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Agent Loop CLI runner template")
     parser.add_argument("--task", default="执行 loop_contract.md 中定义的目标")
-    parser.add_argument("--task-slug", default=None, help="任务唯一标识，默认自动生成 task-YYYYMMDD-HHMMSS")
-    parser.add_argument("--cleanup", action="store_true", help="任务完成后自动清理 state/<slug>/ 目录")
+    parser.add_argument("--task-slug", default=f"task-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
+    parser.add_argument("--cleanup", action="store_true", help="完成后清理 state/<slug>/")
     args = parser.parse_args()
 
-    # 任务隔离：每次运行独立 state/<slug>/ 目录
-    if args.task_slug is None:
-        args.task_slug = f"task-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
     task_dir = STATE_DIR / args.task_slug
     task_dir.mkdir(parents=True, exist_ok=True)
-
     feedback_file = task_dir / "feedback.md"
     appeal_file = task_dir / "appeal.md"
-    log_file = task_dir / "loop.log"
 
-    session_id = str(uuid.uuid4())  # 唯一会话 ID，并行安全
-
-    # 重定向 log() 输出到任务目录
     global LOG_FILE
-    LOG_FILE = log_file
-    log(f"Loop 启动, task={args.task_slug}, session={session_id}")
+    LOG_FILE = task_dir / "loop.log"
+
+    shared_session_file = STATE_DIR / "session_auditor_id.txt"
+    if shared_session_file.exists():
+        session_id = shared_session_file.read_text(encoding="utf-8").strip()
+    else:
+        session_id = str(uuid.uuid4())
+        shared_session_file.write_text(session_id + "\n", encoding="utf-8")
+    (task_dir / "auditor_id.txt").write_text(session_id + "\n", encoding="utf-8")
+
+    log(f"Loop start task={args.task_slug} auditor={session_id}")
 
     fix_round = 0
     appeal_rounds = 0
     consecutive_appeal_only = 0
-    prev_feedback = {}
     exit_code = 0
 
     try:
         while True:
             fix_round += 1
-            log(f"=== Round {fix_round} ===")
+            log(f"Round {fix_round}: ACT")
+            act_prompt = args.task if fix_round == 1 else f"读取 state/{args.task_slug}/feedback.md 并逐条执行修正指令。"
+            act_result = subprocess.run([CLAUDE_BIN, "-p", act_prompt], capture_output=True, text=True, timeout=600)
+            if act_result.returncode != 0:
+                log(f"ACT failed: {act_result.stderr[:300]}")
 
-            # ACT: 主 Agent 执行（含上诉标记）
-            appeal_text = read_appeal(appeal_file)
-            has_appeal = appeal_text is not None
-            if has_appeal:
-                log(f"本轮含上诉: {appeal_text[:100]}...")
-            run_act(args.task, prev_feedback)
+            appeal_text = read_optional(appeal_file)
+            if appeal_text:
+                appeal_rounds += 1
+                consecutive_appeal_only += 1
+            else:
+                consecutive_appeal_only = 0
 
-            # AUDIT: 独立审查 Agent（持久会话，含上诉裁决）
-            run_audit(fix_round, args.contract, prev_feedback, session_id, feedback_file, appeal_text)
-            # 上诉已提交，清理 appeal.md 防止重复发送
-            if has_appeal and appeal_file.exists():
+            log(f"Round {fix_round}: AUDIT")
+            audit_result = run_cli(audit_prompt(fix_round, args.task_slug, appeal_text), session_id, resume=fix_round > 1)
+            if audit_result != 0 and not feedback_file.exists():
+                write_blocker_feedback(feedback_file, "审查 Agent CLI 进程异常退出")
+
+            if appeal_text and appeal_file.exists():
                 appeal_file.unlink()
 
-            # 读裁决
-            fb = read_feedback(feedback_file)
-            decision = fb["decision"]
-            improvement = fb["improvement"]
-            prev_feedback = fb
+            feedback = read_feedback(feedback_file)
+            decision = feedback["decision"]
+            log(f"DECISION={decision} ISSUES={feedback['issues']} GATES_PASS={feedback['gates_pass']}")
 
-            log(f"DECISION={decision}, ISSUES={fb['issues']}, IMPROVEMENT={fb['improvement']}")
-
-            # 熔断: 裁决不可读时立即终止
             if decision == "UNKNOWN":
-                log("=== 熔断: 审查 Agent 未产出有效裁决 ===")
                 exit_code = 1
                 break
-
-            # 终止条件
-            if decision in ("PROCEED_TO_VERIFY", "STOP_WITH_BLOCKER"):
-                log(f"=== 终止: {decision} ===")
-                exit_code = 0 if decision == "PROCEED_TO_VERIFY" else 1
+            if decision == "STOP_WITH_BLOCKER":
+                exit_code = 1
+                break
+            if decision == "PROCEED_TO_VERIFY":
+                log("VERIFY")
+                verify_result = run_cli(verify_prompt(args.task_slug), session_id, resume=True)
+                exit_code = 0 if verify_result == 0 else 1
                 break
 
-            if decision == "CONTINUE_FIX":
-                if has_appeal:
-                    appeal_rounds += 1
-                    consecutive_appeal_only += 1
-                    if consecutive_appeal_only >= MAX_CONSECUTIVE_APPEAL_ONLY:
-                        log(f"=== 死锁: 连续 {consecutive_appeal_only} 轮仅上诉无实际修正 ===")
-                        break
-                else:
-                    consecutive_appeal_only = 0
+            if consecutive_appeal_only >= MAX_CONSECUTIVE_APPEAL_ONLY:
+                log("Stop: appeal deadlock")
+                break
+            if fix_round >= MAX_FIX_ROUNDS + appeal_rounds:
+                log("Stop: hard round limit")
+                break
 
-                effective_max = MAX_FIX_ROUNDS + appeal_rounds
-                if fix_round >= effective_max:
-                    log(f"=== {effective_max} 轮硬上限 (含 {appeal_rounds} 轮上诉) ===")
-                    break
-                if not has_appeal and improvement is not None and improvement < 0.10:
-                    log(f"=== 收敛: 改进 {improvement:.1%} < 10% ===")
-                    break
-
-            log("继续下一轮...")
+            log("Continue LOOP")
     finally:
         if args.cleanup and task_dir.exists():
             shutil.rmtree(task_dir)
-            print(f"[cleanup] 已清理 {task_dir}")
+            log(f"Cleaned {task_dir}")
         elif not args.cleanup:
-            print(f"[保留] state 目录: {task_dir}")
+            log(f"Kept state dir: {task_dir}")
 
-    sys.exit(exit_code)
+    return exit_code
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

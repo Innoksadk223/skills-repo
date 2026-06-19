@@ -9,6 +9,12 @@ description: "双Agent闭环工作流。主Agent执行(ACT)→独立审查子Age
 
 一个模型审查自己的产出总是过于宽容。**分离执行者与审查者**是循环收敛的关键。主 Agent 执行，独立审查子 Agent 验证并写出可直接执行的修正指令，循环直到审查通过或触发终止。
 
+## 参考资源
+
+- `references/contract-template.md`：创建 `loop_contract.md` 时复制并按任务填写。
+- `references/plan-act-audit.md`：需要完整执行规范、审查 prompt 或降级细节时加载。
+- `references/runner-template.py`：实验性 CLI 调度模板；使用前必须检查并按当前平台调整。
+
 ## PLAN 契约门
 
 PLAN 不是开场说明，而是进入 ACT 的硬门槛。没有 `state/<slug>/loop_contract.md` 和 `progress.md`，不得开始正式执行；用户要求跳过追问时，也必须把假设、风险和验收标准写进契约。
