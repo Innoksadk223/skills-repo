@@ -1,6 +1,6 @@
 ---
 name: skill-architecture
-description: 模块化技能架构设计系统。在创建或重构任何 skill 时必须加载。提供松耦合/高内聚的模块拆分方法、断点续传的输出持久化机制、以及模块间通信契约模板。适用于新建 skill、skill 重构、skill 调试优化等场景。与 skill-creator 配合使用。
+description: Use when creating, updating, or refactoring skills that need modular architecture, reference-module boundaries, state-based resumability, or coordination with skill-creator.
 ---
 
 # 模块化技能架构设计系统
