@@ -22,8 +22,7 @@ PLAN 是进入 ACT 的硬门槛，不是开场说明。用户要求跳过追问�
 - task-slug：
 - Worktree: state/<slug>/
 - Progress: state/<slug>/progress.md
-- Shared auditor id: state/session_auditor_id.txt
-- Task auditor pointer: state/<slug>/auditor_id.txt
+- Auditor scope: 当前对话/线程内活跃审查 Agent；ID 不落盘
 
 ### 执行步骤
 1. [步骤名] - 做什么 + 做到什么程度 -> handoff: [文件路径/验证命令]
@@ -63,7 +62,7 @@ PLAN 是进入 ACT 的硬门槛，不是开场说明。用户要求跳过追问�
 
 审查 Agent 正在 AUDIT 时，主 Agent 可维护状态，但不得改变已提交审查的正式产物。
 
-允许：更新 `progress.md`、补写 `inbox.md`、整理 handoff 证据、记录成本与阻塞、检查共享审查 Agent ID。
+允许：更新 `progress.md`、补写 `inbox.md`、整理 handoff 证据、记录成本与阻塞、检查当前对话是否已有可续接审查 Agent。
 
 禁止：修改已提交审查的产物、新增未进契约的功能或自动化、预判审查结论、覆写 `feedback.md`。
 
@@ -71,8 +70,6 @@ PLAN 是进入 ACT 的硬门槛，不是开场说明。用户要求跳过追问�
 
 恢复 loop 时先读：
 
-- `state/session_auditor_id.txt`
-- `state/<slug>/auditor_id.txt`
 - `state/<slug>/progress.md`
 - `state/inbox.md`
 - 上轮 `feedback.md`
@@ -84,33 +81,38 @@ PLAN 是进入 ACT 的硬门槛，不是开场说明。用户要求跳过追问�
 - 有上诉待处理 -> 恢复同一审查 Agent 处理上诉
 - `next` 指向未完成修正 -> 继续 ACT
 - 上轮 `DECISION: PROCEED_TO_VERIFY` -> 恢复同一审查 Agent 进入 VERIFY
-- `final_verify.md` 为 `VERDICT: VERIFIED` -> DELIVER
+- `final_verify.md` 为 `VERDICT: VERIFIED` 且无 `baseline_lock.md` -> BASELINE_LOCK
 - `final_verify.md` 为 `VERDICT: RETURN_TO_LOOP` -> 读取 `OPEN_ISSUES` 后 LOOP
+- 已有 `baseline_lock.md` 且优化未终止 -> OPTIMIZE_LOOP
+- 优化已终止 -> FINAL_VERIFY
+- `final_deliver_verify.md` 为 `VERDICT: VERIFIED` -> DELIVER
+- `final_deliver_verify.md` 为 `VERDICT: RETURN_TO_BASELINE` -> 回退基线后重新 FINAL_VERIFY
 - `cost` 或停止原因显示低收益、硬上限、上诉死锁或阻塞 -> 停止并汇报
 
 ## 4. AUDIT
 
 **谁做**：审查子 Agent
 
-审查 Agent 必须跨轮、跨同系列任务存活。共享 ID 写入 `state/session_auditor_id.txt`；`state/<slug>/auditor_id.txt` 只是当前任务指针。只有无可续接共享 Agent、工作目录变化、任务系列不相关、用户明确要求重置时，才允许新建。
+审查 Agent 必须在当前对话/线程内跨轮存活。每个对话/线程最多一个活跃审查 Agent；不同对话/线程严禁复用。审查 Agent ID 只能保存在当前平台会话内存或线程元数据中，不得写入 `state/`、仓库文件或跨对话位置。只有当前对话无线程可续接 Agent、用户明确重置，或上轮已 DELIVER 并清理过程 state 时，才允许新建。
 
-### 五门审查
+### 六门审查
 
 1. **contract**：PLAN、Checklist、handoff、非目标、假设和审查输入包是否可检查；薄弱 PLAN 是 `weak_validation`。
 2. **completeness**：是否满足用户目标，是否遗漏重点或越界扩张。
-3. **correctness**：逻辑、边界、质量、可维护性和精简性是否影响完成判定；能删而不损失目标、重点和可验证性的内容，标为 `quality_issue`。
-4. **budget**：是否记录并遵守时间、工具/agent 调用、token/成本、继续价值和停止信号；超预算、可降级或应停问用户时，标为 `budget_issue`。
-5. **evidence_regression**：是否有文件路径、diff、命令输出或产物证据，是否破坏既有行为。
+3. **correctness**：逻辑、边界、结构清晰度、可维护性和精简性是否影响完成判定；能删而不损失目标、重点和可验证性的内容，标为 `quality_issue`。
+4. **reuse_existing**：是否优先使用标准库、平台原生能力、项目内现成功能或已安装依赖；不必要地从头写，标为 `reinventing_existing`。
+5. **budget**：是否记录并遵守时间、工具/agent 调用、token/成本、继续价值和停止信号；超预算、可降级或应停问用户时，标为 `budget_issue`。
+6. **evidence_regression**：是否有文件路径、diff、命令输出或产物证据，是否破坏既有行为。
 
 ### 二轮后审查
 
 从第二轮 AUDIT 开始，必须先验旧账、再查新账：
 
 - 旧账：逐条确认上一轮 `ISSUES`、`OPEN_ISSUES`、上诉裁决和 Plan Delta 是否闭环。
-- 新账：重新执行完整五门审查，检查修复是否引入新问题、回归、范围扩张、预算超支或证据断裂。
-- 裁决：只有旧账全关、新账为零、五门全 PASS，才允许 `PROCEED_TO_VERIFY`。
+- 新账：重新执行完整六门审查，检查修复是否引入新问题、回归、范围扩张、不必要自研、预算超支或证据断裂。
+- 裁决：只有旧账全关、新账为零、六门全 PASS，才允许 `PROCEED_TO_VERIFY`。
 
-只写“上轮问题已修复”但没有新一轮五门审查结果，判为 `weak_validation`。
+只写“上轮问题已修复”但没有新一轮六门审查结果，判为 `weak_validation`。
 
 ### 审查 Prompt 模板
 
@@ -125,13 +127,13 @@ AUDIT 步骤：
 1. 读 state/<slug>/loop_contract.md、progress.md、inbox.md、上轮 feedback.md/appeal.md（如有）。
 2. 先审 PLAN 质量。
 3. 第二轮后先验旧账、再查新账。
-4. 执行五门审查：contract / completeness / correctness / budget / evidence_regression。
+4. 执行六门审查：contract / completeness / correctness / reuse_existing / budget / evidence_regression。
 5. 写 state/<slug>/feedback.md，严格使用固定格式。
 
 PROCEED_TO_VERIFY 条件：
 - ISSUE_COUNT: 0
 - PLAN_CHECK verdict PASS
-- 五门全 PASS
+- 六门全 PASS
 - VERIFY_HANDOFF.unresolved 为空
 - 证据可检查
 ```
@@ -151,11 +153,12 @@ GATES:
 - contract: PASS | FAIL
 - completeness: PASS | FAIL
 - correctness: PASS | FAIL
+- reuse_existing: PASS | FAIL
 - budget: PASS | FAIL
 - evidence_regression: PASS | FAIL
 
 ISSUES:
-1. failure_type: logic_error | requirement_gap | missing_edge_case | regression | quality_issue | budget_issue | missing_skill | weak_validation | external_blocker
+1. failure_type: logic_error | requirement_gap | missing_edge_case | regression | quality_issue | reinventing_existing | budget_issue | missing_skill | weak_validation | external_blocker
    severity: blocker | major | minor
    evidence:
    fix_instruction:
@@ -170,6 +173,8 @@ VERIFY_HANDOFF:
 - evidence_paths:
 - unresolved:
 ```
+
+`fix_instruction` 必须是给主 Agent 的定向 prompt：写明目标文件/对象、要改什么、不得改什么、完成后如何验证；不得写成泛泛建议。
 
 ### 裁决路由
 
@@ -233,11 +238,93 @@ DELIVERABLE_SUMMARY:
 - user_should_know:
 ```
 
-- `VERIFIED`：主 Agent 进入 DELIVER。
+- `VERIFIED`：主 Agent 进入 BASELINE_LOCK；随后执行受限 OPTIMIZE_LOOP，再由同一审查 Agent FINAL_VERIFY 后才允许 DELIVER。
 - `RETURN_TO_LOOP`：主 Agent 读取 `OPEN_ISSUES` 后回到 LOOP。
 - `STOP_WITH_BLOCKER`：主 Agent 汇报阻塞和当前状态。
 
-## 7. DELIVER
+## 7. BASELINE / OPTIMIZE / FINAL_VERIFY
+
+`VERIFIED` 后先写 `baseline_lock.md`，再进入受限优化。OPTIMIZE 是增益判断，不是二次审核；候选只能来自：necessary_capability / human_usability / agent_efficiency / workflow_smoothness / recovery_delivery_experience / platform_experience。necessary_capability 可考虑已存在/可用的 skills、plugins、extensions、hooks、平台能力和项目功能；需要安装、启用或用户确认的候选必须 `DEFER_TO_INBOX`。结构清晰度、长期维护轻量化、复用优先属于 AUDIT。
+
+```md
+BASELINE_LOCK:
+- locked_at:
+- deliverable_paths:
+- checklist_passed:
+- evidence_paths:
+- baseline_fingerprint: file list + hash / saved patch hash / snapshot id
+- rollback_entry: saved patch path / snapshot path / exact restore commands
+- baseline_status: deliverable
+```
+
+```md
+OPTIMIZE_TRIAGE:
+- optimization_round:
+- completed_rounds:
+- candidate:
+  lens: necessary_capability | human_usability | agent_efficiency | workflow_smoothness | recovery_delivery_experience | platform_experience
+  capability_source: existing_skill | plugin | extension | hook | platform | project | none
+  expected_gain: high | medium | low
+  estimated_gain_percent:
+  cost: low | medium | high
+  risk: low | medium | high
+  affects_baseline: yes | no
+  needs_user_approval: yes | no
+  decision: OPTIMIZE_NOW | DEFER_TO_INBOX | STOP_OPTIMIZING
+  optimize_instruction:
+  reason:
+```
+
+只执行 `OPTIMIZE_NOW` 且收益 >=10%、cost 非 high、risk low、不新增依赖、不扩大范围、不改变已验收行为、不需用户确认、不破坏基线的优化。
+
+```md
+OPTIMIZE_AUDIT:
+DECISION: CONTINUE_OPTIMIZE | STOP_AND_DELIVER | RETURN_TO_BASELINE | STOP_WITH_BLOCKER
+OPTIMIZATION_ROUND:
+- current:
+- completed_total:
+
+BASELINE_INTEGRITY:
+- verdict: PASS | FAIL
+- evidence:
+
+IMPROVEMENT_CHECK:
+- actual_gain:
+- evidence:
+- worth_continuing: yes | no
+
+NEXT_OPTIMIZATION:
+- expected_gain:
+- cost:
+- risk:
+- decision:
+
+OPEN_ISSUES:
+- failure_type:
+  evidence:
+  fix_instruction:
+```
+
+```md
+VERDICT: VERIFIED | RETURN_TO_BASELINE | STOP_WITH_BLOCKER
+
+BASELINE:
+- integrity: PASS | FAIL
+- evidence: compare current deliverables against `BASELINE_LOCK.baseline_fingerprint`
+
+OPTIMIZATION:
+- rounds:
+- stop_reason:
+- unresolved:
+
+DELIVERABLE_SUMMARY:
+- changed:
+- why:
+- risks_or_limits:
+- user_should_know:
+```
+
+## 8. DELIVER
 
 **谁做**：主 Agent
 
@@ -250,14 +337,46 @@ DELIVERABLE_SUMMARY:
 - 用户后续需要知道什么
 - 下一步建议
 
-交付依据来自 `final_verify.md` 和 `progress.md`，不能由主 Agent 自行覆盖审查裁决。
+交付依据来自 `final_deliver_verify.md`、`baseline_lock.md`、`progress.md` 和必要证据摘要；`final_verify.md` 只能作为基线前验收证据，不能替代最终交付裁决。
 
-## 8. 降级模式
+## 9. 平台适配细节
+
+### Hermes Kanban
+
+Hermes 用 `hermes kanban` 创建审查任务卡片；gateway dispatcher 捡 ready 卡片并 spawn Hermes worker。worker 写评论、标记完成/阻塞，结果回写 SQLite 看板和 `output_path`。Kanban 持久化任务/结果，不持久化审查 Agent 身份。
+
+卡片最少字段：
+
+- `conversation_id` / `thread_id`
+- `task_slug`
+- `profile`
+- `stage`: `AUDIT | VERIFY | OPTIMIZE_TRIAGE | OPTIMIZE_AUDIT | FINAL_VERIFY`
+- `input_package`: contract、progress、diff、证据路径
+- `output_path`
+- `decision_schema`
+- `status`: ready / running / blocked / completed
+- `result` / `comments`
+
+CLI：`hermes kanban init/create/list/show/assign`。`delegate_task` 是瞬时子 Agent；Kanban 是 SQLite 持久化任务队列。
+
+### CLI 审查
+
+CLI 会话 ID 只能保存在当前对话/进程内存，不得写入 `state/` 或仓库文件：
+
+```bash
+SESSION_ID="${CURRENT_THREAD_AUDITOR_ID:-$(uuidgen)}"
+CURRENT_THREAD_AUDITOR_ID="$SESSION_ID"
+
+claude -p "$(cat state/audit_prompt.md)" --session-id "$SESSION_ID"
+claude -p "$(cat state/audit_continue.md)" --resume "$SESSION_ID"
+```
+
+## 10. 降级模式
 
 优先使用子 Agent 或 CLI 独立审查。只有无可续接子 Agent 且 CLI 不可用时，才允许本地角色切换模拟审查，并在 `feedback.md` 明确写明降级原因。
 
 ```text
 [角色切换：主 Agent -> 审查员]
-读 state/ -> 必要验证 -> 五门审查 -> 写 feedback.md
+读 state/ -> 必要验证 -> 六门审查 -> 写 feedback.md
 [角色切换：审查员 -> 主 Agent]
 ```

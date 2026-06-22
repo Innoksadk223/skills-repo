@@ -40,14 +40,13 @@
 
 ## 审查 Agent 作用域
 
-<!-- 同一会话 + 同一工作目录 + 同一系列任务复用同一个审查 Agent；同一目标的连续追加请求也算同一系列 -->
+<!-- 每个对话/线程最多一个活跃审查 Agent；ID 只保存在当前平台会话内，禁止写入 state 或仓库文件 -->
 - 会话标识：[当前对话 / CLI session / thread]
 - 工作目录：[绝对路径]
-- 任务系列：[例如：agent-loop 自身优化；同一目标的连续追加请求也算同一系列]
-- 是否同一系列：[是 / 否；理由]
-- 共享审查 Agent ID：`state/session_auditor_id.txt`
-- 当前任务指针：`state/[task-slug]/auditor_id.txt`（指向或复制共享 ID）
-- 允许新建审查 Agent 的例外：[无可续接共享 Agent / 工作目录变化 / 任务系列不相关 / 用户明确重置]
+- 当前对话是否已有活跃审查 Agent：[是 / 否 / 平台不可检查]
+- 审查 Agent 持久化位置：[当前对话/线程内存或平台线程元数据；不得落盘]
+- 允许新建审查 Agent 的例外：[当前对话无线程可续接 Agent / 用户明确重置 / 上轮已 DELIVER 并清理]
+- 禁止项：不得创建 `state/session_auditor_id.txt`、`state/[task-slug]/auditor_id.txt` 或其它审查 ID 文件
 
 ## 长期状态 progress.md
 
@@ -63,7 +62,7 @@
 ## 等待审查期间状态维护
 
 <!-- 审查 Agent 处理 AUDIT 时，主 Agent 只维护状态，不改变审查对象 -->
-- 允许：[更新 progress.md / 补写 inbox.md / 整理 handoff 证据 / 记录成本与阻塞 / 检查共享审查 Agent ID]
+- 允许：[更新 progress.md / 补写 inbox.md / 整理 handoff 证据 / 记录成本与阻塞 / 检查当前对话是否已有可续接审查 Agent]
 - 禁止：[修改已提交审查的正式产物 / 新增未进契约的功能或自动化 / 预判审查结论 / 覆写 feedback.md]
 - 审查责任：[审查 Agent 在 feedback.md 指出状态遗漏；小项目默认不新增独立记忆维护 Agent]
 
@@ -81,8 +80,12 @@
 - 若存在上诉待处理：恢复同一审查会话处理上诉
 - 若 `next` 指向未完成修正：继续 ACT
 - 若上轮 `DECISION: PROCEED_TO_VERIFY`：恢复同一审查 Agent 进入 VERIFY，输出 `state/[task-slug]/final_verify.md`
-- 若已有 `final_verify.md` 且 `VERDICT: VERIFIED`：进入 DELIVER
+- 若已有 `final_verify.md` 且 `VERDICT: VERIFIED` 但无 `baseline_lock.md`：进入 BASELINE_LOCK
 - 若已有 `final_verify.md` 且 `VERDICT: RETURN_TO_LOOP`：读取 `OPEN_ISSUES` 后回到 LOOP
+- 若已有 `baseline_lock.md` 且优化未终止：进入 OPTIMIZE_LOOP
+- 若优化已终止：进入 FINAL_VERIFY，输出 `state/[task-slug]/final_deliver_verify.md`
+- 若已有 `final_deliver_verify.md` 且 `VERDICT: VERIFIED`：进入 DELIVER
+- 若已有 `final_deliver_verify.md` 且 `VERDICT: RETURN_TO_BASELINE`：回退基线后重新 FINAL_VERIFY
 - 若 `cost` 或停止原因显示低收益、硬上限、上诉死锁或阻塞：停止并汇报
 
 ## 成本 / 预算观测

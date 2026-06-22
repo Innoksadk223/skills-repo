@@ -2,8 +2,8 @@
 """
 Agent Loop CLI 调度模板。
 
-实验性参考：使用前必须按当前平台检查 CLI 参数、会话恢复方式和写入路径。
-核心约束：主 Agent ACT，独立审查 Agent AUDIT/VERIFY，同系列任务复用同一审查会话。
+实验性参考：只覆盖 ACT/AUDIT/VERIFY 路由。完整交付仍必须回到 SKILL.md 的 BASELINE_LOCK、OPTIMIZE_LOOP、FINAL_VERIFY 和 DELIVER。
+使用前必须按当前平台检查 CLI 参数、会话恢复方式和写入路径；审查会话只在当前进程内续接，不写入 state 或仓库文件。
 """
 
 import argparse
@@ -48,11 +48,18 @@ def read_feedback(path: Path) -> dict:
                 pass
         elif line.startswith("- ") and any(
             key in line
-            for key in ("contract:", "completeness:", "correctness:", "budget:", "evidence_regression:")
+            for key in (
+                "contract:",
+                "completeness:",
+                "correctness:",
+                "reuse_existing:",
+                "budget:",
+                "evidence_regression:",
+            )
         ):
             gate_lines.append(line)
 
-    result["gates_pass"] = len(gate_lines) >= 5 and all("PASS" in line for line in gate_lines)
+    result["gates_pass"] = len(gate_lines) >= 6 and all("PASS" in line for line in gate_lines)
     return result
 
 
@@ -73,13 +80,14 @@ def audit_prompt(round_num: int, task_slug: str, appeal_text: str | None = None)
 1. 读 state/{task_slug}/loop_contract.md、progress.md、inbox.md（如有）、上轮 feedback.md/appeal.md（如有）。
 2. 先审 PLAN 质量。
 3. 第二轮后先验旧账、再查新账。
-4. 执行五门审查：contract / completeness / correctness / budget / evidence_regression。
+4. 执行六门审查：contract / completeness / correctness / reuse_existing / budget / evidence_regression。
 5. 写 state/{task_slug}/feedback.md，严格使用固定格式。
+每条 fix_instruction 必须是给主 Agent 的定向 prompt：写明目标文件/对象、要改什么、不得改什么、完成后如何验证；不得写成泛泛建议。
 
 PROCEED_TO_VERIFY 条件：
 - ISSUE_COUNT: 0
 - PLAN_CHECK verdict PASS
-- 五门全 PASS
+- 六门全 PASS
 - VERIFY_HANDOFF.unresolved 为空
 - 证据可检查
 
@@ -96,11 +104,12 @@ GATES:
 - contract: PASS | FAIL
 - completeness: PASS | FAIL
 - correctness: PASS | FAIL
+- reuse_existing: PASS | FAIL
 - budget: PASS | FAIL
 - evidence_regression: PASS | FAIL
 
 ISSUES:
-1. failure_type: logic_error | requirement_gap | missing_edge_case | regression | quality_issue | budget_issue | missing_skill | weak_validation | external_blocker
+1. failure_type: logic_error | requirement_gap | missing_edge_case | regression | quality_issue | reinventing_existing | budget_issue | missing_skill | weak_validation | external_blocker
    severity: blocker | major | minor
    evidence:
    fix_instruction:
@@ -116,7 +125,7 @@ VERIFY_HANDOFF:
 - unresolved:
 """
     if round_num > 1:
-        base += "\n第二轮后要求：先确认旧账闭环，再重新做完整五门审查，不能只写上轮问题已修。\n"
+        base += "\n第二轮后要求：先确认旧账闭环，再重新做完整六门审查，不能只写上轮问题已修。\n"
     if appeal_text:
         base += f"\n上诉内容如下，请逐条裁决 UPHELD / OVERRULED / CLARIFIED：\n{appeal_text}\n"
     return base
@@ -161,12 +170,12 @@ def write_blocker_feedback(path: Path, reason: str) -> None:
         "DECISION: STOP_WITH_BLOCKER\n"
         "ISSUE_COUNT: 1\n\n"
         "PLAN_CHECK:\n- verdict: FAIL\n- evidence: 审查 Agent CLI 失败\n- notes:\n\n"
-        "GATES:\n- contract: FAIL\n- completeness: FAIL\n- correctness: FAIL\n- budget: PASS\n- evidence_regression: FAIL\n\n"
+        "GATES:\n- contract: FAIL\n- completeness: FAIL\n- correctness: FAIL\n- reuse_existing: PASS\n- budget: PASS\n- evidence_regression: FAIL\n\n"
         "ISSUES:\n"
         "1. failure_type: external_blocker\n"
         "   severity: blocker\n"
         f"   evidence: {reason}\n"
-        "   fix_instruction: 检查 CLI 可用性、会话参数和写入路径后重试\n\n"
+        "   fix_instruction: 目标对象：runner CLI 配置、当前 task state 写入路径、CLI 会话参数。检查并修正 CLAUDE_BIN、--session-id/--resume 参数、state/<slug>/feedback.md 写入权限与路径；不得新增依赖、不得写入审查 Agent ID、不得扩大 runner 覆盖范围。完成后运行 `python -m py_compile skills/agent-loop/references/runner-template.py`、`git diff --check -- skills/agent-loop/references/runner-template.py`，并确认 repo/main 副本 `diff -qr` 为 0。\n\n"
         "APPEALS:\n- item:\n  ruling:\n  reason:\n\n"
         "VERIFY_HANDOFF:\n- checklist_items_ready:\n- evidence_paths:\n- unresolved: 审查 Agent CLI 失败\n",
         encoding="utf-8",
@@ -188,15 +197,9 @@ def main() -> int:
     global LOG_FILE
     LOG_FILE = task_dir / "loop.log"
 
-    shared_session_file = STATE_DIR / "session_auditor_id.txt"
-    if shared_session_file.exists():
-        session_id = shared_session_file.read_text(encoding="utf-8").strip()
-    else:
-        session_id = str(uuid.uuid4())
-        shared_session_file.write_text(session_id + "\n", encoding="utf-8")
-    (task_dir / "auditor_id.txt").write_text(session_id + "\n", encoding="utf-8")
+    session_id = str(uuid.uuid4())
 
-    log(f"Loop start task={args.task_slug} auditor={session_id}")
+    log(f"Loop start task={args.task_slug} auditor_scope=current-process")
 
     fix_round = 0
     appeal_rounds = 0
@@ -240,6 +243,7 @@ def main() -> int:
             if decision == "PROCEED_TO_VERIFY":
                 log("VERIFY")
                 verify_result = run_cli(verify_prompt(args.task_slug), session_id, resume=True)
+                log("VERIFY complete; continue BASELINE_LOCK/OPTIMIZE_LOOP/FINAL_VERIFY/DELIVER by SKILL.md")
                 exit_code = 0 if verify_result == 0 else 1
                 break
 
@@ -253,8 +257,10 @@ def main() -> int:
             log("Continue LOOP")
     finally:
         if args.cleanup and task_dir.exists():
+            log(f"Cleaning {task_dir}")
             shutil.rmtree(task_dir)
-            log(f"Cleaned {task_dir}")
+            LOG_FILE = None
+            print(f"Cleaned {task_dir}")
         elif not args.cleanup:
             log(f"Kept state dir: {task_dir}")
 
