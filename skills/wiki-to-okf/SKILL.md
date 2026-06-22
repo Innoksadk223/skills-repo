@@ -1,11 +1,11 @@
 ---
 name: wiki-to-okf
-description: Convert karpathy-wiki pages (human-readable argumentation graph) into OKF (Open Knowledge Format) — an AI-consumable knowledge bundle of Markdown files with structured YAML frontmatter. Use when building AI-readable knowledge format from existing wiki, when adding an OKF output layer to social-science-km projects, or when converting any karpathy-wiki claims/concepts/entities/comparisons/synthesis/debates into machine-actionable concept files.
+description: Convert argumentation wiki pages into OKF (Open Knowledge Format), an AI-consumable knowledge bundle of Markdown files with structured YAML frontmatter. Use when building AI-readable concept files from claims, concepts, entities, comparisons, synthesis, or debates pages.
 ---
 
 # Wiki → OKF Converter
 
-将 karpathy-wiki 的人读论证图谱转化为 OKF bundle：目录 + Markdown + YAML frontmatter。AI agent 可直接消费——导航、查询、工具调用。
+将人读论证图谱 wiki 转化为 OKF bundle：目录 + Markdown + YAML frontmatter。AI agent 可直接消费——导航、查询、工具调用。
 
 OKF 核心原则来自 Google Cloud 的 Open Knowledge Format v0.1：**格式，不是平台**。没有 SDK，没有 runtime，没有私有账号。一个目录就是完整知识包。
 
@@ -22,7 +22,7 @@ OKF 核心原则来自 Google Cloud 的 Open Knowledge Format v0.1：**格式，
 
 ## 前置条件
 
-- 已有 karpathy-wiki 产物在 `wiki/` 下
+- 已有论证图谱 wiki 产物在 `wiki/` 下
 - `wiki/claims/`, `wiki/concepts/`, `wiki/entities/`, `wiki/comparisons/` 至少一个目录存在
 - 有 LLM 可调用（本 skill 不绑定特定 LLM，agent 用当前可用模型）
 - Python 3 环境含 PyYAML（`pip install pyyaml`，Step 4 验证脚本需要）
@@ -44,7 +44,7 @@ find wiki/claims wiki/concepts wiki/entities wiki/comparisons wiki/synthesis wik
 
 ### 2a. 规则提取 Metadata
 
-从 karpathy-wiki 页面提取结构化字段，写入 OKF YAML frontmatter。映射规则详见 `references/okf-spec.md`。
+从 wiki 页面提取结构化字段，写入 OKF YAML frontmatter。映射规则详见 `references/okf-spec.md`。
 
 核心映射：
 
@@ -182,12 +182,12 @@ else:
 - `relates_to` 中所有路径指向 `okf/` 下存在的文件（`os.path.exists` 逐条验证）
 - `type` 值在允许的枚举范围内
 
-## 与 social-science-km 的集成
+## 与知识库工作流的集成
 
-`wiki-to-okf` 是独立 skill，不修改 social-science-km workflow。在 social-science-km 的 Step 3（karpathy-wiki 编译）完成后，可选执行：
+`wiki-to-okf` 是独立 skill，不修改上游知识库 workflow。在图谱 wiki 编译完成后，可选执行：
 
 ```
-social-science-km Step 3 完成 → wiki/ 就绪
+wiki/ 就绪
   ↓ (可选)
 wiki-to-okf → okf/ 生成
   ↓
@@ -196,7 +196,7 @@ okf/ 可直接喂给 AI agent 作为上下文、挂载到文件系统、或打�
 
 ## 注意事项
 
-- 目录结构保留 karpathy-wiki 的树形组织（claims/concepts/entities/…），不重新分类
+- 目录结构保留上游 wiki 的树形组织（claims/concepts/entities/…），不重新分类
 - LLM body 压缩可能丢失细微论证关系；重要节点应在 `description` 中标注不确定性
 - 首次转换后，后续增量更新只需重新处理 `wiki/log.md` 中标记为变更的页面
 - `okf/` 目录可作为独立包分发（tarball / git repo），不依赖任何平台

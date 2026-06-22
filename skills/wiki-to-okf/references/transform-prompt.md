@@ -1,6 +1,6 @@
 # LLM Body 压缩 Prompt 模板
 
-此 prompt 发给 LLM，将 karpathy-wiki 页面正文压缩为 AI 可消费的 OKF body。
+此 prompt 发给 LLM，将论证图谱 wiki 页面正文压缩为 AI 可消费的 OKF body。
 
 ## 使用方式
 

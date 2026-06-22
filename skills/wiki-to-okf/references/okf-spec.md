@@ -1,6 +1,6 @@
 # OKF 字段映射规则
 
-将 karpathy-wiki 页面映射为 OKF 概念文件。所有字段除 `type` 外均为可选，但建议至少包含 `title` 和 `description`。
+将论证图谱 wiki 页面映射为 OKF 概念文件。所有字段除 `type` 外均为可选，但建议至少包含 `title` 和 `description`。
 
 ## OKF YAML Frontmatter 规范
 

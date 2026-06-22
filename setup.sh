@@ -5,17 +5,15 @@ REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILLS_FLAT="$REPO_DIR/skills"
 AGENTS_SKILLS_DIR="${AGENTS_SKILLS_DIR:-$HOME/.agents/skills}"
 
-GROUP_KEYS=(browser paperspine minimax search academic productivity creative superpowers tools)
+GROUP_KEYS=(browser minimax search academic creative superpowers tools)
 GROUP_DESC=(
     "[Browser] browser automation: browser-use"
-    "[PaperSpine] paper writing pipeline: research, rewrite, LaTeX, translate"
     "[Minimax] document generation: DOCX, PDF, XLSX, PPTX"
     "[Search] AnySearch real-time web/vertical search"
-    "[Academic] academic search, paper review, wiki/RAG/deep-reading knowledge management"
-    "[Productivity] MinerU document extraction"
+    "[Academic] paper review and social-science manuscript review"
     "[Creative] PPT agent and frontend/UI design skills"
     "[Superpowers] lightweight general methods: clarify, plan, debug, verify, delegate, review"
-    "[Tools] agent-loop, skill-planner, cleanup, skill tools, markitdown"
+    "[Tools] agent-loop, skill-planner, cleanup, skill tools"
 )
 
 RECOMMENDED_SKILLS=(
@@ -27,21 +25,16 @@ RECOMMENDED_SKILLS=(
     skill-architecture
     skill-planner
     capture-gotcha
-    markitdown
-    academic-search
     academic-paper-review
 )
 
 HERMES_MAP=(
     "browser-use:browser-use"
-    "paperspine:paper-spine,paper-spine-audit,paper-spine-build,paper-spine-citation,paper-spine-humanize,paper-spine-intake,paper-spine-latex,paper-spine-research,paper-spine-rewrite,paper-spine-translate,paper-spine-ui,paper-spine-update"
     "minimax:minimax-docx,minimax-pdf,minimax-xlsx"
-    "research:karpathy-wiki,deep-reading-to-wiki,SiliconFlow-rag,social-science-km"
-    "productivity:mineru-document-extractor"
     "creative:ppt-agent,frontend-design,taste-skill,ui-ux-pro-max"
     "superpowers:using-superpowers,brainstorming,writing-plans,systematic-debugging,test-driven-development,verification-before-completion"
 )
-HERMES_SOLO="academic-search academic-paper-review anysearch agent-loop cleanup find-skills grill-me markitdown skill-creator skill-architecture skill-planner capture-gotcha"
+HERMES_SOLO="academic-paper-review social-science-paper-review wiki-to-okf anysearch agent-loop cleanup find-skills grill-me skill-creator skill-architecture skill-planner capture-gotcha intent-normalizer"
 
 PRESET=""
 TARGET_ARG=""
@@ -152,14 +145,12 @@ detect_agents() {
 skill_group() {
     case "$1" in
         browser-use) echo "browser" ;;
-        paper-spine|paper-spine-*) echo "paperspine" ;;
         minimax-*|pptx) echo "minimax" ;;
         anysearch) echo "search" ;;
-        karpathy-wiki|deep-reading-to-wiki|academic-search|academic-paper-review|SiliconFlow-rag|social-science-km) echo "academic" ;;
-        mineru-document-extractor) echo "productivity" ;;
+        academic-paper-review|social-science-paper-review|wiki-to-okf) echo "academic" ;;
         ppt-agent|frontend-design|taste-skill|ui-ux-pro-max) echo "creative" ;;
         using-superpowers|brainstorming|writing-plans|systematic-debugging|test-driven-development|verification-before-completion) echo "superpowers" ;;
-        cleanup|find-skills|grill-me|markitdown|skill-creator|skill-architecture|skill-planner|agent-loop|capture-gotcha) echo "tools" ;;
+        cleanup|find-skills|grill-me|skill-creator|skill-architecture|skill-planner|agent-loop|capture-gotcha|intent-normalizer) echo "tools" ;;
         *) echo "" ;;
     esac
 }

@@ -128,7 +128,7 @@ test_recommended_preset_is_small() {
     HOME="$tmp/home" bash "$SETUP" --preset recommended --target codex --dir "$target" --yes >/dev/null
     assert_exists "$target/agent-loop/SKILL.md" "recommended preset includes agent-loop"
     assert_exists "$target/anysearch/SKILL.md" "recommended preset includes anysearch"
-    assert_not_exists "$target/paper-spine/SKILL.md" "recommended preset does not install heavy PaperSpine suite"
+    assert_not_exists "$target/minimax-docx/SKILL.md" "recommended preset does not install non-recommended skills"
 }
 
 test_help
