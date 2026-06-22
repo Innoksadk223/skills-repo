@@ -29,8 +29,8 @@ def log(message: str) -> None:
             handle.write(line + "\n")
 
 
-def read_feedback(path: Path) -> dict:
-    """Extract routing fields from fixed-format feedback.md."""
+def read_review(path: Path) -> dict:
+    """Extract latest routing fields from fixed-format review.md."""
     if not path.exists():
         return {"decision": "UNKNOWN", "issues": 0, "gates_pass": False}
 
@@ -74,14 +74,14 @@ def audit_prompt(round_num: int, task_slug: str, appeal_text: str | None = None)
 
 立场：默认不信任。主 Agent 的产出在证明正确前视为有问题。不确定就是 CONTINUE_FIX。
 
-范围：只围绕 loop_contract.md、当前轮任务、验收 Checklist、变更证据、预算证据、上轮反馈或上诉审查。不得要求新增用户未要求的功能、runner 自动化、新脚本或复杂模块；范围外建议不得计入 ISSUE_COUNT。
+范围：只围绕 state.md、当前轮任务、验收 Checklist、变更证据、预算证据、上轮 review 或上诉审查。不得要求新增用户未要求的功能、runner 自动化、新脚本或复杂模块；范围外建议不得计入 ISSUE_COUNT。
 
 审查步骤：
-1. 读 state/{task_slug}/loop_contract.md、progress.md、inbox.md（如有）、上轮 feedback.md/appeal.md（如有）。
+1. 读 state/{task_slug}/state.md、review.md（如有）、state/inbox.md（如有）、appeal.md（如有）。
 2. 先审 PLAN 质量。
 3. 第二轮后先验旧账、再查新账。
 4. 执行六门审查：contract / completeness / correctness / reuse_existing / budget / evidence_regression。
-5. 写 state/{task_slug}/feedback.md，严格使用固定格式。
+5. 追加 AUDIT 段落到 state/{task_slug}/review.md，严格使用固定格式。
 每条 fix_instruction 必须是给主 Agent 的定向 prompt：写明目标文件/对象、要改什么、不得改什么、完成后如何验证；不得写成泛泛建议。
 
 PROCEED_TO_VERIFY 条件：
@@ -91,7 +91,9 @@ PROCEED_TO_VERIFY 条件：
 - VERIFY_HANDOFF.unresolved 为空
 - 证据可检查
 
-feedback.md 固定格式：
+review.md 的 AUDIT 段落固定格式：
+## AUDIT Round N
+
 DECISION: PROCEED_TO_VERIFY | CONTINUE_FIX | STOP_WITH_BLOCKER
 ISSUE_COUNT: <number>
 
@@ -134,8 +136,10 @@ VERIFY_HANDOFF:
 def verify_prompt(task_slug: str) -> str:
     return f"""你是同一个独立审查员，现在进入 VERIFY。
 
-读取 state/{task_slug}/loop_contract.md、progress.md、feedback.md 和所有证据。
-逐项验收 Checklist，输出 state/{task_slug}/final_verify.md：
+读取 state/{task_slug}/state.md、review.md 和所有证据。
+逐项验收 Checklist，追加 VERIFY 段落到 state/{task_slug}/review.md：
+
+## VERIFY
 
 VERDICT: VERIFIED | RETURN_TO_LOOP | STOP_WITH_BLOCKER
 
@@ -167,6 +171,7 @@ def run_cli(prompt: str, session_id: str, resume: bool) -> int:
 
 def write_blocker_feedback(path: Path, reason: str) -> None:
     path.write_text(
+        "## AUDIT Round blocker\n\n"
         "DECISION: STOP_WITH_BLOCKER\n"
         "ISSUE_COUNT: 1\n\n"
         "PLAN_CHECK:\n- verdict: FAIL\n- evidence: 审查 Agent CLI 失败\n- notes:\n\n"
@@ -175,7 +180,7 @@ def write_blocker_feedback(path: Path, reason: str) -> None:
         "1. failure_type: external_blocker\n"
         "   severity: blocker\n"
         f"   evidence: {reason}\n"
-        "   fix_instruction: 目标对象：runner CLI 配置、当前 task state 写入路径、CLI 会话参数。检查并修正 CLAUDE_BIN、--session-id/--resume 参数、state/<slug>/feedback.md 写入权限与路径；不得新增依赖、不得写入审查 Agent ID、不得扩大 runner 覆盖范围。完成后运行 `python -m py_compile skills/agent-loop/references/runner-template.py`、`git diff --check -- skills/agent-loop/references/runner-template.py`，并确认 repo/main 副本 `diff -qr` 为 0。\n\n"
+        "   fix_instruction: 目标对象：runner CLI 配置、当前 task state 写入路径、CLI 会话参数。检查并修正 CLAUDE_BIN、--session-id/--resume 参数、state/<slug>/review.md 写入权限与路径；不得新增依赖、不得写入审查 Agent ID、不得扩大 runner 覆盖范围。完成后运行 `python -m py_compile skills/agent-loop/references/runner-template.py`、`git diff --check -- skills/agent-loop/references/runner-template.py`，并确认 repo/main 副本 `diff -qr` 为 0。\n\n"
         "APPEALS:\n- item:\n  ruling:\n  reason:\n\n"
         "VERIFY_HANDOFF:\n- checklist_items_ready:\n- evidence_paths:\n- unresolved: 审查 Agent CLI 失败\n",
         encoding="utf-8",
@@ -184,14 +189,14 @@ def write_blocker_feedback(path: Path, reason: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Agent Loop CLI runner template")
-    parser.add_argument("--task", default="执行 loop_contract.md 中定义的目标")
+    parser.add_argument("--task", default="执行 state.md 中定义的目标")
     parser.add_argument("--task-slug", default=f"task-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
     parser.add_argument("--cleanup", action="store_true", help="完成后清理 state/<slug>/")
     args = parser.parse_args()
 
     task_dir = STATE_DIR / args.task_slug
     task_dir.mkdir(parents=True, exist_ok=True)
-    feedback_file = task_dir / "feedback.md"
+    review_file = task_dir / "review.md"
     appeal_file = task_dir / "appeal.md"
 
     global LOG_FILE
@@ -210,7 +215,7 @@ def main() -> int:
         while True:
             fix_round += 1
             log(f"Round {fix_round}: ACT")
-            act_prompt = args.task if fix_round == 1 else f"读取 state/{args.task_slug}/feedback.md 并逐条执行修正指令。"
+            act_prompt = args.task if fix_round == 1 else f"读取 state/{args.task_slug}/review.md 并逐条执行修正指令。"
             act_result = subprocess.run([CLAUDE_BIN, "-p", act_prompt], capture_output=True, text=True, timeout=600)
             if act_result.returncode != 0:
                 log(f"ACT failed: {act_result.stderr[:300]}")
@@ -224,13 +229,13 @@ def main() -> int:
 
             log(f"Round {fix_round}: AUDIT")
             audit_result = run_cli(audit_prompt(fix_round, args.task_slug, appeal_text), session_id, resume=fix_round > 1)
-            if audit_result != 0 and not feedback_file.exists():
-                write_blocker_feedback(feedback_file, "审查 Agent CLI 进程异常退出")
+            if audit_result != 0 and not review_file.exists():
+                write_blocker_feedback(review_file, "审查 Agent CLI 进程异常退出")
 
             if appeal_text and appeal_file.exists():
                 appeal_file.unlink()
 
-            feedback = read_feedback(feedback_file)
+            feedback = read_review(review_file)
             decision = feedback["decision"]
             log(f"DECISION={decision} ISSUES={feedback['issues']} GATES_PASS={feedback['gates_pass']}")
 

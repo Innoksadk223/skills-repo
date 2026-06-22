@@ -5,51 +5,48 @@ description: Use when work has high cost of silent errors, repeated correction, 
 
 # Agent Loop
 
-Separate doing from judging. The main Agent plans, executes, and fixes; one audit Agent reviews the contract, evidence, and final readiness.
+Separate doing from judging. The main Agent plans, changes, fixes, and delivers; one audit Agent reviews evidence, writes verdicts, verifies readiness, and controls safe optimization.
 
-## When to Use
+Use existing planning first: Plan mode, `writing-plans`, or another suitable planning skill. If no usable plan exists, this skill writes the minimal contract before changing deliverables.
 
-- The task needs independent review before delivery.
+## Use
+
+- Independent review is needed before delivery.
 - A failed change would be costly, subtle, or hard to notice.
-- The user asks for `/agent-loop`, multi-round audit, final verification, or bounded optimization.
+- The user asks for `/agent-loop`, multi-round review, final verification, or bounded optimization.
 - Work may need recovery after interruption.
 
 Do not use for one-shot answers, tiny edits, or tasks where a normal check is enough.
 
-## Required Files
-
-Create a task directory under `state/<slug>/`:
+## State
 
 | File | Owner | Purpose |
 | --- | --- | --- |
-| `loop_contract.md` | main Agent | Goal, non-goals, assumptions, steps, handoff evidence, checklist, budget, recovery entry |
-| `progress.md` | main Agent | done / tried / next / open / user-confirm / cost |
-| `feedback.md` | audit Agent | PLAN check, six gates, issues, appeal rulings, verify handoff |
-| `final_verify.md` | audit Agent | Checklist verdict before baseline lock |
-| `baseline_lock.md` | main Agent | Deliverable fingerprint and rollback entry after VERIFIED |
-| `final_deliver_verify.md` | audit Agent | Final verdict after any allowed optimization |
+| `state.md` | main | contract, progress, evidence, recovery, baseline, delivery notes |
+| `review.md` | audit | audit, appeals, verify, optimize triage, final verdict |
+| `inbox.md` | main | optional unresolved items across tasks |
 
-Use `references/contract-template.md` for the contract. Load `references/plan-act-audit.md` when exact formats, prompts, recovery routing, optimization, or downgrade rules are needed.
+Create `state/<slug>/state.md` before changing deliverables. Use `references/contract-template.md` for the template. Load `references/plan-act-audit.md` only for exact formats, prompts, recovery routing, optimization rules, or downgrade behavior.
 
 ## Workflow
 
-1. **PLAN**: write `loop_contract.md` and `progress.md` before changing deliverables.
-2. **ACT**: main Agent executes only the contracted work and records evidence.
-3. **AUDIT**: same audit Agent checks PLAN quality first, then six gates.
-4. **LOOP**: main Agent applies `CONTINUE_FIX` instructions or writes an appeal with evidence.
+1. **PLAN**: reuse an existing plan when available; otherwise write `state.md` contract and checklist before deliverable changes.
+2. **ACT**: main Agent executes only contracted work and records evidence.
+3. **AUDIT**: the same audit Agent checks plan quality first, then all six gates.
+4. **LOOP**: main Agent follows `CONTINUE_FIX` instructions or writes an evidence-backed appeal.
 5. **VERIFY**: audit Agent validates every checklist item.
-6. **BASELINE_LOCK**: main Agent records a deliverable baseline without changing it.
-7. **OPTIMIZE_LOOP**: optional, only from audit Agent instructions that meet the safety gate.
+6. **BASELINE_LOCK**: main Agent records a baseline without changing deliverables.
+7. **OPTIMIZE_LOOP**: optional and still owned by the same audit Agent. Do not create a separate optimizer Agent.
 8. **FINAL_VERIFY**: audit Agent confirms baseline integrity and optimization stop reason.
-9. **DELIVER**: main Agent summarizes result, then automatically removes process files that do not affect the deliverable.
+9. **DELIVER**: main Agent summarizes evidence, then removes process files that do not affect the deliverable.
 
-## Audit Gates
+## Review
 
-`feedback.md` must decide `PROCEED_TO_VERIFY`, `CONTINUE_FIX`, or `STOP_WITH_BLOCKER`.
+`review.md` must decide `PROCEED_TO_VERIFY`, `CONTINUE_FIX`, or `STOP_WITH_BLOCKER`.
 
-All gates must pass before verification:
+All six gates must pass:
 
-- `contract`: goal, non-goals, assumptions, checklist, handoff, and recovery entry are checkable.
+- `contract`: goal, non-goals, assumptions, checklist, handoff, and recovery are checkable.
 - `completeness`: the result satisfies the user goal without scope expansion.
 - `correctness`: logic, edge cases, structure, and necessary simplicity are acceptable.
 - `reuse_existing`: standard library, platform features, project code, or installed dependencies were preferred.
@@ -58,49 +55,43 @@ All gates must pass before verification:
 
 Second and later audits must close old issues first, then rerun all six gates.
 
-## Hard Rules
+## Instructions
 
-- One active audit Agent per conversation/thread. Reuse it for the loop; never persist audit Agent IDs in files.
-- The main Agent may send fixed audit templates and handoff context, but must not write audit findings or final verdicts.
-- `fix_instruction` must be executable: target object, required change, forbidden change, and verification command/evidence.
+The audit Agent returns targeted prompts to the main Agent:
+
+- `fix_instruction`: target object, required change, forbidden change, and verification command/evidence.
+- `optimize_instruction`: same shape, but only for safe optimization after baseline lock.
+
+Only execute `OPTIMIZE_NOW` when expected gain is meaningful, cost is not high, risk is low, behavior does not regress, no new dependency is needed, and no user approval is required. Limited scope expansion is allowed only for a critical or required capability.
+
+## Rules
+
+- One active audit Agent per conversation/thread. Reuse it for every loop; never persist audit Agent IDs in files.
+- Main Agent may provide templates and handoff context, but must not write audit findings or final verdicts.
 - Oral PASS is FAIL. Evidence must be file paths, diff summaries, command output, or deliverable paths.
-- Scope control is part of strictness. Unrequested features belong in notes or `state/inbox.md`, not blocking issues.
+- Scope control is part of strictness. Unrequested features go to notes or `state/inbox.md`, not blocking issues.
 - Optimization candidates and `optimize_instruction` come only from the same audit Agent.
-- After `BASELINE_LOCK`, any risky, high-cost, scope-expanding, behavior-changing, or approval-needed optimization stops automatic execution.
-- On `DELIVER`, summarize key evidence before automatically deleting process files. Keep only the smallest required `state/inbox.md` when unresolved items remain.
+- After `BASELINE_LOCK`, risky, high-cost, scope-expanding, behavior-changing, or approval-needed optimization stops automatic execution.
+- On `DELIVER`, summarize key evidence before deleting process state. Keep only the smallest required `state/inbox.md` when unresolved items remain.
 
 ## Recovery
 
-Before resuming, read:
+Before resuming, read `state/<slug>/state.md`, `review.md` if present, and `state/inbox.md` if present.
 
-1. `state/<slug>/loop_contract.md`
-2. `state/<slug>/progress.md`
-3. `state/inbox.md` if present
-
-Then route by state:
+Route by state:
 
 - `user-confirm` is non-empty -> ask the user first.
-- pending appeal -> resume the same audit Agent for appeal ruling.
-- unfinished `next` fix -> apply the fix, updating contract first if scope or checklist changed.
+- Pending appeal -> resume the same audit Agent for ruling.
+- Unfinished `next` fix -> apply it, updating the contract first if scope or checklist changed.
 - `PROCEED_TO_VERIFY` -> send VERIFY to the same audit Agent.
-- `VERIFIED` without `baseline_lock.md` -> write baseline lock.
-- optimization stopped or ineligible -> send FINAL_VERIFY.
-- final `VERDICT: VERIFIED` -> DELIVER.
-- blocker, hard limit, appeal deadlock, or low-value continuation -> stop and report.
+- `VERIFIED` without baseline section in `state.md` -> append baseline lock.
+- Optimization stopped or ineligible -> send FINAL_VERIFY.
+- Final `VERDICT: VERIFIED` -> DELIVER.
+- Blocker, hard limit, appeal deadlock, or low-value continuation -> stop and report.
 
 ## References
 
-- `references/contract-template.md`: copy when creating `loop_contract.md`.
+- `references/contract-template.md`: copy when creating `state.md`.
 - `references/plan-act-audit.md`: full protocol, exact output formats, prompts, recovery details, optimization, and downgrade behavior.
 - `references/runner-template.py`: experimental CLI helper; inspect platform parameters before use and never persist audit Agent IDs.
 - `scripts/check_skill.py`: local static check for skill packaging.
-
-## Common Mistakes
-
-| Mistake | Fix |
-| --- | --- |
-| Starting ACT without a contract | Stop and write `loop_contract.md` plus `progress.md`. |
-| Replacing audit with self-review | Use the audit Agent or explicit downgrade protocol from the reference. |
-| Creating a new audit Agent each round | Reuse the active audit conversation/thread. |
-| Treating optimization as required fixes | Only execute safe `OPTIMIZE_NOW`; otherwise defer or stop. |
-| Keeping process files after delivery | Summarize first, then clean process state automatically unless unresolved items must remain. |
