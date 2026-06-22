@@ -15,14 +15,14 @@
 3. **再安装** — `bash setup.sh`
 4. **最后教** — 安装/更新完成后，直接读 [START.md](START.md)，给用户一段 3 分钟上手教程
 
-## 技能速查（27 个）
+## 技能速查（26 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
 | 浏览器 | `browser-use` (1) | 网页自动化：网页测试、表单填充、截图、数据提取 |
 | Minimax | `minimax-docx` / `minimax-pdf` / `minimax-xlsx` (3) | DOCX/PDF/XLSX 专业文档生成 |
 | 搜索 | `anysearch` (1) | AnySearch 实时网页搜索、垂直领域搜索、批量搜索、URL 内容提取 |
-| 学术 | `academic-paper-review` / `social-science-paper-review` / `wiki-to-okf` (3) | 论文审阅、社科稿件评审、wiki 到 OKF 转换 |
+| 学术 | `social-science-paper-review` / `wiki-to-okf` (2) | 社科稿件评审、wiki 到 OKF 转换 |
 | 创作 | `ppt-agent` / `frontend-design` / `taste-skill` / `ui-ux-pro-max` (4) | 专业 PPT、前端页面、UI/UX 设计与反模板化审美 |
 | Superpowers | `using-superpowers` / `brainstorming` / `writing-plans` / `systematic-debugging` / `test-driven-development` / `verification-before-completion` (6) | 轻量通用方法论：澄清、计划、排查、验收、验证、收尾 |
 | 工具 | `skill-creator` / `skill-architecture` / `skill-planner` / `agent-loop` / `cleanup` / `find-skills` / `grill-me` / `capture-gotcha` / `intent-normalizer` (9) | 技能创建、模块化架构、任务路由、Agent 编排、清理、发现、质询、环境记录、意图校准 |
@@ -33,7 +33,7 @@
 |------|----------|----------------|------|
 | 复杂任务循环推进 | `agent-loop` | 任务有多步、可验收、需要执行与反馈循环 | `state/` 过程记录、Worker 产出、Feedbacker 反馈、主 Agent 验收结果 |
 | 文档生成 | `minimax-docx` / `minimax-pdf` / `minimax-xlsx` | 要生成、修改、格式化 Word/PDF/Excel | 可交付文档或表格 |
-| 论文审阅 | `academic-paper-review` / `social-science-paper-review` | 要评估论文质量、方法问题、修改方向 | 审稿式问题清单和修改建议 |
+| 论文审阅 | `social-science-paper-review` | 要评估社科论文质量、方法问题、修改方向 | 审稿式问题清单和修改建议 |
 | 前端/PPT/UI | `ppt-agent` / `frontend-design` / `taste-skill` / `ui-ux-pro-max` | 要做演示稿、网页、界面或设计审查 | HTML/PPT/前端代码/设计建议 |
 
 ## 详细来源
@@ -42,7 +42,6 @@
 |------|------|------|
 | `browser-use` | 浏览器自动化 | [browser-use](https://github.com/browser-use/browser-use) |
 | `anysearch` | 实时网页搜索、垂直领域搜索、批量搜索、URL 内容提取 | [AnySearch](https://www.anysearch.com/) |
-| `academic-paper-review` | 论文审阅、方法论评估、同行评审 | [bytedance/deer-flow](https://github.com/bytedance/deer-flow) |
 | `social-science-paper-review` | 社科论文严格审阅与修改建议 | 本仓库 |
 | `wiki-to-okf` | 将 wiki 页面转换为 OKF 知识格式 | 本仓库 |
 | `minimax-docx` | 专业 DOCX 文档创建与编辑 | Minimax 官方 |

@@ -10,7 +10,7 @@ GROUP_DESC=(
     "[Browser] browser automation: browser-use"
     "[Minimax] document generation: DOCX, PDF, XLSX, PPTX"
     "[Search] AnySearch real-time web/vertical search"
-    "[Academic] paper review and social-science manuscript review"
+    "[Academic] social-science manuscript review and wiki conversion"
     "[Creative] PPT agent and frontend/UI design skills"
     "[Superpowers] lightweight general methods: clarify, plan, debug, verify, delegate, review"
     "[Tools] agent-loop, skill-planner, cleanup, skill tools"
@@ -25,7 +25,6 @@ RECOMMENDED_SKILLS=(
     skill-architecture
     skill-planner
     capture-gotcha
-    academic-paper-review
 )
 
 HERMES_MAP=(
@@ -34,7 +33,7 @@ HERMES_MAP=(
     "creative:ppt-agent,frontend-design,taste-skill,ui-ux-pro-max"
     "superpowers:using-superpowers,brainstorming,writing-plans,systematic-debugging,test-driven-development,verification-before-completion"
 )
-HERMES_SOLO="academic-paper-review social-science-paper-review wiki-to-okf anysearch agent-loop cleanup find-skills grill-me skill-creator skill-architecture skill-planner capture-gotcha intent-normalizer"
+HERMES_SOLO="social-science-paper-review wiki-to-okf anysearch agent-loop cleanup find-skills grill-me skill-creator skill-architecture skill-planner capture-gotcha intent-normalizer"
 
 PRESET=""
 TARGET_ARG=""
@@ -147,7 +146,7 @@ skill_group() {
         browser-use) echo "browser" ;;
         minimax-*|pptx) echo "minimax" ;;
         anysearch) echo "search" ;;
-        academic-paper-review|social-science-paper-review|wiki-to-okf) echo "academic" ;;
+        social-science-paper-review|wiki-to-okf) echo "academic" ;;
         ppt-agent|frontend-design|taste-skill|ui-ux-pro-max) echo "creative" ;;
         using-superpowers|brainstorming|writing-plans|systematic-debugging|test-driven-development|verification-before-completion) echo "superpowers" ;;
         cleanup|find-skills|grill-me|skill-creator|skill-architecture|skill-planner|agent-loop|capture-gotcha|intent-normalizer) echo "tools" ;;
