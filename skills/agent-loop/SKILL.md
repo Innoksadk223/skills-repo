@@ -22,7 +22,7 @@ Do not use for one-shot answers, tiny edits, or tasks where a normal check is en
 
 | File | Owner | Purpose |
 | --- | --- | --- |
-| `state.md` | main | contract, progress, evidence, recovery, baseline, delivery notes |
+| `state.md` | main | contract, progress, evidence, audit session tracker, recovery, baseline, delivery notes |
 | `review.md` | audit | audit, appeals, verify, optimize triage, final verdict |
 | `inbox.md` | main | optional unresolved items across tasks |
 
@@ -32,13 +32,13 @@ Create `state/<slug>/state.md` before changing deliverables. Use `references/con
 
 1. **PLAN**: reuse an existing plan when available; otherwise write `state.md` contract and checklist before deliverable changes.
 2. **ACT**: main Agent executes only contracted work and records evidence.
-3. **AUDIT**: the same audit Agent checks plan quality first, then all six gates.
+3. **AUDIT**: spawn the audit Agent (if none active — check `state.md` `audit_session`). Record the audit Agent session identifier in `state.md`. The same audit Agent checks plan quality first, then all six gates.
 4. **LOOP**: main Agent follows `CONTINUE_FIX` instructions or writes an evidence-backed appeal.
 5. **VERIFY**: audit Agent validates every checklist item.
 6. **BASELINE_LOCK**: main Agent records a baseline without changing deliverables.
 7. **OPTIMIZE_LOOP**: optional and still owned by the same audit Agent. Do not create a separate optimizer Agent.
 8. **FINAL_VERIFY**: audit Agent confirms baseline integrity and optimization stop reason.
-9. **DELIVER**: main Agent summarizes evidence, then removes process files that do not affect the deliverable.
+9. **DELIVER**: main Agent summarizes evidence, clears `audit_session` from `state.md`, then removes process files that do not affect the deliverable.
 
 ## Review
 
@@ -66,13 +66,19 @@ Only execute `OPTIMIZE_NOW` when expected gain is meaningful, cost is not high, 
 
 ## Rules
 
-- One active audit Agent per conversation/thread. Reuse it for every loop; never persist audit Agent IDs in files.
+- One active audit Agent per conversation/thread. Reuse it for every loop. Persist the audit Agent session identifier in `state.md` `audit_session`; check it before spawning a new audit Agent. Clear it on DELIVER.
 - Main Agent may provide templates and handoff context, but must not write audit findings or final verdicts.
 - Oral PASS is FAIL. Evidence must be file paths, diff summaries, command output, or deliverable paths.
 - Scope control is part of strictness. Unrequested features go to notes or `state/inbox.md`, not blocking issues.
 - Optimization candidates and `optimize_instruction` come only from the same audit Agent.
 - After `BASELINE_LOCK`, risky, high-cost, scope-expanding, behavior-changing, or approval-needed optimization stops automatic execution.
 - On `DELIVER`, summarize key evidence before deleting process state. Keep only the smallest required `state/inbox.md` when unresolved items remain.
+
+## Platform Notes
+
+### Hermes
+
+Do **not** use `delegate_task` to spawn the audit Agent — subagents are transient and die when the parent session closes. Spawn a standalone process instead: `terminal(command="hermes chat -q '...'", background=true, notify_on_complete=true)`. Record the spawned session identifier in `state.md` `audit_session`.
 
 ## Recovery
 
@@ -93,5 +99,5 @@ Route by state:
 
 - `references/contract-template.md`: copy when creating `state.md`.
 - `references/plan-act-audit.md`: full protocol, exact output formats, prompts, recovery details, optimization, and downgrade behavior.
-- `references/runner-template.py`: experimental CLI helper; inspect platform parameters before use and never persist audit Agent IDs.
+- `references/runner-template.py`: experimental CLI helper; inspect platform parameters before use. Audit Agent session is tracked via `state.md` `audit_session`.
 - `scripts/check_skill.py`: local static check for skill packaging.

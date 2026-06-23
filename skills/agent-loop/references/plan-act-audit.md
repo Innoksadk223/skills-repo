@@ -36,7 +36,7 @@ Main Agent:
 
 ## AUDIT
 
-Audit Agent must be the same active audit Agent for the conversation/thread. Do not persist audit Agent IDs in files.
+Audit Agent must be the same active audit Agent for the conversation/thread. Before spawning, check `state.md` `audit_session` — if set, reuse the existing audit Agent. Record the session identifier in `state.md` `audit_session` on spawn.
 
 Prompt:
 
@@ -208,8 +208,8 @@ Read `state.md`, latest `review.md`, and `state/inbox.md` if present.
 
 ## DELIVER
 
-Main Agent summarizes from `state.md` and `review.md`: changed, why, checklist result, risks, and next step. Then delete process files that do not affect the deliverable. Keep only minimal `state/inbox.md` when unresolved items remain.
+Main Agent summarizes from `state.md` and `review.md`: changed, why, checklist result, risks, and next step. Clear `audit_session` from `state.md`. Then delete process files that do not affect the deliverable. Keep only minimal `state/inbox.md` when unresolved items remain.
 
 ## Platform Notes
 
-Kanban or CLI adapters may persist tasks/results, but not audit Agent identity. If no subagent or CLI reviewer is available, explicitly downgrade to local role-switch review in `review.md`.
+Kanban or CLI adapters may persist tasks/results including `audit_session`. If no subagent or CLI reviewer is available, explicitly downgrade to local role-switch review in `review.md`.

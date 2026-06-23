@@ -10,7 +10,7 @@
 - 假设 / 澄清：[已知假设；需要用户确认的事项写到 User Confirm]
 - 计划来源：[Plan mode / writing-plans / 本文件]
 - 停止护栏：[最大修正轮数、预算、低收益停止条件]
-- 审查 Agent 作用域：[当前对话/线程内一个活跃审查 Agent；ID 不落盘]
+- 审查 Agent 作用域：[当前对话/线程内一个活跃审查 Agent；启动时写入 `audit_session`，任务结束时清除]
 
 ## Steps
 
@@ -25,6 +25,7 @@
 
 - round: [N]
 - stage: PLAN | ACT | AUDIT | LOOP | VERIFY | BASELINE_LOCK | OPTIMIZE_LOOP | FINAL_VERIFY | DELIVER
+- audit_session: [空 | 审查 Agent 的会话标识；AUDIT 启动时写入，DELIVER 时清除]
 - done: [已经完成且有证据的事项]
 - tried: [尝试过的方案 / 失败原因 / 上诉结果]
 - next: [下一步动作或停止后的建议]
@@ -64,8 +65,9 @@
 
 ## Deliver
 
-<!-- FINAL_VERIFY 通过后由主 Agent 追加摘要，随后清理过程文件 -->
+<!-- FINAL_VERIFY 通过后由主 Agent 追加摘要，清除 `audit_session`，随后清理过程文件 -->
 
+- audit_session: [清除]
 - completed:
 - why:
 - verified_by: `state/[task-slug]/review.md`
