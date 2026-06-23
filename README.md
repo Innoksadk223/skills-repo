@@ -15,7 +15,7 @@
 3. **再安装** — `bash setup.sh`
 4. **最后教** — 安装/更新完成后，直接读 [START.md](START.md)，给用户一段 3 分钟上手教程
 
-## 技能速查（26 个）
+## 技能速查（20 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
@@ -24,7 +24,6 @@
 | 搜索 | `anysearch` (1) | AnySearch 实时网页搜索、垂直领域搜索、批量搜索、URL 内容提取 |
 | 学术 | `social-science-paper-review` / `wiki-to-okf` (2) | 社科稿件评审、wiki 到 OKF 转换 |
 | 创作 | `ppt-agent` / `frontend-design` / `taste-skill` / `ui-ux-pro-max` (4) | 专业 PPT、前端页面、UI/UX 设计与反模板化审美 |
-| Superpowers | `using-superpowers` / `brainstorming` / `writing-plans` / `systematic-debugging` / `test-driven-development` / `verification-before-completion` (6) | 轻量通用方法论：澄清、计划、排查、验收、验证、收尾 |
 | 工具 | `skill-creator` / `skill-architecture` / `skill-planner` / `agent-loop` / `cleanup` / `find-skills` / `grill-me` / `capture-gotcha` / `intent-normalizer` (9) | 技能创建、模块化架构、任务路由、Agent 编排、清理、发现、质询、环境记录、意图校准 |
 
 ## 常用工作流入口
@@ -56,12 +55,6 @@
 | `grill-me` | 深度质询方案/设计决策 | [mattpocock/skills](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me) |
 | `capture-gotcha` | 记录可复用的环境类踩坑经验 | 本仓库 |
 | `intent-normalizer` | 将非专业、模糊或混合目标的用户表达校准成可执行意图 | 本仓库 |
-| `using-superpowers` | 轻量选择方法论技能 | 本仓库，轻量改编自 [obra/superpowers](https://github.com/obra/superpowers) |
-| `brainstorming` | 在目标、约束或路线不清时做简短澄清与方案对比 | 同上 |
-| `writing-plans` | 为多步骤任务写计划 | 同上 |
-| `systematic-debugging` | 对失败、异常行为或反复尝试无效的问题做根因排查 | 同上 |
-| `test-driven-development` | 先定义验收条件，再行动 | 同上 |
-| `verification-before-completion` | 完成前核验证据 | 同上 |
 | `ppt-agent` | 专业 PPT 演示文稿全流程生成 | [Akxan/ppt-agent-skill](https://github.com/Akxan/ppt-agent-skill) |
 | `frontend-design` | 创建高质量前端页面、组件和 Web App | Claude Code / 社区生态 |
 | `taste-skill` | 反模板化前端设计审美与落地检查 | [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill) |
@@ -124,7 +117,6 @@ skills-repo/
 │   ├── browser-use/
 │   ├── minimax/
 │   ├── creative/
-│   ├── superpowers/
 │   └── ...
 └── setup.sh
 ```
