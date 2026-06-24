@@ -1,6 +1,6 @@
 ---
 name: cleanup
-description: Use when a task is ending, interrupted, rejected, retried, or when the current run created temporary scripts, process files, build/cache artifacts, dependency folders, debug leftovers, or other disposable junk.
+description: Mandatory post-task janitor that removes temporary scripts, process files, build artifacts, cache directories, debug leftovers, and other disposable junk created during the current run. Use when a task is ending, interrupted, rejected, or retried — enforces cleanup as a non-negotiable step before claiming completion.
 ---
 
 # Cleanup
