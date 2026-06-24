@@ -1,169 +1,64 @@
 ---
 name: capture-gotcha
-description: 当工具调用（terminal、browser、web、execute_code 等）因环境、路径、配置、权限、代理、版本、环境变量、端口、工具安装方式、包装层策略或路径校验等通用原因出错时，提炼可复用教训并写入 ~/.hermes/env.md。用于沉淀稳定环境经验，避免重复踩坑。不适用：代码逻辑错误、业务规则错误、需求理解偏差、临时性外部服务故障。
+description: Use when terminal, browser, web, MCP, skill, path, proxy, permission, version, env var, port, tool install, wrapper policy, or filesystem validation failures reveal a reusable local-environment lesson that should be recorded; do not use for code bugs, business logic, user intent mistakes, or temporary external outages.
 ---
 
 # Capture Gotcha
 
-## 目标
+AI 自维护环境教训库。在执行命令中遇到环境类陷阱（路径/代理/权限/版本/端口等），自动记录到 `~/.hermes/env.md`，自动清理过期条目（>7 天）。人类零维护。
 
-把**跨任务可复用的环境类教训**沉淀到 `~/.hermes/env.md`，避免后续在同一台机器、同一套工具链中重复出错。
+## AI Workflow
 
-## 什么时候读 `env.md`
+**Before** — 涉及终端/安装/改路径/代理/技能脚本前，读 `~/.hermes/env.md` 的 `## 常见陷阱` 和相关区段。
 
-### 1. 任务开始前读一次
+**On Error** — 报错后先 `check '原始错误文本'`，匹配已知教训：
+```bash
+python skills/capture-gotcha/scripts/add_gotcha.py check 'SSLEOFError: EOF occurred in violation of protocol'
+```
 
-当任务满足以下任一条件时，先读 `~/.hermes/env.md`：
+**Record** — 确认是新陷阱后 `add`，4 个字段：
+```bash
+python skills/capture-gotcha/scripts/add_gotcha.py add \
+  --title '简括标题' --scene '触发条件' --cause '底层原因' --fix '可直接执行的解法'
+```
+`add` 成功后自动清除 `~/.hermes/env.md` 中距今 >7 天的条目。
 
-- 要调用 `terminal`
-- 要安装依赖、运行命令、改路径、处理 symlink
-- 要配置 Hermes、技能、代理、网关、环境变量
-- 用户的问题明显与系统环境有关
+## 判定：记不记
 
-重点先看：
+满足全部才记：
+- 根因已定位（不是包装层摘要 `Command failed` / `API call failed after 3 retries`）
+- 属于环境层：路径/权限/代理/SSL/版本/环境变量/端口/工具安装/symlink/shell 差异/包装层策略
+- 可跨任务复用
+- 有稳定解法
 
-- `## 常见陷阱`
-- 与当前任务相关的现有章节（如 Git、技能目录结构）
+**不记**：代码 bug、业务逻辑错、用户误解、远端临时故障、无稳定解法的模糊报错。
 
-### 2. 遇到环境类报错后再读一次
+## Commands
 
-当工具报错后：
+| 命令 | 用法 | 说明 |
+|------|------|------|
+| `add` | `--title --scene --cause --fix [--section '## 区段'] [--dry-run]` | 新增条目，自动查重，自动清 >7 天 |
+| `search` | `'关键词'` | 全文搜索，返回行号 + 条目 |
+| `list` | `[--section 'Git']` | 列出所有（可按区段过滤） |
+| `update` | `'匹配词' [--title] [--cause] [--fix] [--section]` | 更新已有条目，自动刷新日期 |
+| `check` | `'原始错误文本'` | 用原始报错匹配已知教训，返回匹配条目 |
+| `self-test` | 无 | 自检 |
 
-- 回看 `env.md` 是否已有同类经验
-- 避免重复记同一条
-- 如果新结论更准确，更新旧条目
+## Format
 
-### 3. 不要每个小动作都重读
+`~/.hermes/env.md` 每个 `##` 区段下，一条一行：
+```markdown
+- **[YYYY-MM-DD] 标题**：场景 → 原因 → 解法
+```
+标题短到可扫读；场景写触发条件不写流水账；原因写底层机制；解法写可直接执行的动作。
 
-原则：
+## Error Signals
 
-- **开局读一次**，建立当前环境上下文
-- **遇到环境类异常再读一次**，用于查重和补充
-- 不要在每次工具调用前机械重读，避免噪音
-
-## 调度流程
-
-1. **开局检查**
-   - 若任务涉及系统操作，先读 `~/.hermes/env.md`
-   - 优先吸收已记录的坑和环境事实
-
-2. **识别报错层级**
-   - 先区分：当前看到的是上层包装报错，还是底层真实报错
-   - 只有找到真实原因，才允许记录
-
-3. **判断是否属于环境类 gotcha**
-   - 若属于路径、配置、权限、代理、版本、环境变量、端口、工具缺失等通用问题，继续
-   - 若属于代码逻辑、业务数据、需求理解问题，停止，不写入
-
-4. **提炼最小教训**
-   - 统一压缩成：`场景 → 原因 → 解法`
-   - 只保留下次避坑必需的信息
-
-5. **查重并归类**
-   - 读取 `~/.hermes/env.md`
-   - 先看是否已有同类条目
-   - 若更适合写入现有章节，则更新原章节
-   - 只有无法归类时，才写入 `## 常见陷阱`
-
-6. **写入并返回主任务**
-   - 用固定格式落盘
-   - 确保简洁、无重复、可复用
-   - 写完立即回到主任务
-
-## 决策树
-
-- 如果当前报错是包装层信息（如 `API call failed after 3 retries`、`Command failed`、`Tool error`）→ **继续追底层真实错误**，不要直接写入
-- 如果真实报错指向路径/环境/配置问题 → 进入记录流程
-- 如果真实报错指向代码 bug、数据问题、业务规则问题 → 停止，不写入
-- 如果同类规则已在 `env.md` 存在 → 跳过，或仅在新结论更准确时更新
-- 如果该信息本质上是稳定环境事实 → 更新对应章节，不写入 `## 常见陷阱`
-
-## 通用工具调用失败处理
-
-当工具调用被包装层、策略、路径校验或权限边界拦住时，不要把一次性失败固化成“工具不可用”的结论。
-
-处理流程：
-
-1. 读取完整失败信息，分清包装层失败和任务本身失败
-2. 遵守工具明确给出的限制，例如“不重试同样结果”
-3. 如果任务仍被授权，换成更小、更明确的路径：
-   - 把大批量脚本拆成可审计的 `apply_patch` 或小命令
-   - 避免触发路径校验的 `workdir`，必要时从当前目录执行
-   - 文件修改优先用读/搜/补丁类工具
-   - 用最小验证命令证明结果
-4. 只记录稳定做法，不记录“某工具坏了”这类负面结论
-
-常见陷阱：
-
-- 不要写“execute_code 不能用”或“terminal 不能处理中文路径”；这些可能是单次包装层限制
-- 不要在工具明确禁止重试时继续用同一方式重试
-- 不要为了绕过策略块创建更大的临时脚本
-
-## 记录范围
-
-只记录这类**跨任务复用**的信息：
-
-- 路径约定（工作目录、iCloud 路径、symlink 位置）
-- 工具调用方式（命令写法、参数写法、调用前提）
-- 环境限制（代理、SSL、系统 Python、Shell 差异）
-- 依赖/版本兼容性（某版本可用，某版本会报错）
-- 权限、端口、环境变量等通用运行条件
-
-不要记录：
-
-- 单次任务里的业务错误
-- 代码逻辑 bug
-- 用户需求理解偏差
-- 临时性外部服务故障
-- 没有稳定解法的模糊报错
-
-## 触发信号与处理
-
-| 信号类型 | 例子 | 处理方式 |
-|---|---|---|
-| 包装层失败 | `API call failed after 3 retries`, `Command failed`, `Tool error` | 继续追底层原因，不直接记录 |
-| 路径错误 | `No such file or directory`, `ENOENT` | 可记录 |
-| 工具缺失 | `command not found`, `No module named ...` | 可记录 |
-| 权限错误 | `Permission denied`, `EACCES` | 可记录 |
-| 网络/代理 | `SSLError`, `timeout`, `connection refused`, `Could not resolve host` | 可记录 |
-| 版本兼容 | `version mismatch`, CLI 参数不兼容 | 可记录 |
-| 端口占用 | `address already in use`, `EADDRINUSE` | 可记录 |
-| 代码/业务错误 | traceback 指向项目逻辑、断言失败、数据校验失败 | 不记录 |
-
-## 脚本
-
-使用附带脚本写入条目：
-
-`python ~/.agents/skills/capture-gotcha/scripts/add_gotcha.py --title '标题' --scene '场景' --cause '原因' --fix '解法'`
-
-行为：
-
-- 自动读取 `~/.hermes/env.md`
-- 若无 `## 常见陷阱` 则自动创建
-- 用标题或场景做简单去重
-- 默认追加到 `## 常见陷阱`
-
-## 当前 hook 方案
-
-Hermes 当前配置里没有现成的通用 post-tool hook 配置入口，因此先采用**软 hook**：
-
-- 规则层：本 skill 规定何时读 `env.md`、何时记录 gotcha
-- 执行层：用 `scripts/add_gotcha.py` 完成落盘
-- 集成层：当任务涉及系统操作时，开局主动读取 `env.md`；当环境类错误被确认后，立即调用脚本
-
-如果以后 Hermes 内核支持 tool hook，再把这个脚本接到真正的 post-tool hook。
-
-## 示例
-
-- **[2026-06-04] pip SSL 报错**：通过代理执行 `pip install` 触发 SSLEOFError → macOS LibreSSL + Clash 代理兼容性问题 → 直连不设 proxy 或改用 `requests.Session()`
-
-- **[2026-06-04] skill_manage 找不到 symlink skill**：对 symlink 技能使用 `skill_manage` 返回 not found in active profile → 工具不跟随 symlink/嵌套 skill → 改用 `patch` + 绝对路径修改
-
-## 原则
-
-- **先修问题，再记教训**：问题未定位前不写入
-- **宁缺毋滥**：没有稳定结论就不记
-- **抽象到刚刚好**：只写到下次能避坑即可
-- **可归类就归类**：能写到现有章节，就不要全堆到“常见陷阱”
-- **不要制造噪音**：上层摘要报错本身通常不可直接记录
-- **主任务优先**：这是伴随型 skill，不应喧宾夺主
+| 信号 | 处理 |
+|------|------|
+| `Command failed` / `Tool error` / `API call failed after N retries` | 追底层原因，不直接记 |
+| `No such file` / `ENOENT` / `command not found` / `No module named` | 找稳定路径/来源后可记 |
+| `Permission denied` / `EACCES` | 找到权限边界后可记 |
+| `SSLError` / `Could not resolve host` / `connection refused` | 区分代理/DNS/端口/远端故障 |
+| `version mismatch` / CLI 参数不兼容 / `address already in use` | 找版本约束/端口处理后记 |
+| traceback 指向项目逻辑或断言 | **不记** |
