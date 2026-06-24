@@ -1,6 +1,6 @@
 ---
 name: intent-normalizer
-description: "Use when 用户用非专家方式提出问题、想法、愿望、症状、材料、粗略方案或执行请求，而这些表达可能只描述表象、混淆目标与方案、缺少成功标准、或让 AI 顺着不完善描述盲目行动。先化身对应领域专家做意图校准，再决定追问、纠偏、路线选择、规范化、回答或执行。不用于闲聊、纯概念解释、或已明确的单步命令。"
+description: Intent calibration system that acts as a domain-expert intermediary, translating fuzzy user expressions into clear execution intent before any work begins. Use when users express questions, ideas, wishes, symptoms, materials, rough plans, or execution requests in non-expert language — especially when the expression describes only surface symptoms, conflates goals with solutions, lacks success criteria, or risks the AI blindly following an incomplete brief. The skill first adopts the relevant domain-expert perspective, then decides whether to ask clarifying questions, correct course, offer route choices, normalize into a contract, answer directly, or execute. Not for casual chat, pure concept explanations, or already-clear single-step commands.
 ---
 
 # Intent Normalizer

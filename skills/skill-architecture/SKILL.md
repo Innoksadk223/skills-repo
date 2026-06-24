@@ -1,6 +1,6 @@
 ---
 name: skill-architecture
-description: Use when creating, updating, or refactoring skills that need modular architecture, reference-module boundaries, state-based resumability, or coordination with skill-creator.
+description: "Modular skill architecture design system with pipeline modules, state-based resumability, and loose coupling via state/ file IPC. Use when creating, updating, or refactoring skills that need: (1) multi-step pipelines with checkpoint/resume, (2) module decomposition with file-based communication between steps, (3) coordination with skill-creator during the edit phase, or (4) anti-pattern diagnosis in existing modular skills."
 ---
 
 # 模块化技能架构设计系统

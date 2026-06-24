@@ -1,6 +1,6 @@
 ---
 name: skill-planner
-description: Use when starting any user task where skills, plugins, MCP tools, or "no specialized capability" must be chosen before acting.
+description: Lightweight startup router that selects and orders the skills, plugins, and MCP tools a task needs before execution begins. Use when starting any user task — from single-step lookups to multi-step deliverables — where capabilities must be chosen, ordered, or explicitly waived before acting. Also use when the user names multiple skills, asks about capability selection, or the task spans domains requiring different tools.
 ---
 
 # Skill Planner
