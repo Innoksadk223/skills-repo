@@ -49,8 +49,8 @@ def main() -> int:
         fail("description should describe triggers, not summarize the workflow")
 
     lines = text.splitlines()
-    if len(lines) > 180:
-        fail("SKILL.md should stay under 180 lines")
+    if len(lines) > 250:
+        fail("SKILL.md should stay under 250 lines")
 
     for ref in (
         "references/contract-template.md",

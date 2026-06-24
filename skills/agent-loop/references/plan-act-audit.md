@@ -222,21 +222,93 @@ Main Agent summarizes from `state.md` and `review.md`: changed, why, checklist r
 
 ### Claude Code
 
-Use `claude -p` (headless/non-interactive mode) to launch each audit phase as a standalone process. This is the same pattern as Hermes.
+Use `claude -p` (headless/non-interactive mode) with `--session-id` to create a persistent audit session. Resume with `--resume` for all subsequent phases — do NOT spawn a new process per phase.
 
-```
-claude -p "audit prompt with prior review.md injected" \
-  --allowedTools "Read,Grep,Glob,Bash(grep *,find *,cat *,head *,tail *)"
+First audit phase (AUDIT) — generate a UUID first:
+```bash
+# Generate and record the UUID
+AUDIT_ID=$(python3 -c "import uuid; print(uuid.uuid4())")
+# Record AUDIT_ID in state.md audit_session
+
+claude -p "You are the independent audit Agent. Review only; do not modify deliverables.
+Read state/<slug>/state.md and review.md (if present).
+First check PLAN quality. On later rounds, close old issues before checking new ones.
+Run all six gates: contract / completeness / correctness / reuse_existing / budget / evidence_regression.
+Append AUDIT section to state/<slug>/review.md.
+Decision: PROCEED_TO_VERIFY | CONTINUE_FIX | STOP_WITH_BLOCKER." \
+  --session-id "$AUDIT_ID" \
+  --allowedTools "Read,Write,Grep,Glob,Bash(grep *,find *,cat *,head *,tail *)" \
+  --max-turns 5
 ```
 
-Each audit phase is a separate `claude -p` invocation. The prompt MUST embed the full prior `review.md` for context continuity. Each invocation appends its phase section (AUDIT/VERIFY/OPTIMIZE/FINAL_VERIFY) to `review.md`.
+Subsequent phases (VERIFY, OPTIMIZE, FINAL_VERIFY) — resume by the same UUID:
+```bash
+claude -p "<phase-specific audit prompt>" \
+  --resume "$AUDIT_ID" \
+  --max-turns 5
+```
+
+`--resume` restores the full conversation history. `review.md` is the audit output file — achieved via Write tool, not prompt injection. Each phase appends its section.
 
 Restrict tools to read-only plus `Write` for `review.md` only. Never let the audit process touch deliverable files.
 
+DELIVER: `claude -p` auto-exits when done; no explicit termination needed. Clear `audit_session` from `state.md` — the UUID is no longer recorded anywhere, preventing accidental cross-task resumption. The session file on disk is inert without the UUID.
+
 Do NOT use the Agent tool for audit — subagents are transient and unreliable for multi-phase review. Do NOT use role-switch — same entity reviewing itself is not an audit.
+
+**Alternative: sub-agent + SendMessage (within a primary Claude Code session)**
+
+When the primary Agent is Claude Code, the audit Agent can also be a Claude Code sub-agent spawned via the `Agent` tool, which supports `SendMessage` for persistent resumption:
+
+```
+Spawn:  Agent tool → returns agentId
+Resume: SendMessage to: <agentId>
+```
+
+This is lighter-weight than `-p` — the sub-agent runs within the primary CC session with its own context window. Transcripts persist at `~/.claude/projects/<dir-hash>/<session-id>/subagents/agent-<agentId>.jsonl`.
+
+DELIVER: the sub-agent context auto-clears when the parent session ends.
 
 ### Hermes
 
 Do **not** use `delegate_task` to spawn the audit Agent — subagents are transient and die when the parent session closes. Spawn a standalone process instead: `terminal(command="hermes chat -q '...'", background=true, notify_on_complete=true)`. Record the spawned session identifier in `state.md` `audit_session`.
 
 Kanban or CLI adapters may persist tasks/results including `audit_session`. If no subagent or CLI reviewer is available, explicitly downgrade to local role-switch review in `review.md`.
+
+### Codex
+
+Use `codex exec` to spawn a persistent audit subagent. Subsequent phases use `codex exec resume --last` to continue the same session — do NOT spawn a fresh process per phase.
+
+First audit phase (AUDIT):
+```bash
+codex exec "You are the independent audit Agent. Review only; do not modify deliverables.
+Read state/<slug>/state.md and review.md (if present).
+First check PLAN quality. Run all six gates.
+Append AUDIT section to state/<slug>/review.md.
+Decision: PROCEED_TO_VERIFY | CONTINUE_FIX | STOP_WITH_BLOCKER." \
+  --yolo --skip-git-repo-check
+```
+
+Subsequent phases (VERIFY, OPTIMIZE, FINAL_VERIFY):
+```bash
+codex exec resume --last "Continue as audit Agent. [phase-specific instructions]"
+```
+
+Record the session ID from the first spawn in `state.md` `audit_session`. `resume --last` restores the full conversation history.
+
+Restrict tools via prompt instructions ("read only, write only to review.md"). Never let the audit process touch deliverable files.
+
+DELIVER: terminate the audit session, clear `audit_session` from `state.md`.
+
+## Token Budget Reference
+
+Approximate per-phase token costs for audit processes. These are guidelines, not limits — the stop condition is checklist completion, not token exhaustion.
+
+| Platform | Per audit phase | Notes |
+|----------|----------------|-------|
+| Claude Code `-p` | ~3K–8K tokens | `--max-turns 5` keeps it bounded; each turn ~600–1600 tokens |
+| Claude Code sub-agent | ~2K–5K tokens | Lighter than `-p`; shares parent session overhead |
+| Codex `exec` | ~2K–6K tokens | `--yolo` skips approval overhead; `resume --last` avoids reload |
+| Hermes (as audit) | ~2K–4K tokens | In-process review; no spawn overhead |
+
+**Budget strategy**: Set `--max-turns 5` for AUDIT, 3 for VERIFY/FINAL_VERIFY. Total audit token budget across all phases should stay under 20K tokens for a typical task. If a phase nears its turn cap without resolution, report the evidence so far and escalate to the user — do not blindly raise the cap.
