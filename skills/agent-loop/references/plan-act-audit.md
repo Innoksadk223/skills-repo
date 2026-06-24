@@ -36,7 +36,15 @@ Main Agent:
 
 ## AUDIT
 
-Audit Agent must be the same active audit Agent for the conversation/thread. Before spawning, check `state.md` `audit_session` — if set, reuse the existing audit Agent. Record the session identifier in `state.md` `audit_session` on spawn.
+Audit Agent must be the same persistent Agent for the entire task — one spawn, reused across all rounds via `SendMessage`.
+
+**Gate check before every audit action:**
+
+1. Read `state.md` `audit_session`.
+2. If the field is set (non-empty), use `SendMessage` with `to: "<agent-id>"` to resume the existing Agent. Do NOT spawn a new one.
+3. If the field is empty, this is the first audit — spawn a new Agent and immediately record the returned session identifier in `state.md` `audit_session`.
+
+A fresh spawn when `audit_session` is already set is a workflow violation — the new Agent has no memory of prior rounds, prior issue closures, or appeal rulings. Each new Agent starts blind and breaks the continuity of the audit trail.
 
 Prompt:
 
@@ -211,5 +219,24 @@ Read `state.md`, latest `review.md`, and `state/inbox.md` if present.
 Main Agent summarizes from `state.md` and `review.md`: changed, why, checklist result, risks, and next step. Clear `audit_session` from `state.md`. Then delete process files that do not affect the deliverable. Keep only minimal `state/inbox.md` when unresolved items remain.
 
 ## Platform Notes
+
+### Claude Code
+
+Use `claude -p` (headless/non-interactive mode) to launch each audit phase as a standalone process. This is the same pattern as Hermes.
+
+```
+claude -p "audit prompt with prior review.md injected" \
+  --allowedTools "Read,Grep,Glob,Bash(grep *,find *,cat *,head *,tail *)"
+```
+
+Each audit phase is a separate `claude -p` invocation. The prompt MUST embed the full prior `review.md` for context continuity. Each invocation appends its phase section (AUDIT/VERIFY/OPTIMIZE/FINAL_VERIFY) to `review.md`.
+
+Restrict tools to read-only plus `Write` for `review.md` only. Never let the audit process touch deliverable files.
+
+Do NOT use the Agent tool for audit — subagents are transient and unreliable for multi-phase review. Do NOT use role-switch — same entity reviewing itself is not an audit.
+
+### Hermes
+
+Do **not** use `delegate_task` to spawn the audit Agent — subagents are transient and die when the parent session closes. Spawn a standalone process instead: `terminal(command="hermes chat -q '...'", background=true, notify_on_complete=true)`. Record the spawned session identifier in `state.md` `audit_session`.
 
 Kanban or CLI adapters may persist tasks/results including `audit_session`. If no subagent or CLI reviewer is available, explicitly downgrade to local role-switch review in `review.md`.

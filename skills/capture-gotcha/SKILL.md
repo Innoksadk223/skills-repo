@@ -1,64 +1,66 @@
 ---
 name: capture-gotcha
-description: Use when terminal, browser, web, MCP, skill, path, proxy, permission, version, env var, port, tool install, wrapper policy, or filesystem validation failures reveal a reusable local-environment lesson that should be recorded; do not use for code bugs, business logic, user intent mistakes, or temporary external outages.
+description: Records reusable local-environment lessons (paths, permissions, proxies, SSL, env vars, ports, tool installs, shell differences) to ~/.hermes/env.md so future tasks don't hit the same environment trap twice. Use when terminal, browser, MCP, skill, or filesystem validation failures reveal a stable, reproducible environment-level fix. Skip code bugs, business logic errors, user misunderstandings, and temporary outages.
 ---
 
 # Capture Gotcha
 
-AI 自维护环境教训库。在执行命令中遇到环境类陷阱（路径/代理/权限/版本/端口等），自动记录到 `~/.hermes/env.md`，自动清理过期条目（>7 天）。人类零维护。
+把跨任务可复用的本机环境教训写入 `~/.hermes/env.md`，让后续任务少踩同一个坑。
 
-## AI Workflow
+## Workflow
 
-**Before** — 涉及终端/安装/改路径/代理/技能脚本前，读 `~/.hermes/env.md` 的 `## 常见陷阱` 和相关区段。
+0. **CHECK** — 先读 `~/.hermes/env.md` 对应区段查已有解法（`add_gotcha.py search '关键词'` 快速查重）。确认无覆盖且满足四条件（环境层 + 可复用 + 稳定解法 + 真实根因已定位）才继续。
+1. **CONTRACT** — 陈述意图：问题 + 证据（真实报错）→ 根因 → 解法（可直接执行）→ 目标区段（优先归入已有 `##` 区段）
+2. **ACT** — 脚本写入或手动编辑 `~/.hermes/env.md`
+3. **AUDIT** — 逐条过 [Audit Gates](#audit-gates)；不通过则产出 fix_instruction：目标字段 + 必需改动 + 禁止改动
+4. **FIX** — 按 fix_instruction 修正，回到 AUDIT
+5. **VERIFY** — 读 `~/.hermes/env.md` 确认条目存在、格式正确、无重复
 
-**On Error** — 报错后先 `check '原始错误文本'`，匹配已知教训：
+## Audit Gates
+
+条目必须全部通过：
+
+| 门 | 检查 |
+|---|---|
+| `scope` | 属环境层（路径/权限/代理/SSL/版本/环境变量/端口/工具安装/symlink/shell差异/包装层策略）。**不记**：代码bug、业务逻辑、用户误解、远端临时故障、无稳定解法的模糊报错 |
+| `evidence` | 有真实报错/日志支撑，非包装层摘要（`Command failed` 不算证据） |
+| `placement` | 归入正确区段；标题/场景无重复（脚本自动去重 skip，**不支持 update**；条目过时需手动编辑） |
+| `actionability` | 解法稳定可执行，非单次外推或"试试看" |
+
+## Script
+
 ```bash
-python skills/capture-gotcha/scripts/add_gotcha.py check 'SSLEOFError: EOF occurred in violation of protocol'
+SKILL_DIR=~/.hermes/skills/capture-gotcha
+python $SKILL_DIR/scripts/add_gotcha.py add \
+  --title '标题' --scene '场景' --cause '原因' --fix '解法'
+
+python $SKILL_DIR/scripts/add_gotcha.py search '关键词'
+python $SKILL_DIR/scripts/add_gotcha.py list [--section 'Git']
+python $SKILL_DIR/scripts/add_gotcha.py self-test
 ```
 
-**Record** — 确认是新陷阱后 `add`，4 个字段：
-```bash
-python skills/capture-gotcha/scripts/add_gotcha.py add \
-  --title '简括标题' --scene '触发条件' --cause '底层原因' --fix '可直接执行的解法'
-```
-`add` 成功后自动清除 `~/.hermes/env.md` 中距今 >7 天的条目。
-
-## 判定：记不记
-
-满足全部才记：
-- 根因已定位（不是包装层摘要 `Command failed` / `API call failed after 3 retries`）
-- 属于环境层：路径/权限/代理/SSL/版本/环境变量/端口/工具安装/symlink/shell 差异/包装层策略
-- 可跨任务复用
-- 有稳定解法
-
-**不记**：代码 bug、业务逻辑错、用户误解、远端临时故障、无稳定解法的模糊报错。
-
-## Commands
-
-| 命令 | 用法 | 说明 |
-|------|------|------|
-| `add` | `--title --scene --cause --fix [--section '## 区段'] [--dry-run]` | 新增条目，自动查重，自动清 >7 天 |
-| `search` | `'关键词'` | 全文搜索，返回行号 + 条目 |
-| `list` | `[--section 'Git']` | 列出所有（可按区段过滤） |
-| `update` | `'匹配词' [--title] [--cause] [--fix] [--section]` | 更新已有条目，自动刷新日期 |
-| `check` | `'原始错误文本'` | 用原始报错匹配已知教训，返回匹配条目 |
-| `self-test` | 无 | 自检 |
+参数：`--dry-run`（预览）、`--date YYYY-MM-DD`、`--section '## 区段名'`、`--env-path PATH`（测试用）。
 
 ## Format
 
-`~/.hermes/env.md` 每个 `##` 区段下，一条一行：
+`##` 区段下每条一行：
+
 ```markdown
 - **[YYYY-MM-DD] 标题**：场景 → 原因 → 解法
 ```
-标题短到可扫读；场景写触发条件不写流水账；原因写底层机制；解法写可直接执行的动作。
 
-## Error Signals
+标题短到可扫读；场景写触发条件不写流水账；原因写底层机制；解法写可执行动作。
 
-| 信号 | 处理 |
-|------|------|
-| `Command failed` / `Tool error` / `API call failed after N retries` | 追底层原因，不直接记 |
-| `No such file` / `ENOENT` / `command not found` / `No module named` | 找稳定路径/来源后可记 |
-| `Permission denied` / `EACCES` | 找到权限边界后可记 |
-| `SSLError` / `Could not resolve host` / `connection refused` | 区分代理/DNS/端口/远端故障 |
-| `version mismatch` / CLI 参数不兼容 / `address already in use` | 找版本约束/端口处理后记 |
-| traceback 指向项目逻辑或断言 | **不记** |
+## Recovery
+
+中断后恢复：
+1. 读 `~/.hermes/env.md` 检查最后写入条目
+2. 用 `add_gotcha.py list` 查看已有条目，与意图比对
+3. 从 Workflow 对应 phase 继续：CHECK 已过→CONTRACT；ACT 已写→AUDIT；不确定进度→重新 CHECK
+
+## Rules
+
+- 先查后记 — 读 env.md 确认无已有解法再动手
+- 不因记一笔打断主任务 — 先修复，再回头记
+- 口头 PASS 不算 PASS — 条目必须在 `env.md` 中可读
+- 不替用户决定 — 不确定是否该记时，列证据让用户判断

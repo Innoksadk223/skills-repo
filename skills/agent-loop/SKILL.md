@@ -1,6 +1,6 @@
 ---
 name: agent-loop
-description: Use when work has high cost of silent errors, repeated correction, resumable review state, strict evidence requirements, bounded follow-up improvement, or an explicit /agent-loop request.
+description: Separates doing from judging with independent audit review, state-based resumability, and bounded optimization. Use when work has high cost of silent errors, repeated correction, resumable review state, strict evidence requirements, or an explicit /agent-loop request.
 ---
 
 # Agent Loop
@@ -30,16 +30,15 @@ Create `state/<slug>/state.md` before changing deliverables. Use `references/con
 
 ## Workflow
 
-1. **PLAN**: reuse an existing plan when available; otherwise write `state.md` contract and checklist before deliverable changes. Present the contract to the user — goal, non-goals, assumptions, stop guardrails, checklist — and wait for explicit approval before ACT.
-2. **USER_GATE**: main Agent must not proceed past PLAN until the user confirms the contract. No implicit approval.
-3. **ACT**: main Agent executes only contracted work and records evidence.
-4. **AUDIT**: spawn the audit Agent (if none active — check `state.md` `audit_session`). Record the audit Agent session identifier in `state.md`. The same audit Agent checks plan quality first, then all six gates.
-5. **LOOP**: main Agent follows `CONTINUE_FIX` instructions or writes an evidence-backed appeal.
-6. **VERIFY**: audit Agent validates every checklist item.
-7. **BASELINE_LOCK**: main Agent records a baseline without changing deliverables.
-8. **OPTIMIZE_LOOP**: optional and still owned by the same audit Agent. Do not create a separate optimizer Agent.
-9. **FINAL_VERIFY**: audit Agent confirms baseline integrity and optimization stop reason.
-10. **DELIVER**: main Agent summarizes evidence, clears `audit_session` from `state.md`, then removes process files that do not affect the deliverable.
+1. **PLAN**: reuse an existing plan when available; otherwise write `state.md` contract and checklist before deliverable changes.
+2. **ACT**: main Agent executes only contracted work and records evidence.
+3. **AUDIT**: spawn the audit Agent. Platform-specific spawn pattern: see Platform Notes below and `references/plan-act-audit.md`. The audit Agent checks plan quality first, then all six gates. Record the session ID in `state.md` `audit_session`.
+4. **LOOP**: main Agent follows `CONTINUE_FIX` instructions or writes an evidence-backed appeal.
+5. **VERIFY**: audit Agent validates every checklist item.
+6. **BASELINE_LOCK**: main Agent records a baseline without changing deliverables.
+7. **OPTIMIZE_LOOP**: optional and still owned by the same audit Agent. Do not create a separate optimizer Agent.
+8. **FINAL_VERIFY**: audit Agent confirms baseline integrity and optimization stop reason.
+9. **DELIVER**: main Agent summarizes evidence, clears `audit_session` from `state.md`, then removes process files that do not affect the deliverable.
 
 ## Review
 
@@ -67,7 +66,10 @@ Only execute `OPTIMIZE_NOW` when expected gain is meaningful, cost is not high, 
 
 ## Rules
 
-- One active audit Agent per conversation/thread. Reuse it for every loop. Persist the audit Agent session identifier in `state.md` `audit_session`; check it before spawning a new audit Agent. Clear it on DELIVER.
+- **One independent audit Agent per task.** The audit Agent must be a separate process from the main Agent. Role-switch (main Agent posing as auditor) is not an audit. Spawn a new process for each audit phase per the platform-specific pattern in `references/plan-act-audit.md`.
+- **Context continuity across phases.** Each audit phase must inherit all prior verdicts: inject the full `review.md` content into the audit prompt. A fresh audit process without prior context starts blind — this is a workflow defect.
+- **audit_session tracking.** Record all audit Agent session identifiers in `state.md` `audit_session` for traceability. Each section in `review.md` notes the agent ID that wrote it.
+- **Clear on DELIVER.** Only after FINAL_VERIFY passes and evidence is summarized, clear `audit_session` from `state.md`.
 - Main Agent may provide templates and handoff context, but must not write audit findings or final verdicts.
 - Oral PASS is FAIL. Evidence must be file paths, diff summaries, command output, or deliverable paths.
 - Scope control is part of strictness. Unrequested features go to notes or `state/inbox.md`, not blocking issues.
@@ -77,9 +79,7 @@ Only execute `OPTIMIZE_NOW` when expected gain is meaningful, cost is not high, 
 
 ## Platform Notes
 
-### Hermes
-
-Do **not** use `delegate_task` to spawn the audit Agent — subagents are transient and die when the parent session closes. Spawn a standalone process instead: `terminal(command="hermes chat -q '...'", background=true, notify_on_complete=true)`. Record the spawned session identifier in `state.md` `audit_session`.
+Audit Agent spawn patterns are platform-specific. See `references/plan-act-audit.md` Platform Notes for per-platform procedures and the correct prompt format.
 
 ## Recovery
 
