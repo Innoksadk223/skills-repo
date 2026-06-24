@@ -30,15 +30,16 @@ Create `state/<slug>/state.md` before changing deliverables. Use `references/con
 
 ## Workflow
 
-1. **PLAN**: reuse an existing plan when available; otherwise write `state.md` contract and checklist before deliverable changes.
-2. **ACT**: main Agent executes only contracted work and records evidence.
-3. **AUDIT**: spawn the audit Agent (if none active — check `state.md` `audit_session`). Record the audit Agent session identifier in `state.md`. The same audit Agent checks plan quality first, then all six gates.
-4. **LOOP**: main Agent follows `CONTINUE_FIX` instructions or writes an evidence-backed appeal.
-5. **VERIFY**: audit Agent validates every checklist item.
-6. **BASELINE_LOCK**: main Agent records a baseline without changing deliverables.
-7. **OPTIMIZE_LOOP**: optional and still owned by the same audit Agent. Do not create a separate optimizer Agent.
-8. **FINAL_VERIFY**: audit Agent confirms baseline integrity and optimization stop reason.
-9. **DELIVER**: main Agent summarizes evidence, clears `audit_session` from `state.md`, then removes process files that do not affect the deliverable.
+1. **PLAN**: reuse an existing plan when available; otherwise write `state.md` contract and checklist before deliverable changes. Present the contract to the user — goal, non-goals, assumptions, stop guardrails, checklist — and wait for explicit approval before ACT.
+2. **USER_GATE**: main Agent must not proceed past PLAN until the user confirms the contract. No implicit approval.
+3. **ACT**: main Agent executes only contracted work and records evidence.
+4. **AUDIT**: spawn the audit Agent (if none active — check `state.md` `audit_session`). Record the audit Agent session identifier in `state.md`. The same audit Agent checks plan quality first, then all six gates.
+5. **LOOP**: main Agent follows `CONTINUE_FIX` instructions or writes an evidence-backed appeal.
+6. **VERIFY**: audit Agent validates every checklist item.
+7. **BASELINE_LOCK**: main Agent records a baseline without changing deliverables.
+8. **OPTIMIZE_LOOP**: optional and still owned by the same audit Agent. Do not create a separate optimizer Agent.
+9. **FINAL_VERIFY**: audit Agent confirms baseline integrity and optimization stop reason.
+10. **DELIVER**: main Agent summarizes evidence, clears `audit_session` from `state.md`, then removes process files that do not affect the deliverable.
 
 ## Review
 

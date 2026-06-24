@@ -24,7 +24,7 @@
 ## Progress
 
 - round: [N]
-- stage: PLAN | ACT | AUDIT | LOOP | VERIFY | BASELINE_LOCK | OPTIMIZE_LOOP | FINAL_VERIFY | DELIVER
+- stage: PLAN | USER_GATE | ACT | AUDIT | LOOP | VERIFY | BASELINE_LOCK | OPTIMIZE_LOOP | FINAL_VERIFY | DELIVER
 - audit_session: [空 | 审查 Agent 的会话标识；AUDIT 启动时写入，DELIVER 时清除]
 - done: [已经完成且有证据的事项]
 - tried: [尝试过的方案 / 失败原因 / 上诉结果]
