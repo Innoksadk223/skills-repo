@@ -1,6 +1,6 @@
-# Agent Loop state.md 模板
+# Codex Agent Loop state.md 模板
 
-> 复制到 `state/[task-slug]/state.md`。这是主 Agent 唯一必写状态文件；审查 Agent 只读它，不在其中写审查结论。
+> 复制到 `state/[task-slug]/state.md`。主 Codex 唯一必写状态文件；审查 Codex 只读它，不在其中写审查结论。
 
 ## Contract
 
@@ -10,8 +10,8 @@
 - 假设 / 澄清：[已知假设；需要用户确认的事项写到 User Confirm]
 - 计划来源：[Plan mode / writing-plans / 本文件]
 - 停止护栏：[最大修正轮数、预算、低收益停止条件]
-- 审查 Agent 作用域：[当前对话/线程内一个活跃审查 Agent；启动时写入 `audit_session`，任务结束时清除]
-- 必须加载的技能：[ACT 阶段前必须加载的技能列表，确保 CLI 语法、平台约束等权威来源一致；至少列出依赖的外部技能]
+- 审查 Agent 作用域：[独立 Codex 审查进程；启动时写入 `audit_session`，任务结束时清除]
+- 必须加载的技能：[ACT 阶段前必须加载的技能列表]
 
 ## Steps
 
@@ -25,13 +25,14 @@
 ## Progress
 
 - round: [N]
-- stage: PLAN | USER_GATE | ACT | AUDIT | LOOP | VERIFY | BASELINE_LOCK | OPTIMIZE_LOOP | FINAL_VERIFY | DELIVER
-- audit_session: [空 | 审查 Agent 的会话标识；AUDIT 启动时写入，DELIVER 时清除]
+- stage: PLAN | USER_GATE | ACT | AUDIT | LOOP | ESCALATE_REPLAN | VERIFY | BASELINE_LOCK | OPTIMIZE_LOOP | FINAL_VERIFY | DELIVER
+- audit_session: [空 | Codex session ID；AUDIT 启动时写入，DELIVER 时清除]
+- codex_session: [空 | 主 Codex session ID；ACT 启动时写入，DELIVER 时清除；用于执行中断恢复]
 - done: [已经完成且有证据的事项]
 - tried: [尝试过的方案 / 失败原因 / 上诉结果]
 - next: [下一步动作或停止后的建议]
 - open: [未解决问题 / 阻塞 / 风险]
-- user-confirm: [需要用户确认的取舍或外部动作；没有写“无”]
+- user-confirm: [需要用户确认的取舍或外部动作；没有写"无"]
 - cost: [耗时 / 工具或 agent 调用 / 是否值得继续 / 停止原因]
 
 ## Evidence
@@ -44,9 +45,10 @@
 ## Recovery
 
 - `user-confirm` 非空：先问用户。
-- `review.md` 有 pending appeal：恢复同一审查 Agent 裁决。
+- `review.md` 有 pending appeal：恢复同一审查 Codex 裁决。
 - `next` 指向未完成修正：继续 ACT，必要时先更新 Contract。
-- `review.md` 最后 AUDIT 为 `PROCEED_TO_VERIFY`：同一审查 Agent 进入 VERIFY。
+- `review.md` 最后 AUDIT 为 `ESCALATE_REPLAN`：主 Codex 更新 Contract（重新分解步骤、调整范围），然后重新进入 ACT。连续两次 `ESCALATE_REPLAN` 无进展：升级到 USER_GATE。
+- `review.md` 最后 AUDIT 为 `PROCEED_TO_VERIFY`：同一审查 Codex 进入 VERIFY。
 - `review.md` 最后 VERIFY 为 `VERIFIED` 且本文件无 Baseline：进入 BASELINE_LOCK。
 - Baseline 已写且优化未终止：进入 OPTIMIZE_LOOP。
 - `review.md` 最后 FINAL_VERIFY 为 `VERIFIED`：进入 DELIVER。
