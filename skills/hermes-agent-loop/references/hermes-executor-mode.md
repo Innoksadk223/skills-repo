@@ -11,6 +11,8 @@ Hermes orchestrates two independent `hermes -z` sessions:
 
 Both sessions are Hermes instances with their own context. The worker never sees the checker's reasoning; the checker never sees the worker's internal process. Communication flows through `state.md` and `review.md` files, orchestrated by the Hermes parent.
 
+**Do NOT use `delegate_task` to create these sessions.** `delegate_task` spawns one-shot subagents — the conversation ends when the task completes, and the session cannot be resumed with `--resume`. When the checker finds a gap and LOOP fires, you need to send the fix instruction to the *same* worker that has all the prior context. A `delegate_task` subagent is already gone. Use `terminal` to invoke `hermes -z --pass-session-id` directly, capture the session ID, and use `--resume "$SESSION_ID"` for all subsequent calls. This is non-negotiable — without persistent sessions, LOOP/VERIFY/OPTIMIZE cannot function.
+
 ## Session Lifecycle
 
 ### Worker — First Call (ACT)

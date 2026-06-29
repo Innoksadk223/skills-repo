@@ -7,6 +7,8 @@ description: "Use when work has high cost of silent errors, repeated correction,
 
 Separate doing from judging. Hermes orchestrates PLAN, USER_GATE, OBSERVE, LOOP decisions, BASELINE, and DELIVER, and never changes deliverables itself. The **maker** (execution) is delegated to an executor mode chosen at PLAN. The **checker** (audit/verify) is an independent session in Hermes executor mode, or Hermes itself in CC executor mode — never the maker. The executor mode must be chosen at PLAN; there is no in-process fallback.
 
+**CRITICAL — do not use `delegate_task` for execution or checking.** `delegate_task` spawns one-shot subagents: the conversation ends when the task completes, and the session cannot be resumed with `--resume`. When the checker finds a gap and LOOP is needed, you must send the fix back to the *same* agent that has prior context — a `delegate_task` subagent is already gone. The executor and checker MUST be persistent sessions spawned via `terminal` (`hermes -z --pass-session-id` for Hermes mode, `claude -p --session-id` for CC mode), so they can be resumed with `--resume` across all phases. Using `delegate_task` breaks LOOP, VERIFY, and OPTIMIZE — the entire multi-round review design depends on session persistence.
+
 Use existing planning first: Plan mode, `writing-plans`, or another suitable planning skill. If no usable plan exists, write the minimal contract before changing deliverables.
 
 ## Use
@@ -34,7 +36,7 @@ Create `state/<slug>/state.md` before changing deliverables. Use `references/con
 
 1. **PLAN**: reuse an existing plan when available; otherwise write `state.md` contract and checklist before deliverable changes. Present the contract to the user — goal, non-goals, assumptions, stop guardrails, checklist — and wait for explicit approval before ACT.
 2. **USER_GATE**: Hermes must not proceed past PLAN until the user confirms the contract. No implicit approval.
-3. **ACT**: delegate execution to the chosen executor. If the checklist contains testable items, run the corresponding verification commands and record raw output before handoff.
+3. **ACT**: delegate execution to the chosen executor via a persistent session (`terminal` → `hermes -z --pass-session-id` or `claude -p --session-id`). Do NOT use `delegate_task` — it is one-shot and cannot be resumed. If the checklist contains testable items, run the corresponding verification commands and record raw output before handoff.
 4. **OBSERVE**: Hermes reads and records real evidence — test output, diffs, logs, file contents — in `state.md`. Do not rely on the executor self-reported summary. If tests were run in ACT, record the exact commands and raw terminal output, not paraphrased results.
 5. **AUDIT**: the checker reviews evidence against all six gates and writes `review.md`. Checker = the checker session (Hermes mode) or Hermes itself (CC mode) — never the maker.
 6. **LOOP**: Hermes writes `fix_instruction`, delegates the fix to the executor, re-audits. If the checker returns `ESCALATE_REPLAN` (stall detected — same issue recurs across rounds), Hermes updates the contract (re-decompose steps, adjust scope) before re-entering ACT. Two consecutive `ESCALATE_REPLAN` without progress → upgrade to USER_GATE.
@@ -62,6 +64,7 @@ Second and later audits must close old issues first, then rerun all six gates.
 ## Rules
 
 - **Maker-checker split.** The executor (worker session or CC session) is the maker. The checker is a different session in Hermes mode, or Hermes itself in CC mode — and Hermes never changes deliverables, so it can audit the CC maker without overlap. The maker never reviews its own work. Hermes orchestrates and makes the final call.
+- **No `delegate_task` for executor or checker.** `delegate_task` subagents are one-shot — the conversation ends when the task completes and the session cannot be resumed. LOOP, VERIFY, and OPTIMIZE all require sending new instructions to an existing session via `--resume`. Use `terminal` to spawn persistent sessions (`hermes -z --pass-session-id` or `claude -p --session-id`) and resume them with `--resume`. This is non-negotiable: the entire multi-round design breaks without session persistence.
 - **Session tracking.** Record executor session IDs in `state.md` at first call. Cleared on DELIVER.
 - **Clear on DELIVER.** After FINAL_VERIFY passes: clear all session IDs from `state.md`. No accidental resumption.
 - Oral PASS is FAIL. Evidence must be file paths, diff summaries, command output, or deliverable paths.
@@ -147,6 +150,7 @@ For full invocation details and `--allowedTools` guidance, see `references/cc-ex
 
 ## Gotchas
 
+- **`delegate_task` is NOT a substitute for persistent sessions**: `delegate_task` subagents are one-shot — the conversation dies on task completion, and you cannot `--resume` them. If you use `delegate_task` for ACT, when the checker finds a gap and LOOP fires, you have no session to resume. The fix instruction would go to a fresh agent with zero prior context — which defeats the entire multi-round design. Always spawn executor and checker via `terminal` (`hermes -z --pass-session-id` or `claude -p --session-id`) so they persist and can be resumed. This is the #1 failure mode when using this skill.
 - **Stall detection**: `ESCALATE_REPLAN` is not a softer `STOP_WITH_BLOCKER` — it means the checker sees the same issue class recur across fix rounds and the current decomposition cannot resolve it. The orchestrator must change the contract (re-decompose steps, adjust scope, split/merge checklist items) before re-entering ACT. If the contract is unchanged and ACT is re-entered, it will loop again on the same issue.
 - **No in-process fallback**: No executor mode chosen at PLAN = workflow cannot proceed. In CC mode Hermes is the checker (it audits the CC maker, not its own execution); it never both executes and reviews the same deliverable.
 - **Evidence trust**: Executor self-reported summary is NOT evidence. Read test output, diffs, and logs yourself.
