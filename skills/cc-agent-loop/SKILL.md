@@ -33,7 +33,7 @@ Create `state/<slug>/state.md` before changing deliverables. Use `references/con
 6. **LOOP**: primary CC follows `CONTINUE_FIX` instructions or writes an evidence-backed appeal. If the audit CC returns `ESCALATE_REPLAN` (stall detected — same issue recurs across rounds), primary CC updates the contract (re-decompose steps, adjust scope) before re-entering ACT. Two consecutive `ESCALATE_REPLAN` without progress → upgrade to USER_GATE.
 7. **VERIFY**: audit CC independently re-executes verification commands for each checklist item. Records the actual command and raw output in `review.md`.
 8. **BASELINE_LOCK**: primary CC records a baseline without changing deliverables.
-9. **OPTIMIZE_LOOP**: mandatory triage after baseline. Scan for optimization candidates across four dimensions: functionality (missing or unnecessary features), conciseness (trim redundancy for token efficiency), maintainability (naming, structure, reuse), usability (beginner-friendly, fewer footguns). If any qualify, primary CC executes them and audit CC re-verifies. Skip only when no candidates exist.
+9. **OPTIMIZE_LOOP**: mandatory triage after baseline. Scan for optimization candidates across six dimensions: functionality (missing or unnecessary features), conciseness (trim redundancy for token efficiency), maintainability (naming, structure, reuse), usability (beginner-friendly, fewer footguns), robustness (error paths, dirty input, failure modes), composability (clean interfaces, clear boundaries, reusable parts). If any qualify, primary CC executes them and audit CC re-verifies. Skip only when no candidates exist.
 10. **FINAL_VERIFY**: audit CC confirms baseline integrity and optimization stop reason.
 11. **DELIVER**: primary CC summarizes evidence, clears `audit_session` from `state.md`, then removes process files that do not affect the deliverable.
 
@@ -60,7 +60,7 @@ Second and later audits must close old issues first, then rerun all six gates.
 - Primary CC may provide templates and handoff context, but must not write audit findings or final verdicts.
 - Oral PASS is FAIL. Evidence must be file paths, diff summaries, command output, or deliverable paths.
 - Scope control is part of strictness. Unrequested features go to notes or `state/inbox.md`, not blocking issues.
-- After `BASELINE_LOCK`, triage for optimization candidates across four dimensions: functionality (missing or unnecessary features), conciseness (trim redundancy for token efficiency), maintainability (naming, structure, reuse), usability (beginner-friendly, fewer footguns). Only execute `OPTIMIZE_NOW` when gain >=10%, risk is low, no regression, no new deps, no user approval needed.
+- After `BASELINE_LOCK`, triage for optimization candidates across six dimensions: functionality (missing or unnecessary features), conciseness (trim redundancy for token efficiency), maintainability (naming, structure, reuse), usability (beginner-friendly, fewer footguns), robustness (error paths, dirty input, failure modes), composability (clean interfaces, clear boundaries, reusable parts). Only execute `OPTIMIZE_NOW` when gain >=10%, risk is low, no regression, no new deps, no user approval needed.
 - On `DELIVER`, summarize key evidence before deleting process state. Keep only the smallest required `state/inbox.md` when unresolved items remain.
 
 ## CC Session Management

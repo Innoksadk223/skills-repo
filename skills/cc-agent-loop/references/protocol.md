@@ -144,11 +144,13 @@ OPTIMIZE triage format:
 
 OPTIMIZE_TRIAGE:
 - candidate:
-- dimension: functionality | conciseness | maintainability | usability
+- dimension: functionality | conciseness | maintainability | usability | robustness | composability
   - functionality: missing necessary features, or unnecessary features to remove
   - conciseness: trim redundancy to improve token efficiency
   - maintainability: naming, structure, reuse
   - usability: beginner-friendly, fewer footguns, less mental overhead
+  - robustness: error paths, dirty input, failure modes
+  - composability: clean interfaces, clear boundaries, reusable parts
 - expected_gain:
 - cost:
 - risk:
