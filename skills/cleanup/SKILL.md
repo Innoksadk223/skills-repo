@@ -10,7 +10,7 @@ description: Mandatory post-task janitor that removes temporary scripts, process
 1. **每次任务完成时强制执行** — 不是可选项。声称"好了"前必须先清理。
 2. **不问"要不要清理"** — 直接执行。
 3. **不确定归属的文件保留并报告** — 宁可留，不可误删。
-4. **目标是清理本次确认无用的过程文件、一次性文件和垃圾文件** — 不是追求工作区零噪音。
+4. **只清理本次确认无用的过程文件、一次性文件和垃圾文件** — 不扩大范围，不是追求工作区零噪音。
 
 ## 快速检查清单
 
@@ -45,6 +45,5 @@ description: Mandatory post-task janitor that removes temporary scripts, process
 - 每个删除/复原动作都能说明"为何属于本次任务"和"为何结束后不再需要"
 - `untracked` 不等于本次任务产物；`git diff`、`git status`、`ls` 只可辅助确认，不是删除或回滚授权
 - 不使用 `git clean -fd/-fdx`、仓库级 `rm -rf`、通配符批量删除来追求"干净"
-- 不得回滚用户或其他 agent 的改动；归属不明则保留并报告
-- 敏感信息只说已移除，不复述内容
-- 只清理确认归属的，不扩大范围
+- 不得回滚用户或其他 agent 的改动
+- 敏感信息只报告已移除（数量即可），不复述内容或位置
