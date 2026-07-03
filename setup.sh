@@ -5,19 +5,15 @@ REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILLS_FLAT="$REPO_DIR/skills"
 AGENTS_SKILLS_DIR="${AGENTS_SKILLS_DIR:-$HOME/.agents/skills}"
 
-GROUP_KEYS=(browser minimax search academic creative superpowers tools)
+GROUP_KEYS=(minimax search tools)
 GROUP_DESC=(
-    "[Browser] browser automation: browser-use"
-    "[Minimax] document generation: DOCX, PDF, XLSX, PPTX"
+    "[Minimax] document generation: DOCX, PDF, XLSX"
     "[Search] AnySearch real-time web/vertical search"
-    "[Academic] social-science manuscript review and wiki conversion"
-    "[Creative] PPT agent and frontend/UI design skills"
-    "[Superpowers] lightweight general methods: clarify, plan, debug, verify, delegate, review"
-    "[Tools] agent-loop, skill-planner, cleanup, skill tools"
+    "[Tools] agent-loop, skill-planner, cleanup, skill tools, frontend, wiki"
 )
 
 RECOMMENDED_SKILLS=(
-    agent-loop
+    hermes-agent-loop
     anysearch
     cleanup
     find-skills
@@ -26,14 +22,6 @@ RECOMMENDED_SKILLS=(
     skill-planner
     capture-gotcha
 )
-
-HERMES_MAP=(
-    "browser-use:browser-use"
-    "minimax:minimax-docx,minimax-pdf,minimax-xlsx"
-    "creative:ppt-agent,frontend-design,taste-skill,ui-ux-pro-max"
-    "superpowers:using-superpowers,brainstorming,writing-plans,systematic-debugging,test-driven-development,verification-before-completion"
-)
-HERMES_SOLO="social-science-paper-review wiki-to-okf anysearch agent-loop cleanup find-skills grill-me skill-creator skill-architecture skill-planner capture-gotcha intent-normalizer"
 
 PRESET=""
 TARGET_ARG=""
@@ -102,7 +90,7 @@ Inno's Skills Pack 安装器
   - 不会删除不在本仓库里的技能。
   - 仓库技能会先同步到 ~/.agents/skills 主副本。
   - 默认在 ~/.codex/skills、~/.claude/skills、~/.hermes/skills 创建指向主副本的链接。
-  - Hermes 会按用途分组；Codex/Claude 使用扁平入口。
+  - 三个 agent 均使用扁平结构。
 EOF
 }
 
@@ -143,37 +131,11 @@ detect_agents() {
 
 skill_group() {
     case "$1" in
-        browser-use) echo "browser" ;;
         minimax-*|pptx) echo "minimax" ;;
         anysearch) echo "search" ;;
-        social-science-paper-review|wiki-to-okf) echo "academic" ;;
-        ppt-agent|frontend-design|taste-skill|ui-ux-pro-max) echo "creative" ;;
-        using-superpowers|brainstorming|writing-plans|systematic-debugging|test-driven-development|verification-before-completion) echo "superpowers" ;;
-        cleanup|find-skills|grill-me|skill-creator|skill-architecture|skill-planner|agent-loop|capture-gotcha|intent-normalizer) echo "tools" ;;
+        cleanup|find-skills|grill-me|skill-creator|skill-architecture|skill-planner|agent-loop|capture-gotcha|intent-normalizer|frontend-design|wiki-to-okf|cc-agent-loop|codex-agent-loop|hermes-agent-loop) echo "tools" ;;
         *) echo "" ;;
     esac
-}
-
-hermes_relative_path() {
-    local name="$1"
-    local entry cat skills skill
-    for entry in "${HERMES_MAP[@]}"; do
-        cat="${entry%%:*}"
-        skills="${entry#*:}"
-        for skill in $(comma_to_words "$skills"); do
-            if [ "$skill" = "$name" ]; then
-                echo "$cat/$name"
-                return 0
-            fi
-        done
-    done
-    for skill in $HERMES_SOLO; do
-        if [ "$skill" = "$name" ]; then
-            echo "$name"
-            return 0
-        fi
-    done
-    echo "$name"
 }
 
 all_skill_names() {
@@ -483,22 +445,12 @@ configure_selection() {
 }
 
 destination_for() {
-    local agent="$1" base="$2" name="$3" rel
-    if [ "$agent" = "hermes" ]; then
-        rel="$(hermes_relative_path "$name")"
-    else
-        rel="$name"
-    fi
-    echo "$base/$rel"
+    local agent="$1" base="$2" name="$3"
+    echo "$base/$name"
 }
 
 relative_for() {
-    local agent="$1" name="$2"
-    if [ "$agent" = "hermes" ]; then
-        hermes_relative_path "$name"
-    else
-        echo "$name"
-    fi
+    echo "$2"
 }
 
 target_points_to_shared() {

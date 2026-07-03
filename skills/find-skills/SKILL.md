@@ -125,9 +125,9 @@ for skill in <skill1> <skill2> ...; do
 done
 ```
 
-> **Hermes native skill conflict:** Hermes stores in-repo skills under category
-> subdirectories (`.hermes/skills/superpowers/find-skills/`, `.hermes/skills/creative/ui-ux-pro-max/`).
-> A top-level symlink `~/.hermes/skills/find-skills -> ~/.agents/skills/find-skills`
+> **Hermes native skill conflict:** Hermes stores native skills under category
+> subdirectories (e.g. `.hermes/skills/<category>/<skill-name>/`).
+> A top-level symlink `~/.hermes/skills/<skill-name> -> ~/.agents/skills/<skill-name>`
 > does NOT overwrite the categorized version — Hermes loads both. To avoid confusion,
 > check with `ls -d .hermes/skills/*/$skill` before symlinking. If a native version
 > exists, prefer it (it's tailored for Hermes) and skip the symlink.
@@ -159,11 +159,6 @@ for d in ../../.agents/skills/*/; do
   [ ! -e "$name" ] && ln -s "../../.agents/skills/$name" "$name"
 done
 ```
-
-### Browser Use skill
-
-This local skill library keeps `browser-use` as the active Browser Use skill
-for CLI automation.
 
 ## Pitfalls & Troubleshooting
 

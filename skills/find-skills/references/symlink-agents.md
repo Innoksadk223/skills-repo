@@ -15,7 +15,7 @@ All symlinks: `../../.agents/skills/<name>` (relative from each agent's skills d
 ```bash
 cd ~
 
-for skill in browser-use; do
+for skill in <skill-name>; do
   # Codex: always needs manual
   [ ! -e ".codex/skills/$skill" ] && \
     ln -s "../../.agents/skills/$skill" ".codex/skills/$skill"

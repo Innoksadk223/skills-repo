@@ -75,8 +75,8 @@ test_dry_run_does_not_write() {
     out="$(HOME="$tmp/home" bash "$SETUP" --preset recommended --target codex --dir "$target" --dry-run --yes)"
     assert_contains "$out" "预览模式" "dry-run announces preview mode"
     assert_not_exists "$target/.skills-repo-path" "dry-run does not write install marker"
-    assert_not_exists "$target/agent-loop" "dry-run does not copy skills"
-    assert_not_exists "$tmp/home/.agents/skills/agent-loop" "dry-run does not write shared skill store"
+    assert_not_exists "$target/hermes-agent-loop" "dry-run does not copy skills"
+    assert_not_exists "$tmp/home/.agents/skills/hermes-agent-loop" "dry-run does not write shared skill store"
 }
 
 test_single_skill_install() {
@@ -84,13 +84,13 @@ test_single_skill_install() {
     make_tmp
     tmp="$TMP_RESULT"
     target="$tmp/codex-skills"
-    out="$(HOME="$tmp/home" bash "$SETUP" --target codex --dir "$target" --skills agent-loop --yes)"
-    assert_contains "$out" "agent-loop" "single-skill output mentions selected skill"
+    out="$(HOME="$tmp/home" bash "$SETUP" --target codex --dir "$target" --skills hermes-agent-loop --yes)"
+    assert_contains "$out" "hermes-agent-loop" "single-skill output mentions selected skill"
     assert_contains "$out" "新增 1，更新 0" "single-skill summary shows correct counts"
-    assert_exists "$tmp/home/.agents/skills/agent-loop/SKILL.md" "single-skill install copies requested skill to shared store"
-    assert_symlink "$target/agent-loop" "single-skill install links agent skill to shared store"
-    assert_exists "$target/agent-loop/SKILL.md" "single-skill install exposes requested skill through link"
-    assert_same_file "$ROOT_DIR/skills/agent-loop/SKILL.md" "$target/agent-loop/SKILL.md" "agent skill content matches repository"
+    assert_exists "$tmp/home/.agents/skills/hermes-agent-loop/SKILL.md" "single-skill install copies requested skill to shared store"
+    assert_symlink "$target/hermes-agent-loop" "single-skill install links agent skill to shared store"
+    assert_exists "$target/hermes-agent-loop/SKILL.md" "single-skill install exposes requested skill through link"
+    assert_same_file "$ROOT_DIR/skills/hermes-agent-loop/SKILL.md" "$target/hermes-agent-loop/SKILL.md" "agent skill content matches repository"
     assert_not_exists "$target/anysearch/SKILL.md" "single-skill install skips unrequested skill"
 }
 
@@ -99,10 +99,10 @@ test_update_only_skips_new_skills() {
     make_tmp
     tmp="$TMP_RESULT"
     target="$tmp/codex-skills"
-    out="$(HOME="$tmp/home" bash "$SETUP" --target codex --dir "$target" --skills agent-loop --update-only --yes)"
+    out="$(HOME="$tmp/home" bash "$SETUP" --target codex --dir "$target" --skills hermes-agent-loop --update-only --yes)"
     assert_contains "$out" "只更新已有技能" "update-only announces update mode"
     assert_contains "$out" "新增 0，更新 0，跳过 1" "update-only summary shows skipped new skill"
-    assert_not_exists "$target/agent-loop/SKILL.md" "update-only does not add new skill"
+    assert_not_exists "$target/hermes-agent-loop/SKILL.md" "update-only does not add new skill"
 }
 
 test_update_only_refreshes_existing_skill() {
@@ -110,14 +110,14 @@ test_update_only_refreshes_existing_skill() {
     make_tmp
     tmp="$TMP_RESULT"
     target="$tmp/codex-skills"
-    mkdir -p "$target/agent-loop"
-    printf 'stale local skill\n' > "$target/agent-loop/SKILL.md"
+    mkdir -p "$target/hermes-agent-loop"
+    printf 'stale local skill\n' > "$target/hermes-agent-loop/SKILL.md"
 
-    out="$(HOME="$tmp/home" bash "$SETUP" --target codex --dir "$target" --skills agent-loop --update-only --yes)"
+    out="$(HOME="$tmp/home" bash "$SETUP" --target codex --dir "$target" --skills hermes-agent-loop --update-only --yes)"
     assert_contains "$out" "新增 0，更新 1" "update-only refreshes an existing local skill"
-    assert_exists "$tmp/home/.agents/skills/agent-loop/SKILL.md" "update-only writes refreshed skill to shared store"
-    assert_symlink "$target/agent-loop" "update-only migrates existing copied skill to shared link"
-    assert_same_file "$ROOT_DIR/skills/agent-loop/SKILL.md" "$target/agent-loop/SKILL.md" "updated local skill matches repository"
+    assert_exists "$tmp/home/.agents/skills/hermes-agent-loop/SKILL.md" "update-only writes refreshed skill to shared store"
+    assert_symlink "$target/hermes-agent-loop" "update-only migrates existing copied skill to shared link"
+    assert_same_file "$ROOT_DIR/skills/hermes-agent-loop/SKILL.md" "$target/hermes-agent-loop/SKILL.md" "updated local skill matches repository"
 }
 
 test_recommended_preset_is_small() {
@@ -126,7 +126,7 @@ test_recommended_preset_is_small() {
     tmp="$TMP_RESULT"
     target="$tmp/codex-skills"
     HOME="$tmp/home" bash "$SETUP" --preset recommended --target codex --dir "$target" --yes >/dev/null
-    assert_exists "$target/agent-loop/SKILL.md" "recommended preset includes agent-loop"
+    assert_exists "$target/hermes-agent-loop/SKILL.md" "recommended preset includes hermes-agent-loop"
     assert_exists "$target/anysearch/SKILL.md" "recommended preset includes anysearch"
     assert_not_exists "$target/minimax-docx/SKILL.md" "recommended preset does not install non-recommended skills"
 }
