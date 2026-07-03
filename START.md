@@ -108,7 +108,7 @@
 | UI/UX 设计参考 | [ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) |
 | 通用方法论（头脑风暴、计划、调试、核验） | [Superpowers](https://github.com/obra/superpowers) |
 
-跟 AI 说「安装 browser-use」或「安装 Superpowers」，AI 会从对应 GitHub 仓库拉取安装。
+跟 AI 说「安装 browser-use」或「安装 Superpowers」，AI 会先告知需要从哪个上游仓库安装，获得你同意后再执行拉取，不会自动安装。
 
 ---
 
