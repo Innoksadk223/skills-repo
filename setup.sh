@@ -664,6 +664,10 @@ main() {
         echo "预览完成。确认无误后去掉 --dry-run 重新运行。"
     else
         echo "完成。更新命令: cd $REPO_DIR && git pull && bash setup.sh"
+        echo ""
+        echo "浏览器自动化 / PPT / UI 设计 / Superpowers 等技能不在本仓库。"
+        echo "需要时跟 AI 说目标，AI 会从上游仓库安装（须先征得你同意）。"
+        echo "详见 README.md"
     fi
 }
 
