@@ -68,9 +68,9 @@
 
 ## Deliver
 
-<!-- FINAL_VERIFY 通过后由主 Agent 追加摘要，清除 `audit_session`，随后清理过程文件 -->
+<!-- FINAL_VERIFY 通过后由主 Agent 追加摘要；session 字段和过程文件等待用户确认后清理 -->
 
-- audit_session: [清除]
+- audit_session: [等待用户确认后清除]
 - completed:
 - why:
 - verified_by: `state/[task-slug]/review.md`

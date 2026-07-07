@@ -56,9 +56,24 @@ hermes -z "<audit / verify / final_verify instruction>" \
 
 `--resume` restores full conversation history. The worker remembers prior ACT context, files read, and changes made. The checker remembers prior audit rounds, issue closures, and verdicts.
 
+### OPTIMIZE Prompt (checker)
+
+When resuming the checker for OPTIMIZE, include this instruction so the checker loads the new format instead of relying on prior AUDIT context:
+
+```bash
+hermes -z "Continue as checker Agent. Now switch perspective: stop verifying correctness, start hunting for optimization.
+Read references/protocol.md OPTIMIZE_TRIAGE format before triage.
+Pre-scan changed files AND logically adjacent files in the same skill/module directory.
+Append an OPTIMIZE section to state/<slug>/review.md using the seven-dimension block format.
+All seven dimensions required; NO_CANDIDATE needs a one-line reason." \
+  --resume "$CHECKER_SESSION_ID"
+```
+
+In CC executor mode Hermes is the checker itself, so this prompt is not sent externally — Hermes reads `references/protocol.md` OPTIMIZE_TRIAGE format directly when entering OPTIMIZE_LOOP.
+
 ### Cleanup
 
-Clear `worker_session` and `checker_session` from `state.md` on DELIVER. Session IDs no longer recorded anywhere — accidental resumption impossible.
+Do NOT clear session IDs on DELIVER — only the user can authorize cleanup of `state.md`.
 
 ## Toolset Guidance
 

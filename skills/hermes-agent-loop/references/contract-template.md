@@ -68,11 +68,11 @@
 
 ## Deliver
 
-<!-- FINAL_VERIFY 通过后由 Hermes 追加摘要，清除 session 字段，随后清理过程文件 -->
+<!-- FINAL_VERIFY 通过后由 Hermes 追加摘要；session 字段和过程文件等待用户确认后清理 -->
 
-- cc_session: [清除；仅 CC executor mode 有此字段]
-- worker_session: [清除；仅 Hermes executor mode 有此字段]
-- checker_session: [清除；仅 Hermes executor mode 有此字段]
+- cc_session: [等待用户确认后清除；仅 CC executor mode 有此字段]
+- worker_session: [等待用户确认后清除；仅 Hermes executor mode 有此字段]
+- checker_session: [等待用户确认后清除；仅 Hermes executor mode 有此字段]
 - completed:
 - why:
 - verified_by: `state/[task-slug]/review.md`

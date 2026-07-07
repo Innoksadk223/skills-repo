@@ -38,7 +38,7 @@ claude -p "<fix_instruction or optimize_instruction from Hermes>" \
 
 ### Cleanup
 
-`claude -p` auto-exits when done. Clear `cc_session` from `state.md` — UUID gone, accidental resumption impossible.
+`claude -p` auto-exits when done. Do NOT clear `cc_session` from `state.md` — only the user can authorize cleanup.
 
 ## --allowedTools Guidance
 

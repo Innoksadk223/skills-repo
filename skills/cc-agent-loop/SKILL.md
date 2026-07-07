@@ -30,12 +30,12 @@ Create `state/<slug>/state.md` before changing deliverables. Use `references/con
 3. **ACT**: primary CC executes only contracted work. If the checklist contains testable items (tests, lint, typecheck, build), run the corresponding verification commands and record raw output before handoff.
 4. **OBSERVE**: primary CC reads and records real evidence — test output, diffs, logs, file contents — in `state.md` before handing off to audit. Do not rely on the ACT agent self-reported summary. If tests were run in ACT, record the exact commands and raw terminal output, not paraphrased results.
 5. **AUDIT**: spawn the audit CC process with a fixed session ID. Generate a UUID, record it in `state.md` `audit_session`. The audit CC checks plan quality first, then all six gates. Writes results to `review.md`.
-6. **LOOP**: primary CC follows `CONTINUE_FIX` instructions or writes an evidence-backed appeal. If the audit CC returns `ESCALATE_REPLAN` (stall detected — same issue recurs across rounds), primary CC updates the contract (re-decompose steps, adjust scope) before re-entering ACT. Two consecutive `ESCALATE_REPLAN` without progress → upgrade to USER_GATE.
+6. **LOOP**: primary CC follows `CONTINUE_FIX` instructions or writes an evidence-backed appeal. If the audit CC returns `ESCALATE_REPLAN` (stall detected — same issue recurs across rounds), primary CC drafts a contract update (re-decompose steps, adjust scope) and presents it to the user — the contract must not be modified without user confirmation. After user approval, re-enter ACT. Two consecutive `ESCALATE_REPLAN` without progress → report to user and stop.
 7. **VERIFY**: audit CC independently re-executes verification commands for each checklist item. Records the actual command and raw output in `review.md`.
 8. **BASELINE_LOCK**: primary CC records a baseline without changing deliverables.
-9. **OPTIMIZE_LOOP**: mandatory triage after baseline. Scan for optimization candidates across six dimensions: functionality (missing or unnecessary features), conciseness (trim redundancy for token efficiency), maintainability (naming, structure, reuse), usability (beginner-friendly, fewer footguns), robustness (error paths, dirty input, failure modes), composability (clean interfaces, clear boundaries, reusable parts). If any qualify, primary CC executes them and audit CC re-verifies. Skip only when no candidates exist.
+9. **OPTIMIZE_LOOP**: mandatory triage after baseline. Pre-scan changed + adjacent files (pre-scan evidence gate applies — see Rules). Triage across seven dimensions (see `references/protocol.md`); each dimension gets its own block with `NO_CANDIDATE` + one-line reason if none. **Primary CC zero-candidate review**: reviews `OPTIMIZE_TRIAGE` only when ALL seven report `NO_CANDIDATE`; insufficient reasons → reject and re-scan. Primary CC executes `OPTIMIZE_NOW`, audit CC re-verifies. Present `SUGGEST_TO_USER` to user. Skip only when zero candidates and review passes.
 10. **FINAL_VERIFY**: audit CC confirms baseline integrity and optimization stop reason.
-11. **DELIVER**: primary CC summarizes evidence, clears `audit_session` from `state.md`, then removes process files that do not affect the deliverable.
+11. **DELIVER**: primary CC summarizes evidence and presents the deliverable. Session IDs and process files must not be modified or removed without user confirmation — the user decides when to clean up.
 
 ## Review
 
@@ -56,12 +56,11 @@ Second and later audits must close old issues first, then rerun all six gates.
 
 - **Maker-checker split.** The CC that produces the output must not be the CC process that grades it. The audit CC is an independent process with its own session ID. Self-review is not an audit.
 - **audit_session tracking.** Record the audit CC session UUID in `state.md` `audit_session` at first spawn. Resume the same session for all subsequent phases — do NOT spawn a new process per phase.
-- **Clear on DELIVER.** After FINAL_VERIFY passes and evidence is summarized: clear `audit_session` from `state.md`. The UUID is no longer recorded anywhere, preventing accidental cross-task resumption.
 - Primary CC may provide templates and handoff context, but must not write audit findings or final verdicts.
 - Oral PASS is FAIL. Evidence must be file paths, diff summaries, command output, or deliverable paths.
 - Scope control is part of strictness. Unrequested features go to notes or `state/inbox.md`, not blocking issues.
-- After `BASELINE_LOCK`, triage for optimization candidates across six dimensions: functionality (missing or unnecessary features), conciseness (trim redundancy for token efficiency), maintainability (naming, structure, reuse), usability (beginner-friendly, fewer footguns), robustness (error paths, dirty input, failure modes), composability (clean interfaces, clear boundaries, reusable parts). Only execute `OPTIMIZE_NOW` when gain >=10%, risk is low, no regression, no new deps, no user approval needed.
-- On `DELIVER`, summarize key evidence before deleting process state. Keep only the smallest required `state/inbox.md` when unresolved items remain.
+- After `BASELINE_LOCK`, pre-scan changed + adjacent files in the skill/module directory, record the file list as evidence, then triage across seven dimensions (see `references/protocol.md`); each dimension gets its own block in `OPTIMIZE_TRIAGE`. Pre-scan evidence is mandatory — if the scanned file list is empty or missing, reject and re-scan. Primary CC reviews `OPTIMIZE_TRIAGE` only when ALL seven dimensions report `NO_CANDIDATE`; insufficient reasons (e.g. <3 lines total across all seven) → reject and re-scan. Execute `OPTIMIZE_NOW` only when gain >=5%, risk is low, no regression, no new deps, no user approval needed. `enrichment` dimension candidates bypass `OPTIMIZE_NOW` — always use `SUGGEST_TO_USER` with user confirmation required.
+- On `DELIVER`, summarize key evidence. Do not delete process files or modify `state.md` without user confirmation. Keep `state/inbox.md` when unresolved items remain.
 
 ## CC Session Management
 
@@ -100,7 +99,7 @@ claude -p "<phase-specific audit prompt>" \
 
 ## Gotchas
 
-- **Stall detection**: `ESCALATE_REPLAN` is not a softer `STOP_WITH_BLOCKER` — it means the audit CC sees the same issue class recur across fix rounds and the current decomposition cannot resolve it. Primary CC must change the contract (re-decompose steps, adjust scope, split/merge checklist items) before re-entering ACT. If the contract is unchanged and ACT is re-entered, it will loop again on the same issue.
+- **Stall detection**: `ESCALATE_REPLAN` is not a softer `STOP_WITH_BLOCKER` — it means the audit CC sees the same issue class recur across fix rounds and the current decomposition cannot resolve it. Primary CC drafts a contract update (re-decompose steps, adjust scope), presents it to the user for confirmation, then re-enters ACT. If the contract is unchanged and ACT is re-entered, it will loop again on the same issue.
 - **Evidence trust**: The ACT agent self-reported summary is NOT evidence. Read test output, diffs, and logs yourself.
 - **CC --max-turns trap**: 3 turns fails for multi-file ACT in practice. ACT needs 10+ turns; LOOP and OPTIMIZE need 5. The spawn commands use these values — do not reduce them without understanding the cost.
 - **CC --session-id requires UUID**: `--session-id "audit-<slug>"` fails. Generate with `python3 -c "import uuid; print(uuid.uuid4())"`.
@@ -110,7 +109,7 @@ claude -p "<phase-specific audit prompt>" \
 - **Self-review is not audit**: A fresh audit process without prior session context starts blind. Always `--resume` or inject prior `review.md`.
 - **VERIFY must re-run tests**: Reading OBSERVE evidence is not verification. The audit CC must independently execute the checklist's verification commands and record raw output.
 - **Prompt cache TTL affects cost**: CC `--resume` reloads full conversation history as prefix. If the Anthropic prompt cache is valid (default 5 min TTL), cached prefix tokens cost ~10% of normal input. If expired, cache is rebuilt at 125% of normal input cost. Consecutive phases within minutes benefit most; long gaps may exceed TTL and trigger cache rebuild.
-- **CC --resume context accumulation**: Each `--resume` reloads full conversation history. Processing time grows with every resume. Use a 10-minute (600s) timeout for all `claude -p` calls to accommodate context growth across phases.
+- **CC --resume context accumulation**: Each `--resume` reloads full conversation history. Processing time grows with every resume. No hard timeout — let the call complete naturally. If a call hangs, the orchestrator can kill it manually.
 
 For full protocol formats and recovery routing, see `references/protocol.md`.
 
@@ -123,7 +122,7 @@ Route by state:
 - `user-confirm` is non-empty -> ask the user first.
 - Pending appeal -> resume the same audit CC for ruling.
 - Unfinished `next` fix -> apply it, updating the contract first if scope or checklist changed.
-- `ESCALATE_REPLAN` -> primary CC updates contract (re-decompose steps, adjust scope), then re-enters ACT. Two consecutive `ESCALATE_REPLAN` without progress -> upgrade to USER_GATE.
+- `ESCALATE_REPLAN` -> primary CC drafts contract update, presents to user for confirmation before modifying `state.md`. After approval, re-enter ACT. Two consecutive `ESCALATE_REPLAN` without progress -> report to user and stop.
 - `PROCEED_TO_VERIFY` -> send VERIFY to the same audit CC.
 - `VERIFIED` without baseline section in `state.md` -> append baseline lock.
 - Optimization stopped or ineligible -> send FINAL_VERIFY.

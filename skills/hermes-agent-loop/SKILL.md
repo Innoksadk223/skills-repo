@@ -39,12 +39,12 @@ Create `state/<slug>/state.md` before changing deliverables. Use `references/con
 3. **ACT**: delegate execution to the chosen executor via a persistent session (`terminal` → `hermes -z --pass-session-id` or `claude -p --session-id`). Do NOT use `delegate_task` — it is one-shot and cannot be resumed. If the checklist contains testable items, run the corresponding verification commands and record raw output before handoff.
 4. **OBSERVE**: Hermes reads and records real evidence — test output, diffs, logs, file contents — in `state.md`. Do not rely on the executor self-reported summary. If tests were run in ACT, record the exact commands and raw terminal output, not paraphrased results.
 5. **AUDIT**: the checker reviews evidence against all six gates and writes `review.md`. Checker = the checker session (Hermes mode) or Hermes itself (CC mode) — never the maker.
-6. **LOOP**: Hermes writes `fix_instruction`, delegates the fix to the executor, re-audits. If the checker returns `ESCALATE_REPLAN` (stall detected — same issue recurs across rounds), Hermes updates the contract (re-decompose steps, adjust scope) before re-entering ACT. Two consecutive `ESCALATE_REPLAN` without progress → upgrade to USER_GATE.
+6. **LOOP**: Hermes writes `fix_instruction`, delegates the fix to the executor, re-audits. If the checker returns `ESCALATE_REPLAN` (stall detected — same issue recurs across rounds), Hermes drafts a contract update (re-decompose steps, adjust scope) and presents it to the user — the contract must not be modified without user confirmation. After user approval, re-enter ACT. Two consecutive `ESCALATE_REPLAN` without progress → report to user and stop.
 7. **VERIFY**: the checker independently re-executes verification commands for each checklist item. Records the actual command and raw output in `review.md`.
 8. **BASELINE_LOCK**: Hermes records a baseline without changing deliverables.
-9. **OPTIMIZE_LOOP**: mandatory triage after baseline. Scan for optimization candidates across six dimensions: functionality (missing or unnecessary features), conciseness (trim redundancy for token efficiency), maintainability (naming, structure, reuse), usability (beginner-friendly, fewer footguns), robustness (error paths, dirty input, failure modes), composability (clean interfaces, clear boundaries, reusable parts). If any qualify, delegates execution to the executor, then re-verifies. Skip only when no candidates exist.
+9. **OPTIMIZE_LOOP**: mandatory triage after baseline. Pre-scan changed + adjacent files (pre-scan evidence gate applies — see Rules). Triage across seven dimensions (see `references/protocol.md`); each dimension gets its own block with `NO_CANDIDATE` + one-line reason if none. **Hermes zero-candidate review**: reviews `OPTIMIZE_TRIAGE` only when ALL seven report `NO_CANDIDATE`; insufficient reasons → reject and re-scan. Delegate `OPTIMIZE_NOW` to executor, re-verify. Present `SUGGEST_TO_USER` to user. Skip only when zero candidates and review passes.
 10. **FINAL_VERIFY**: the checker confirms baseline integrity and optimization stop reason.
-11. **DELIVER**: Hermes summarizes evidence, clears session IDs from `state.md`, then removes process files that do not affect the deliverable.
+11. **DELIVER**: Hermes summarizes evidence and presents the deliverable. Session IDs and process files must not be modified or removed without user confirmation — the user decides when to clean up.
 
 ## Review
 
@@ -65,12 +65,11 @@ Second and later audits must close old issues first, then rerun all six gates.
 
 - **Maker-checker split.** The executor (worker session or CC session) is the maker. The checker is a different session in Hermes mode, or Hermes itself in CC mode — and Hermes never changes deliverables, so it can audit the CC maker without overlap. The maker never reviews its own work. Hermes orchestrates and makes the final call.
 - **No `delegate_task` for executor or checker.** `delegate_task` subagents are one-shot — the conversation ends when the task completes and the session cannot be resumed. LOOP, VERIFY, and OPTIMIZE all require sending new instructions to an existing session via `--resume`. Use `terminal` to spawn persistent sessions (`hermes -z --pass-session-id` or `claude -p --session-id`) and resume them with `--resume`. This is non-negotiable: the entire multi-round design breaks without session persistence.
-- **Session tracking.** Record executor session IDs in `state.md` at first call. Cleared on DELIVER.
-- **Clear on DELIVER.** After FINAL_VERIFY passes: clear all session IDs from `state.md`. No accidental resumption.
+- **Session tracking.** Record executor session IDs in `state.md` at first call. Cleared only with user confirmation on DELIVER.
 - Oral PASS is FAIL. Evidence must be file paths, diff summaries, command output, or deliverable paths.
 - Scope control is part of strictness. Unrequested features go to notes or `state/inbox.md`, not blocking issues.
-- After `BASELINE_LOCK`, triage for optimization candidates across six dimensions: functionality, conciseness, maintainability, usability, robustness, composability. Only execute `OPTIMIZE_NOW` when gain >=10%, risk is low, no regression, no new deps, no user approval needed.
-- On `DELIVER`, summarize key evidence before deleting process state. Keep only the smallest required `state/inbox.md` when unresolved items remain.
+- After `BASELINE_LOCK`, pre-scan changed + adjacent files in the skill directory, record the file list as evidence, then triage across seven dimensions (see `references/protocol.md`); each dimension gets its own block in `OPTIMIZE_TRIAGE`. Pre-scan evidence is mandatory — if the scanned file list is empty or missing, reject and re-scan. Hermes reviews `OPTIMIZE_TRIAGE` only when ALL seven dimensions report `NO_CANDIDATE`; insufficient reasons (e.g. <3 lines total across all seven) → reject and re-scan. Execute `OPTIMIZE_NOW` only when gain >=5%, risk is low, no regression, no new deps, no user approval needed. `enrichment` dimension candidates bypass `OPTIMIZE_NOW` — always use `SUGGEST_TO_USER` with user confirmation required.
+- On `DELIVER`, summarize key evidence. Do not delete process files or modify `state.md` without user confirmation. Keep `state/inbox.md` when unresolved items remain.
 
 ## Hermes Executor Mode
 
@@ -151,13 +150,13 @@ For full invocation details and `--allowedTools` guidance, see `references/cc-ex
 ## Gotchas
 
 - **`delegate_task` is NOT a substitute for persistent sessions**: `delegate_task` subagents are one-shot — the conversation dies on task completion, and you cannot `--resume` them. If you use `delegate_task` for ACT, when the checker finds a gap and LOOP fires, you have no session to resume. The fix instruction would go to a fresh agent with zero prior context — which defeats the entire multi-round design. Always spawn executor and checker via `terminal` (`hermes -z --pass-session-id` or `claude -p --session-id`) so they persist and can be resumed. This is the #1 failure mode when using this skill.
-- **Stall detection**: `ESCALATE_REPLAN` is not a softer `STOP_WITH_BLOCKER` — it means the checker sees the same issue class recur across fix rounds and the current decomposition cannot resolve it. The orchestrator must change the contract (re-decompose steps, adjust scope, split/merge checklist items) before re-entering ACT. If the contract is unchanged and ACT is re-entered, it will loop again on the same issue.
+- **Stall detection**: `ESCALATE_REPLAN` is not a softer `STOP_WITH_BLOCKER` — it means the checker sees the same issue class recur across fix rounds and the current decomposition cannot resolve it. The orchestrator drafts a contract update (re-decompose steps, adjust scope, split/merge checklist items), presents it to the user for confirmation, then re-enters ACT. If the contract is unchanged and ACT is re-entered, it will loop again on the same issue.
 - **No in-process fallback**: No executor mode chosen at PLAN = workflow cannot proceed. In CC mode Hermes is the checker (it audits the CC maker, not its own execution); it never both executes and reviews the same deliverable.
 - **Evidence trust**: Executor self-reported summary is NOT evidence. Read test output, diffs, and logs yourself.
 - **VERIFY must re-run tests**: Reading OBSERVE evidence is not verification.
 - **Hermes session IDs are auto-generated**: Use `--pass-session-id` to capture them. Unlike CC, you cannot pre-assign a UUID.
 - **Hermes executor needs two sessions**: Worker and checker must be separate sessions for clean maker-checker split. Do not use one session for both.
-- **Hermes --resume context accumulation**: Each `--resume` reloads full conversation history. Processing time grows with every resume. Use a 10-minute (600s) timeout for all `hermes -z` calls to accommodate context growth across phases.
+- **Hermes --resume context accumulation**: Each `--resume` reloads full conversation history. Processing time grows with every resume. No hard timeout — let the call complete naturally. If a call hangs, the orchestrator can kill it manually.
 - **CC --session-id requires UUID**: Generate with `python3 -c "import uuid; print(uuid.uuid4())"`.
 - **CC --max-turns trap**: 3 turns fails for multi-file ACT. ACT needs 10+; LOOP/OPTIMIZE 5. Do not reduce without understanding the cost.
 - **CC --allowedTools is set at spawn time**: `--resume` inherits the original tools and cannot widen them per phase.
@@ -172,7 +171,7 @@ Route by state:
 
 - `user-confirm` is non-empty -> ask the user first.
 - Unfinished `next` fix -> apply it, updating the contract first if scope or checklist changed.
-- `ESCALATE_REPLAN` -> Hermes updates contract (re-decompose steps, adjust scope), then re-enters ACT. Two consecutive `ESCALATE_REPLAN` without progress -> upgrade to USER_GATE.
+- `ESCALATE_REPLAN` -> Hermes drafts contract update, presents to user for confirmation before modifying `state.md`. After approval, re-enter ACT. Two consecutive `ESCALATE_REPLAN` without progress -> report to user and stop.
 - `PROCEED_TO_VERIFY` -> send VERIFY to checker.
 - `VERIFIED` without baseline section in `state.md` -> append baseline lock.
 - Optimization stopped or ineligible -> FINAL_VERIFY.

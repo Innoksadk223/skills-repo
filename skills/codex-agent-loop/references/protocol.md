@@ -135,30 +135,63 @@ DELIVERABLE_SUMMARY:
 
 After VERIFY is `VERIFIED`, primary Codex appends Baseline to `state.md` without changing deliverables.
 
-Only execute `OPTIMIZE_NOW` when the candidate targets a real optimization (not a correctness issue), gain >=10%, cost is not high, risk is low, behavior does not regress, no new dependency is needed, no user approval is required, and baseline integrity remains checkable.
+Only execute `OPTIMIZE_NOW` when the candidate targets a real optimization (not a correctness issue), gain >=5%, cost is not high, risk is low, behavior does not regress, no new dependency is needed, no user approval is required, and baseline integrity remains checkable.
 
-OPTIMIZE triage format:
+The `enrichment` dimension is the exception: its candidates are product-level enhancements beyond the original contract scope (e.g. adding comments to a novel page, highlight annotations, dark mode toggle). Enrichment always uses `SUGGEST_TO_USER` — present to the user for approval before executing. Never auto-execute enrichment candidates.
+
+OPTIMIZE triage format — switch perspective: stop verifying correctness, start hunting for optimization. Pre-scan changed files AND logically adjacent files in the same skill/module directory. **Pre-scan gate**: before entering triage, the `scanned_files` list must be non-empty and contain actual file paths. If `scanned_files` is empty, `[]`, or contains only placeholder text (e.g. "none", "N/A"), the entire triage is rejected — re-scan. The primary Codex must verify `scanned_files` is non-empty before accepting the triage. Each dimension below must get its own block; NO_CANDIDATE requires a one-line reason.
+
+OPTIMIZE prompt (send this when steering the audit subagent for OPTIMIZE):
+
+```text
+Continue as audit Agent. Now switch perspective: stop verifying correctness, start hunting for optimization.
+Read references/protocol.md OPTIMIZE_TRIAGE format before triage.
+Pre-scan changed files AND logically adjacent files in the same skill/module directory.
+Append an OPTIMIZE section to state/<slug>/review.md using the seven-dimension block format.
+All seven dimensions required; NO_CANDIDATE needs a one-line reason.
+```
 
 ```md
 ## OPTIMIZE Round N
 
-OPTIMIZE_TRIAGE:
-- candidate:
-- dimension: functionality | conciseness | maintainability | usability | robustness | composability
-  - functionality: missing necessary features, or unnecessary features to remove
-  - conciseness: trim redundancy to improve token efficiency
-  - maintainability: naming, structure, reuse
-  - usability: beginner-friendly, fewer footguns, less mental overhead
-  - robustness: error paths, dirty input, failure modes
-  - composability: clean interfaces, clear boundaries, reusable parts
-- expected_gain:
-- cost:
-- risk:
-- affects_baseline:
-- needs_user_approval:
-- decision: OPTIMIZE_NOW | DEFER_TO_INBOX | STOP_OPTIMIZING
-- optimize_instruction:
-- reason:
+PERSPECTIVE: optimization-seeking (not correctness-verification)
+scanned_files: [changed files + adjacent files in dir scanned]
+
+OPTIMIZE_TRIAGE — all seven dimensions required (NO_CANDIDATE needs one-line reason):
+### functionality — missing or unnecessary features to add or remove
+- candidate: / expected_gain: / cost: / risk: / affects_baseline: / needs_user_approval:
+- decision: OPTIMIZE_NOW | DEFER_TO_INBOX | STOP_OPTIMIZING | NO_CANDIDATE
+- optimize_instruction: (OPTIMIZE_NOW only) / reason: (required; NO_CANDIDATE = one-line reason)
+
+### conciseness — trim redundancy for token efficiency
+- candidate: / expected_gain: / cost: / risk: / affects_baseline: / needs_user_approval:
+- decision: OPTIMIZE_NOW | DEFER_TO_INBOX | STOP_OPTIMIZING | NO_CANDIDATE
+- optimize_instruction: (OPTIMIZE_NOW only) / reason: (required; NO_CANDIDATE = one-line reason)
+
+### maintainability — naming, structure, reuse
+- candidate: / expected_gain: / cost: / risk: / affects_baseline: / needs_user_approval:
+- decision: OPTIMIZE_NOW | DEFER_TO_INBOX | STOP_OPTIMIZING | NO_CANDIDATE
+- optimize_instruction: (OPTIMIZE_NOW only) / reason: (required; NO_CANDIDATE = one-line reason)
+
+### usability — beginner-friendly, fewer footguns, less mental overhead
+- candidate: / expected_gain: / cost: / risk: / affects_baseline: / needs_user_approval:
+- decision: OPTIMIZE_NOW | DEFER_TO_INBOX | STOP_OPTIMIZING | NO_CANDIDATE
+- optimize_instruction: (OPTIMIZE_NOW only) / reason: (required; NO_CANDIDATE = one-line reason)
+
+### robustness — error paths, dirty input, failure modes
+- candidate: / expected_gain: / cost: / risk: / affects_baseline: / needs_user_approval:
+- decision: OPTIMIZE_NOW | DEFER_TO_INBOX | STOP_OPTIMIZING | NO_CANDIDATE
+- optimize_instruction: (OPTIMIZE_NOW only) / reason: (required; NO_CANDIDATE = one-line reason)
+
+### composability — clean interfaces, clear boundaries, reusable parts
+- candidate: / expected_gain: / cost: / risk: / affects_baseline: / needs_user_approval:
+- decision: OPTIMIZE_NOW | DEFER_TO_INBOX | STOP_OPTIMIZING | NO_CANDIDATE
+- optimize_instruction: (OPTIMIZE_NOW only) / reason: (required; NO_CANDIDATE = one-line reason)
+
+### enrichment — product-level enhancements beyond contract scope; cross-domain patterns; features user may not have considered
+- candidate: / expected_gain: / cost: / risk: / affects_baseline: / needs_user_approval: ALWAYS
+- decision: SUGGEST_TO_USER | NO_CANDIDATE
+- suggestion: (SUGGEST_TO_USER only) / reason: (required; NO_CANDIDATE = one-line reason)
 ```
 
 Final verification:
@@ -190,7 +223,7 @@ Read `state.md`, latest `review.md`, and `state/inbox.md` if present.
 
 - `user-confirm` non-empty -> ask the user.
 - pending `appeal.md` -> same audit Codex rules on appeal.
-- Latest AUDIT is `ESCALATE_REPLAN` -> primary Codex updates contract (re-decompose steps, adjust scope), then re-enters ACT. Two consecutive `ESCALATE_REPLAN` without progress -> upgrade to USER_GATE.
+- Latest AUDIT is `ESCALATE_REPLAN` -> primary Codex drafts contract update, presents to user for confirmation before modifying `state.md`. After approval, re-enter ACT. Two consecutive `ESCALATE_REPLAN` without progress -> report to user and stop.
 - `state.md` next points to unfinished fix -> ACT.
 - latest AUDIT is `PROCEED_TO_VERIFY` -> VERIFY.
 - latest VERIFY is `VERIFIED` and no Baseline in `state.md` -> BASELINE_LOCK.
@@ -200,7 +233,7 @@ Read `state.md`, latest `review.md`, and `state/inbox.md` if present.
 
 ## DELIVER
 
-Primary Codex summarizes from `state.md` and `review.md`: changed, why, checklist result, risks, and next step. Clear `audit_session` from `state.md`. Then delete process files that do not affect the deliverable. Keep only minimal `state/inbox.md` when unresolved items remain.
+Primary Codex summarizes from `state.md` and `review.md`: changed, why, checklist result, risks, and next step. Do NOT clear `audit_session` or delete process files — only the user can authorize cleanup of `state.md` and process files. Keep only minimal `state/inbox.md` when unresolved items remain.
 
 ## Token Budget Reference
 
