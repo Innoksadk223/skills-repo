@@ -34,6 +34,34 @@ Create `state/<slug>/state.md` before changing deliverables. Use `references/con
 
 ## Workflow
 
+```
+PLAN → USER_GATE → ACT → OBSERVE
+                        │
+          ┌─────────────┘
+          ▼
+   ┌── AUDIT ←─────────────────┐
+   │    │ CONTINUE_FIX         │
+   │    ▼                      │
+   │  LOOP → ACT → OBSERVE ────┘
+   │    │ PROCEED_TO_VERIFY
+   │    ▼
+   │  VERIFY
+   │    │
+   │    ▼
+   │  BASELINE_LOCK
+   │    │
+   │    ▼
+   │  OPTIMIZE_LOOP ──────────┐
+   │    │ triage → execute    │
+   │    ▼                     │
+   └── AUDIT(re-verify) ──────┘
+        │ PROCEED
+        ▼
+   FINAL_VERIFY → DELIVER
+```
+
+两个审查循环：**正确性循环**（AUDIT → LOOP → ACT → AUDIT，修到无 issue）和 **优化循环**（OPTIMIZE_LOOP → AUDIT 复验，确认优化安全）。
+
 1. **PLAN**: reuse an existing plan when available; otherwise write `state.md` contract and checklist before deliverable changes. Present the contract to the user — goal, non-goals, assumptions, stop guardrails, checklist — and wait for explicit approval before ACT.
 2. **USER_GATE**: Hermes must not proceed past PLAN until the user confirms the contract. No implicit approval.
 3. **ACT**: delegate execution to the chosen executor via a persistent session (`terminal` → `hermes -z --pass-session-id` or `claude -p --session-id`). Do NOT use `delegate_task` — it is one-shot and cannot be resumed. If the checklist contains testable items, run the corresponding verification commands and record raw output before handoff.
@@ -42,7 +70,7 @@ Create `state/<slug>/state.md` before changing deliverables. Use `references/con
 6. **LOOP**: Hermes writes `fix_instruction`, delegates the fix to the executor, re-audits. If the checker returns `ESCALATE_REPLAN` (stall detected — same issue recurs across rounds), Hermes drafts a contract update (re-decompose steps, adjust scope) and presents it to the user — the contract must not be modified without user confirmation. After user approval, re-enter ACT. Two consecutive `ESCALATE_REPLAN` without progress → report to user and stop.
 7. **VERIFY**: the checker independently re-executes verification commands for each checklist item. Records the actual command and raw output in `review.md`.
 8. **BASELINE_LOCK**: Hermes records a baseline without changing deliverables.
-9. **OPTIMIZE_LOOP**: mandatory triage after baseline. Pre-scan changed + adjacent files (pre-scan evidence gate applies — see Rules). Triage across seven dimensions (see `references/protocol.md`); each dimension gets its own block with `NO_CANDIDATE` + one-line reason if none. **Hermes zero-candidate review**: reviews `OPTIMIZE_TRIAGE` only when ALL seven report `NO_CANDIDATE`; insufficient reasons → reject and re-scan. Delegate `OPTIMIZE_NOW` to executor, re-verify. Present `SUGGEST_TO_USER` to user. Skip only when zero candidates and review passes.
+9. **OPTIMIZE_LOOP**: mandatory triage after baseline. Pre-scan changed + adjacent files (pre-scan evidence gate applies — see Rules). Triage across four dimensions (see `references/protocol.md`); each dimension gets its own block with `NO_CANDIDATE` + one-line reason if none. **Hermes zero-candidate review**: reviews `OPTIMIZE_TRIAGE` only when ALL four report `NO_CANDIDATE`; insufficient reasons → reject and re-scan. Delegate `OPTIMIZE_NOW` to executor, checker re-verifies. Present `SUGGEST_TO_USER` to user. Skip only when zero candidates and review passes.
 10. **FINAL_VERIFY**: the checker confirms baseline integrity and optimization stop reason.
 11. **DELIVER**: Hermes summarizes evidence and presents the deliverable. Session IDs and process files must not be modified or removed without user confirmation — the user decides when to clean up.
 
@@ -68,7 +96,7 @@ Second and later audits must close old issues first, then rerun all six gates.
 - **Session tracking.** Record executor session IDs in `state.md` at first call. Cleared only with user confirmation on DELIVER.
 - Oral PASS is FAIL. Evidence must be file paths, diff summaries, command output, or deliverable paths.
 - Scope control is part of strictness. Unrequested features go to notes or `state/inbox.md`, not blocking issues.
-- After `BASELINE_LOCK`, pre-scan changed + adjacent files in the skill directory, record the file list as evidence, then triage across seven dimensions (see `references/protocol.md`); each dimension gets its own block in `OPTIMIZE_TRIAGE`. Pre-scan evidence is mandatory — if the scanned file list is empty or missing, reject and re-scan. Hermes reviews `OPTIMIZE_TRIAGE` only when ALL seven dimensions report `NO_CANDIDATE`; insufficient reasons (e.g. <3 lines total across all seven) → reject and re-scan. Execute `OPTIMIZE_NOW` only when gain >=5%, risk is low, no regression, no new deps, no user approval needed. `enrichment` dimension candidates bypass `OPTIMIZE_NOW` — always use `SUGGEST_TO_USER` with user confirmation required.
+- After `BASELINE_LOCK`, pre-scan changed + adjacent files in the skill directory, record the file list as evidence, then triage across four dimensions (see `references/protocol.md`); each dimension gets its own block in `OPTIMIZE_TRIAGE`. Pre-scan evidence is mandatory — if the scanned file list is empty or missing, reject and re-scan. Hermes reviews `OPTIMIZE_TRIAGE` only when ALL four dimensions report `NO_CANDIDATE`; insufficient reasons → reject and re-scan. Execute `OPTIMIZE_NOW` only when gain >=5%, risk is low, no regression, no new deps, no user approval needed. `enrichment` dimension candidates bypass `OPTIMIZE_NOW` — always use `SUGGEST_TO_USER` with user confirmation required.
 - On `DELIVER`, summarize key evidence. Do not delete process files or modify `state.md` without user confirmation. Keep `state/inbox.md` when unresolved items remain.
 
 ## Hermes Executor Mode
@@ -174,6 +202,8 @@ Route by state:
 - `ESCALATE_REPLAN` -> Hermes drafts contract update, presents to user for confirmation before modifying `state.md`. After approval, re-enter ACT. Two consecutive `ESCALATE_REPLAN` without progress -> report to user and stop.
 - `PROCEED_TO_VERIFY` -> send VERIFY to checker.
 - `VERIFIED` without baseline section in `state.md` -> append baseline lock.
+- Baseline exists and optimization not started -> OPTIMIZE_LOOP.
+- OPTIMIZE changes applied and not yet re-audited -> AUDIT (checker re-verifies the optimization).
 - Optimization stopped or ineligible -> FINAL_VERIFY.
 - Final `VERDICT: VERIFIED` -> DELIVER.
 - Blocker, hard limit, or low-value continuation -> stop and report.

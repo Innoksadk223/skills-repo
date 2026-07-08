@@ -89,7 +89,7 @@ After VERIFY is `VERIFIED`, Hermes appends Baseline to `state.md` without changi
 
 Only execute `OPTIMIZE_NOW` when the candidate targets a real optimization (not a correctness issue), gain >=5%, cost is not high, risk is low, behavior does not regress, no new dependency is needed, no user approval is required, and baseline integrity remains checkable.
 
-The `enrichment` dimension is the exception: its candidates are product-level enhancements beyond the original contract scope (e.g. adding comments to a novel page, highlight annotations, dark mode toggle). Enrichment always uses `SUGGEST_TO_USER` — present to the user for approval before executing. Never auto-execute enrichment candidates.
+The `enrichment` dimension is the catch-all: its candidates cover optimization opportunities missed by the three contracted dimensions (functionality, conciseness, maintainability), both out-of-contract enhancements and in-contract gaps. Enrichment always uses `SUGGEST_TO_USER` — present to the user for approval before executing. Never auto-execute enrichment candidates.
 
 OPTIMIZE triage format — switch perspective: stop verifying correctness, start hunting for optimization. Pre-scan changed files AND logically adjacent files in the same skill directory. **Pre-scan gate**: before entering triage, the `scanned_files` list must be non-empty and contain actual file paths. If `scanned_files` is empty, `[]`, or contains only placeholder text (e.g. "none", "N/A"), the entire triage is rejected — re-scan. The orchestrator must verify `scanned_files` is non-empty before accepting the triage. Each dimension below must get its own block; NO_CANDIDATE requires a one-line reason.
 
@@ -99,38 +99,26 @@ OPTIMIZE triage format — switch perspective: stop verifying correctness, start
 PERSPECTIVE: optimization-seeking (not correctness-verification)
 scanned_files: [changed files + adjacent files in skill dir scanned]
 
-OPTIMIZE_TRIAGE — all seven dimensions required (NO_CANDIDATE needs one-line reason):
-### functionality — missing or unnecessary features to add or remove
+OPTIMIZE_TRIAGE — all four dimensions required (NO_CANDIDATE needs one-line reason):
+
+Decision key: OPTIMIZE_NOW when gain >=5%, risk low, no regression, no new deps, no user approval needed. DEFER_TO_INBOX when the candidate has merit but requires user context, dependency decision, or data not available in the current scan. STOP_OPTIMIZING when prior rounds exhausted the dimension and remaining candidates show <5% expected gain. NO_CANDIDATE when no reasonable candidate exists after honest search (one-line reason required).
+
+### functionality — replace with existing or open-source functional equivalent when available (functional implementation only, not UI/frontend visual copy)
 - candidate: / expected_gain: / cost: / risk: / affects_baseline: / needs_user_approval:
 - decision: OPTIMIZE_NOW | DEFER_TO_INBOX | STOP_OPTIMIZING | NO_CANDIDATE
 - optimize_instruction: (OPTIMIZE_NOW only) / reason: (required; NO_CANDIDATE = one-line reason)
 
-### conciseness — trim redundancy for token efficiency
+### conciseness — trim redundancy without losing meaning; covers both text verbosity and code/structural bloat (dead code, unnecessary indirection, over-abstraction)
 - candidate: / expected_gain: / cost: / risk: / affects_baseline: / needs_user_approval:
 - decision: OPTIMIZE_NOW | DEFER_TO_INBOX | STOP_OPTIMIZING | NO_CANDIDATE
 - optimize_instruction: (OPTIMIZE_NOW only) / reason: (required; NO_CANDIDATE = one-line reason)
 
-### maintainability — naming, structure, reuse
+### maintainability — clear naming, reasonable file/module boundaries, clean dependency direction, no duplicate logic
 - candidate: / expected_gain: / cost: / risk: / affects_baseline: / needs_user_approval:
 - decision: OPTIMIZE_NOW | DEFER_TO_INBOX | STOP_OPTIMIZING | NO_CANDIDATE
 - optimize_instruction: (OPTIMIZE_NOW only) / reason: (required; NO_CANDIDATE = one-line reason)
 
-### usability — beginner-friendly, fewer footguns, less mental overhead
-- candidate: / expected_gain: / cost: / risk: / affects_baseline: / needs_user_approval:
-- decision: OPTIMIZE_NOW | DEFER_TO_INBOX | STOP_OPTIMIZING | NO_CANDIDATE
-- optimize_instruction: (OPTIMIZE_NOW only) / reason: (required; NO_CANDIDATE = one-line reason)
-
-### robustness — error paths, dirty input, failure modes
-- candidate: / expected_gain: / cost: / risk: / affects_baseline: / needs_user_approval:
-- decision: OPTIMIZE_NOW | DEFER_TO_INBOX | STOP_OPTIMIZING | NO_CANDIDATE
-- optimize_instruction: (OPTIMIZE_NOW only) / reason: (required; NO_CANDIDATE = one-line reason)
-
-### composability — clean interfaces, clear boundaries, reusable parts
-- candidate: / expected_gain: / cost: / risk: / affects_baseline: / needs_user_approval:
-- decision: OPTIMIZE_NOW | DEFER_TO_INBOX | STOP_OPTIMIZING | NO_CANDIDATE
-- optimize_instruction: (OPTIMIZE_NOW only) / reason: (required; NO_CANDIDATE = one-line reason)
-
-### enrichment — product-level enhancements beyond contract scope; cross-domain patterns; features user may not have considered
+### enrichment — catch-all: optimization opportunities missed by the three dimensions above (out-of-contract enhancements + in-contract gaps), always SUGGEST_TO_USER
 - candidate: / expected_gain: / cost: / risk: / affects_baseline: / needs_user_approval: ALWAYS
 - decision: SUGGEST_TO_USER | NO_CANDIDATE
 - suggestion: (SUGGEST_TO_USER only) / reason: (required; NO_CANDIDATE = one-line reason)
@@ -168,7 +156,8 @@ Read `state.md` and `review.md` if present.
 - latest AUDIT is `ESCALATE_REPLAN` -> Hermes updates contract (re-decompose steps, adjust scope), then re-enters ACT. Two consecutive `ESCALATE_REPLAN` without progress -> upgrade to USER_GATE.
 - latest AUDIT is `PROCEED_TO_VERIFY` -> VERIFY.
 - latest VERIFY is `VERIFIED` and no Baseline in `state.md` -> BASELINE_LOCK.
-- Baseline exists and optimization not stopped -> OPTIMIZE_LOOP.
+- Baseline exists and optimization not started -> OPTIMIZE_LOOP.
+- OPTIMIZE changes applied and not yet re-audited -> AUDIT (checker re-verifies the optimization).
 - latest FINAL_VERIFY is `VERIFIED` -> DELIVER.
 - Blocker, hard limit, or low-value continuation -> stop and report.
 
