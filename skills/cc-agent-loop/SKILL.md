@@ -7,7 +7,7 @@ description: "Use when work has high cost of silent errors, repeated correction,
 
 Separate doing from judging. The primary CC handles PLAN, ACT, fixes, and delivery. An independent CC audit process reviews evidence, writes verdicts, verifies readiness, and controls safe optimization.
 
-Use existing planning first: Plan mode, `writing-plans`, or another suitable planning skill. If no usable plan exists, write the minimal contract before changing deliverables.
+Use existing planning first: Plan mode, `writing-plans`, or another suitable planning skill. Auxiliary Q&A-type skills are not excluded from PLAN — use them to stress-test assumptions, explore alternatives, or sharpen the contract before locking it in. If no usable plan exists, write the minimal contract before changing deliverables.
 
 ## Use
 

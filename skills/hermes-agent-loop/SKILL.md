@@ -9,7 +9,7 @@ Separate doing from judging. Hermes orchestrates PLAN, USER_GATE, OBSERVE, LOOP 
 
 **CRITICAL — do not use `delegate_task` for execution or checking.** `delegate_task` spawns one-shot subagents: the conversation ends when the task completes, and the session cannot be resumed with `--resume`. When the checker finds a gap and LOOP is needed, you must send the fix back to the *same* agent that has prior context — a `delegate_task` subagent is already gone. The executor and checker MUST be persistent sessions spawned via `terminal` (`hermes -z --pass-session-id` for Hermes mode, `claude -p --session-id` for CC mode), so they can be resumed with `--resume` across all phases. Using `delegate_task` breaks LOOP, VERIFY, and OPTIMIZE — the entire multi-round review design depends on session persistence.
 
-Use existing planning first: Plan mode, `writing-plans`, or another suitable planning skill. If no usable plan exists, write the minimal contract before changing deliverables.
+Use existing planning first: Plan mode, `writing-plans`, or another suitable planning skill. Auxiliary Q&A-type skills are not excluded from PLAN — use them to stress-test assumptions, explore alternatives, or sharpen the contract before locking it in. If no usable plan exists, write the minimal contract before changing deliverables.
 
 ## Use
 
