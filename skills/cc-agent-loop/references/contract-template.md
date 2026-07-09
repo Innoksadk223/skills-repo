@@ -25,7 +25,7 @@
 ## Progress
 
 - round: [N]
-- stage: PLAN | USER_GATE | ACT | AUDIT | LOOP | ESCALATE_REPLAN | VERIFY | BASELINE_LOCK | OPTIMIZE_LOOP | FINAL_VERIFY | DELIVER
+- stage: PLAN | USER_GATE | ACT | AUDIT | LOOP | ESCALATE_REPLAN | VERIFY | BASELINE_LOCK | OPTIMIZE_LOOP | FINAL_VERIFY | DELIVER  <!-- 每次阶段切换必须更新;DELIVER 前 primary CC 核对路径完整(必经 AUDIT+VERIFY+FINAL_VERIFY 三个 VERIFIED) -->
 - audit_session: [空 | 审查 CC 的 UUID；AUDIT 启动时写入，DELIVER 时清除]
 - done: [已经完成且有证据的事项]
 - tried: [尝试过的方案 / 失败原因 / 上诉结果]

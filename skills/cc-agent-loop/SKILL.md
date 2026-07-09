@@ -83,8 +83,10 @@ Second and later audits must close old issues first, then rerun all six gates.
 ## Rules
 
 - **Maker-checker split.** The CC that produces the output must not be the CC process that grades it. The audit CC is an independent process with its own session ID. Self-review is not an audit.
+- **Auxiliary agents.** When specialized help is needed (test coverage, external research, parallel exploration, etc.), spawn a one-shot `delegate_task` subagent after user consent; write its output to `state.md` and hand it to the executor. Auxiliary agents do not participate in AUDIT/VERIFY.
 - **audit_session tracking.** Record the audit CC session UUID in `state.md` `audit_session` at first spawn. Resume the same session for all subsequent phases — do NOT spawn a new process per phase.
 - Primary CC may provide templates and handoff context, but must not write audit findings or final verdicts.
+- **Phase gate.** 每次进入新阶段前必须更新 `state.md` 的 `stage` 字段。DELIVER 前核对 stage 路径必须经过 `AUDIT`(PROCEED_TO_VERIFY 或 CONTINUE_FIX 闭环后) + `VERIFY`(VERIFIED) + `FINAL_VERIFY`(VERIFIED);缺任一视为跳步 FAIL,回退到缺失阶段。`USER_GATE` 未获用户确认禁止进入 `ACT`。`BASELINE_LOCK` 前禁止 `OPTIMIZE_LOOP`。audit CC 在 AUDIT 时将"stage 路径不完整"作为 `contract` gate FAIL 的证据。
 - Oral PASS is FAIL. Evidence must be file paths, diff summaries, command output, or deliverable paths.
 - Scope control is part of strictness. Unrequested features go to notes or `state/inbox.md`, not blocking issues.
 - After `BASELINE_LOCK`, pre-scan changed + adjacent files in the skill/module directory, record the file list as evidence, then triage across four dimensions (see `references/protocol.md`); each dimension gets its own block in `OPTIMIZE_TRIAGE`. Pre-scan evidence is mandatory — if the scanned file list is empty or missing, reject and re-scan. Primary CC reviews `OPTIMIZE_TRIAGE` only when ALL four dimensions report `NO_CANDIDATE`; insufficient reasons → reject and re-scan. Execute `OPTIMIZE_NOW` only when gain >=5%, risk is low, no regression, no new deps, no user approval needed. `enrichment` dimension candidates bypass `OPTIMIZE_NOW` — always use `SUGGEST_TO_USER` with user confirmation required.

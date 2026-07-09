@@ -25,7 +25,7 @@
 ## Progress
 
 - round: [N]
-- stage: PLAN | USER_GATE | ACT | AUDIT | LOOP | ESCALATE_REPLAN | VERIFY | BASELINE_LOCK | OPTIMIZE_LOOP | FINAL_VERIFY | DELIVER
+- stage: PLAN | USER_GATE | ACT | AUDIT | LOOP | ESCALATE_REPLAN | VERIFY | BASELINE_LOCK | OPTIMIZE_LOOP | FINAL_VERIFY | DELIVER  <!-- 每次阶段切换必须更新;DELIVER 前 Hermes 核对路径完整(必经 AUDIT+VERIFY+FINAL_VERIFY 三个 VERIFIED) -->
 - cc_session: [空 | CC 执行 Agent 的 UUID；ACT 启动时写入，DELIVER 时清除；仅 CC executor mode]
 - worker_session: [空 | Hermes worker session ID；ACT 启动时写入，DELIVER 时清除；仅 Hermes executor mode]
 - checker_session: [空 | Hermes checker session ID；AUDIT 启动时写入，DELIVER 时清除；仅 Hermes executor mode]
