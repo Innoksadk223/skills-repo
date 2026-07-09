@@ -24,7 +24,7 @@ description: Records reusable local-environment lessons (paths, permissions, pro
 |---|---|
 | `scope` | 属环境层（路径/权限/代理/SSL/版本/环境变量/端口/工具安装/symlink/shell差异/包装层策略）。**不记**：代码bug、业务逻辑、用户误解、远端临时故障、无稳定解法的模糊报错 |
 | `evidence` | 有真实报错/日志支撑，非包装层摘要（`Command failed` 不算证据） |
-| `placement` | 归入正确区段；标题/场景无重复（脚本自动去重 skip，**不支持 update**；条目过时需手动编辑） |
+| `placement` | 归入正确区段；标题/场景无重复（脚本自动去重 skip；条目过时用 `update` 刷新内容或手动编辑） |
 | `actionability` | 解法稳定可执行，非单次外推或"试试看" |
 
 ## Script
@@ -36,10 +36,12 @@ python $SKILL_DIR/scripts/add_gotcha.py add \
 
 python $SKILL_DIR/scripts/add_gotcha.py search '关键词'
 python $SKILL_DIR/scripts/add_gotcha.py list [--section 'Git']
+python $SKILL_DIR/scripts/add_gotcha.py update '匹配词' --fix '新解法'
+python $SKILL_DIR/scripts/add_gotcha.py check '原始报错文本'
 python $SKILL_DIR/scripts/add_gotcha.py self-test
 ```
 
-参数：`--dry-run`（预览）、`--date YYYY-MM-DD`、`--section '## 区段名'`、`--env-path PATH`（测试用）。
+参数：`--dry-run`（预览）、`--date YYYY-MM-DD`、`--section '## 区段名'`、`--env-path PATH`（测试用）。`update` 支持 `--title`/`--cause`/`--fix`（可选，只传要改的）。
 
 ## Format
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""capture-gotcha 环境教训管理器：add / search / list / update / check / self-test。add 后自动清理 >7 天条目。"""
+"""capture-gotcha 环境教训管理器：add / search / list / update / check / self-test。add 后自动清理 >30 天条目。"""
+
+from __future__ import annotations
 
 import argparse
 import re
@@ -9,7 +11,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 ENV_PATH = Path.home() / '.hermes' / 'env.md'
-MAX_AGE_DAYS = 7
+MAX_AGE_DAYS = 30
 
 
 def normalize(s: str) -> str:
@@ -256,7 +258,7 @@ def main():
     p.set_defaults(command='add')
     sub = p.add_subparsers(dest='command')
 
-    a = sub.add_parser('add', help='新增条目（自动清理 >7 天）')
+    a = sub.add_parser('add', help='新增条目（自动清理 >30 天）')
     _add_args(a)
 
     s = sub.add_parser('search', help='按关键词搜索')
