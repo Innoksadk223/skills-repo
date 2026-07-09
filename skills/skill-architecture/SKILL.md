@@ -3,87 +3,69 @@ name: skill-architecture
 description: "Modular skill architecture design system with pipeline modules, state-based resumability, and loose coupling via state/ file IPC. Use when creating, updating, or refactoring skills that need: (1) multi-step pipelines with checkpoint/resume, (2) module decomposition with file-based communication between steps, (3) coordination with skill-creator during the edit phase, or (4) anti-pattern diagnosis in existing modular skills."
 ---
 
-# 模块化技能架构设计系统
+# 技能架构设计原则
 
 ## 一句话
 
 **把 Skill 看作流水线，每个模块是一个工位。工位之间只靠 state/ 文件通信。**
 
-## 三条铁律
+## 三条原则
 
-### 1. 模块化
+### 1. 模块边界：松耦合 + 高内聚
 
-每个模块 = 一个独立的 `references/M*.md`，包含五个标准段落：[模板见此](templates/module.md)
+模块间只通过输入/输出契约通信。改一个模块的内部实现不应波及其他模块。
 
-```markdown
-## 状态检查    ← 先查 state/，有则跳过
-## 输入        ← 需要什么数据，从哪来
-## 执行        ← 步骤列表，不超过 7 步
-## 输出        ← 保存到 state/M?_xxx.json
-## 回滚        ← 失败时清理哪些文件
-```
-
-### 2. 松耦合 + 高内聚
-
-| 原则 | 含义 | 反面 |
+| 判断 | 达标 | 反面 |
 |------|------|------|
-| **松耦合** | 模块只通过输入/输出契约通信 | ❌ "参考 Step 3 的变量 X" |
-| **高内聚** | 一个模块只解决一个问题 | ❌ "同时生成 PPT 和写论文" |
+| 松耦合 | M3 只读 `state/M2_xxx.json` | ❌ "参考 M2 第 47 行的变量" |
+| 高内聚 | 一个模块只解决一个问题 | ❌ "搜索 + 格式化 + 大纲" |
 
-### 3. 输出持久化
+**拆分信号**：步骤 >7、多职责、各步需独立调试。**合并信号**：两个模块总一起执行、共享全部 state。
 
-每个模块的输出**必须落盘**到 `state/` 目录。Agent 运行前检查 state/，存在则跳过——这就是断点续跑。
+### 2. 状态持久化
+
+模块输出落盘到 `state/`。运行前检查 state/，存在则跳过--这就是断点续跑。无需断点续跑的 skill 不需要此模式。
 
 ```
 skill-name/
-├── SKILL.md              ← 调度器（< 100 行，只列模块清单+决策树）
-├── state/                ← 断点文件（.gitignore 此目录）
-├── references/           ← 模块文件 M1_*.md, M2_*.md ...
+├── SKILL.md        ← 调度器（只列模块清单+决策树，≤100 行）
+├── state/          ← 断点文件（.gitignore）
+├── references/     ← 模块文件 M1_*.md, M2_*.md ...
 ├── scripts/
 └── templates/
 ```
 
+state 格式统一：结构化数据用 `.json`，长文本用 `.md`，模板保留原扩展名。
+
+### 3. 可维护性
+
+- **接口稳定**：模块间通信靠 state 文件名和格式，改内部实现不改 state 契约
+- **局部修改安全**：改 M3 只需重跑 M3，M1/M2 的 state 不受影响
+- **演进安全**：新增步骤追加到管道末尾或插入中间模块，前置模块输出不变
+
 ## 适用判断
 
-管道模块不是唯一解法。根据 skill 的性质选择：
+| 场景 | 模式 | 何时不用本技能 |
+|------|------|---------------|
+| 线性管道，步骤有先后依赖，需断点续跑 | **管道模块**（本技能） | -- |
+| 操作独立，无前后依赖，按需加载 | **渐进披露** | 用 skill-creator |
+| ≤3 步，SKILL.md <200 行 | **不拆** | 直接写 |
 
-| 场景 | 模式 | 例子 |
-|------|------|------|
-| 线性管线，步骤有先后依赖，需要断点续跑 | **管道模块**（本技能） | 论文写作：研究→大纲→正文→润色 |
-| 操作独立，每次只做一件事，无前后依赖 | **渐进披露**（references/ 按操作拆分，按需加载） | 知识库：ingest / query / lint 互不依赖 |
-| 简单工具，≤3 步，SKILL.md < 200 行 | **不拆** | 单个脚本包装、简单格式转换 |
+**不需要管道模块的信号**：操作之间无前后依赖、不需要断点续跑、SKILL.md 短且稳定。
 
-**不需要管道模块的信号：** 操作之间无前后依赖、不需要断点续跑、SKILL.md 短且稳定。
+## 边界
 
-## SKILL.md 的职责
-
-**只做两件事**：列出模块清单、写决策树。**不是**写执行细节。格式见 [templates/scheduler.md](templates/scheduler.md)。
-
-## 与 skill-creator 的协作
-
-加载本技能后，skill-creator 的 Step 4（Edit the Skill）采用模块化方式：
-
-| skill-creator 负责 | 本技能负责 |
-|-------------------|----------|
-| init → edit → package 流程 | edit 阶段的模块拆分 |
-| YAML / description | SKILL.md 调度器写法 |
-| 打包和发布 | 模块契约和断点设计 |
+| 本技能负责 | 不负责（交给谁） |
+|-----------|----------------|
+| 模块边界、耦合/内聚、可维护性 | 创建流程 init->edit->package（skill-creator） |
+| 调度器写法、模块契约、断点设计 | 渐进披露拆分、YAML frontmatter（skill-creator） |
+| 反模式诊断 | 验证方法论、TDD、SDO（writing-skills） |
 
 ## 场景入口
 
 | 你要做什么 | 加载 |
 |-----------|------|
-| 新建 skill，设计模块结构 | `templates/module.md` + `templates/scheduler.md` |
-| 重构现有 skill，拆模块 | `references/anti-patterns.md` → `references/real-example.md` |
-| 实现断点续跑、state/ 读写 | `references/runtime.md` |
-| 排查设计问题 | `references/anti-patterns.md` |
-
-## 参考
-
-| 文件 | 何时加载 |
-|------|---------|
-| [templates/module.md] | 创建新模块时复制 |
-| [templates/scheduler.md] | 写 SKILL.md 调度器时参考 |
-| [references/runtime.md] | 首次实现运行逻辑时 |
-| [references/anti-patterns.md] | 有坏味道时排查 |
-| [references/real-example.md] | 需要完整示例时 |
+| 新建管道模块 | [templates/module.md] + [templates/scheduler.md] |
+| 实现断点续跑 | [references/runtime.md] |
+| 排查设计问题 / 拆分合并判断 | [references/anti-patterns.md] |
+| 看完整改造示例 | [references/real-example.md] |
