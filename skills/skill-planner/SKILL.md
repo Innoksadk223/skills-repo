@@ -1,6 +1,7 @@
 ---
 name: skill-planner
-description: Lightweight startup router that selects and orders the skills, plugins, and MCP tools a task needs before execution begins, and shows users the dispatch flow with a pre-assessment of what capabilities were considered, scanned, and excluded. Use when starting any user task — from single-step lookups to multi-step deliverables — where capabilities must be chosen, ordered, or explicitly waived before acting. Also use when the user names multiple skills, asks about capability selection, or the task spans domains requiring different tools.
+description: >-
+  MANDATORY: must be invoked at the start of EVERY task before any execution, no exceptions. Selects and orders skills/plugins/MCP tools needed, outputs dispatch flow for user visibility. If you are about to act on a user request without having shown a routing table, stop and invoke this first.
 ---
 
 # Skill Planner
