@@ -1,27 +1,33 @@
 ---
 name: skill-planner
-description: Lightweight startup router that selects and orders the skills, plugins, and MCP tools a task needs before execution begins. Use when starting any user task — from single-step lookups to multi-step deliverables — where capabilities must be chosen, ordered, or explicitly waived before acting. Also use when the user names multiple skills, asks about capability selection, or the task spans domains requiring different tools.
+description: Lightweight startup router that selects and orders the skills, plugins, and MCP tools a task needs before execution begins, and shows users the dispatch flow with a pre-assessment of what capabilities were considered, scanned, and excluded. Use when starting any user task — from single-step lookups to multi-step deliverables — where capabilities must be chosen, ordered, or explicitly waived before acting. Also use when the user names multiple skills, asks about capability selection, or the task spans domains requiring different tools.
 ---
 
 # Skill Planner
 
-启动时的轻量路由器：只决定本轮是否需要专项能力、工具或“无需专项能力”，以及它们的调用顺序。输出路由后继续执行；不要把路由变成计划、解释或确认环节。
+启动时的轻量路由器：先做能力预判，再输出本轮调度顺序。展示判断过程——目标、扫描范围、考虑过但排除的项——让用户看到完整调用流程。输出路由后继续执行；不要把路由变成计划、解释或确认环节。
 
 ## 快速流程
 
 1. 判断用户真正要达成的结果，不只看表面命令
 2. 扫描当前已注入的 skills / plugins / MCP tools
 3. 只选择本轮已用、正在用或确定将用，且会改变执行路径、质量门槛、工具可用性或安全边界的真实能力
-4. 按实际使用顺序输出路由；隐藏 `skill-planner` 自身
-5. 立刻进入下一步：执行、澄清，或调用被选中的能力
+4. 先输出预判：目标、扫描范围、考虑过但排除的项
+5. 按实际使用顺序输出路由；隐藏 `skill-planner` 自身
+6. 立刻进入下一步：执行、澄清，或调用被选中的能力
 
 ## 输出格式
 
-需要 `skill-planner` 之外的专项能力 / plugin / MCP tool：
+`skill-planner` 是内部路由器：必须调用，但永远不作为"📋 任务路由"的条目展示；编号从第一个其它必要能力开始。路由条目可以是 skill、plugin 或 MCP tool 中的任意一类，按真实使用情况并列或单独列出。
 
-`skill-planner` 是内部路由器：必须调用，但永远不作为“📋 任务路由”的条目展示；编号从第一个其它必要能力开始。
+需要 `skill-planner` 之外的专项能力：
 
 ```
+🧭 能力预判
+- 目标：一句话说用户真正要达成什么
+- 扫描：skills / plugins / MCP tools 三类已注入能力
+- 排除：考虑过但不列的项及原因（例如无关、已被 X 覆盖、未注入、触发安全边界）
+
 📋 任务路由
 ① real-capability-name → 一句话说明本轮作用
 ② real-capability-name → 一句话说明本轮作用
@@ -30,14 +36,22 @@ description: Lightweight startup router that selects and orders the skills, plug
 不需要 `skill-planner` 之外的专项能力：
 
 ```
+🧭 能力预判
+- 目标：一句话说用户真正要达成什么
+- 扫描：skills / plugins / MCP tools 三类已注入能力
+- 排除：考虑过但不列的项及原因
+
 📋 任务路由
 无需专项 skill，直接执行
 ```
+
+预判段保持 3-5 行清单形态，不写段落；用户要看的是过程，不是论述。无排除项时省略排除行。
 
 ## 核心规则
 
 - **少列但不漏列**：列出本轮已用、正在用、确定将用的必要能力；“可能有用”“也许相关”不算必要。
 - **真实名称**：路由条目必须是当前已注入的真实 skill / plugin / MCP tool 名称；内部可按能力角色判断，对外不写泛称，不编造不存在的能力。
+- **三类覆盖**：扫描范围包括 skills、plugins、MCP tools 三类；路由条目可以是任意一类，按真实使用情况并列或单独列出，不为凑齐三类而硬列。
 - **作用清楚**：每个条目用一句话说明它在本轮做什么，让用户看懂流程，不展开执行步骤。
 - **同类可并列**：相同类型但功能不同、且确定会用的能力可以并列；不要为了“同类去重”合并掉关键角色。
 - **隐藏自身**：`skill-planner` 只负责生成路由，不列入用户可见路由；即使用户点名或任务对象是 `skill-planner`，也只调整路由判断。
@@ -65,7 +79,9 @@ description: Lightweight startup router that selects and orders the skills, plug
 - **把能力角色当名称展示**：用户可见路由只能写真实已注入名称。
 - **把路由写成计划**：每项一行，不展开步骤。
 - **不确定就停住**：只有路线会因此改变时才问。
+- **预判写成段落**：预判是 3-5 行清单，不是论述。
+- **只扫 skill 不扫 plugin/MCP**：三类都在扫描范围，漏扫任何一类都会缺能力。
 
 ## 原则
 
-路由是开工前的导航，不是计划书。准确优先，简短其次；能不列就不列，关键项不能漏。用户看到的是接下来会被实际调度的专项能力，不是内部思考过程。
+路由是开工前的导航，不是计划书。准确优先，简短其次；能不列就不列，关键项不能漏。用户看到的是接下来会被实际调度的专项能力，加上判断过程——目标、扫描范围、排除项——而不是内部思考细节。
