@@ -13,8 +13,8 @@
 收到安装请求后，AI 应按以下步骤：
 
 1. **先介绍** — 按分组介绍技能，每组一句话概括
-2. **再确认** — 问用户要装到哪个 agent、选哪些分组。涉及外部技能时，列出上游地址，等用户确认后再安装
-3. **再安装** — `bash setup.sh`
+2. **再确认** — 问用户要装到哪个 agent、选哪些分组。涉及推荐/外部技能时，列出上游地址，等用户确认后再安装
+3. **再安装** — `bash setup.sh`（仅本仓技能）
 4. **最后教** — 安装/更新完成后，直接读 [START.md](START.md)，给用户一段 3 分钟上手教程
 
 ## 本仓库技能（8 个）
@@ -24,33 +24,30 @@
 | 工具 | `skill-architecture` / `skill-planner` / `cleanup` / `capture-gotcha` / `intent-normalizer` (5) | 模块化架构、任务路由、清理、环境记录、意图校准 |
 | Agent 循环 | `cc-agent-loop` / `codex-agent-loop` / `hermes-agent-loop` (3) | 各平台 Agent 编排循环（执行-审查分离） |
 
-## 外部技能：从上游安装
+## 推荐技能（自用清单）
 
-以下技能不在本仓库，请从上游安装（AI 不得擅自安装，须用户同意）：
+以下是我自己在用的推荐能力，**不在本仓库**，从上游安装。AI 不得擅自安装，须用户同意。
 
 | 技能 | 用途 | 上游 / 安装 |
 |------|------|-------------|
-| `anysearch` | 实时搜索、垂直搜索、批量搜索、URL 提取 | [GitHub](https://github.com/anysearch-ai/anysearch-skill) · [releases](https://github.com/anysearch-ai/anysearch-skill/releases) · `npx skills add https://github.com/anysearch-ai/anysearch-skill --skill anysearch` |
-| `grill-me` | 深度质询方案/设计 | [路径](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me) · [skills.sh](https://www.skills.sh/mattpocock/skills/grill-me) · `npx skills add https://github.com/mattpocock/skills --skill grill-me` |
-| `frontend-design` | 高质量前端页面/组件 | [路径](https://github.com/anthropics/skills/tree/main/skills/frontend-design) · [skills.sh](https://www.skills.sh/anthropics/skills/frontend-design) · `npx skills add https://github.com/anthropics/skills --skill frontend-design` |
+| `anysearch` | 实时搜索、垂直搜索、批量搜索、URL 提取 | [anysearch-ai/anysearch-skill](https://github.com/anysearch-ai/anysearch-skill) · `npx skills add https://github.com/anysearch-ai/anysearch-skill --skill anysearch` |
+| `grill-me` | 深度质询方案/设计 | [mattpocock/skills · grill-me](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me) · `npx skills add https://github.com/mattpocock/skills --skill grill-me` |
+| `frontend-design` | 高质量前端页面/组件 | [anthropics/skills · frontend-design](https://github.com/anthropics/skills/tree/main/skills/frontend-design) · `npx skills add https://github.com/anthropics/skills --skill frontend-design` |
 | `skill-creator` | 创建新技能 | [clawhub.ai](https://clawhub.ai)（slug: `skill-creator`） |
-| `find-skills` | 发现/安装社区技能 | [路径](https://github.com/vercel-labs/skills/tree/main/skills/find-skills) · [skills.sh](https://www.skills.sh/vercel-labs/skills/find-skills) · `npx skills add https://github.com/vercel-labs/skills --skill find-skills` |
-| `browser-use` | 浏览器自动化 | [browser-use/browser-use](https://github.com/browser-use/browser-use) |
+| `find-skills` | 发现/安装社区技能 | [vercel-labs/skills · find-skills](https://github.com/vercel-labs/skills/tree/main/skills/find-skills) · `npx skills add https://github.com/vercel-labs/skills --skill find-skills` |
+| `playwright-cli` | 浏览器自动化（Playwright CLI + Skills） | [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli) · `npx skills add microsoft/playwright-cli@playwright-cli` |
+| `ponytail` | 反过度工程：最懒且能用的解 | [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) · `npx skills add https://github.com/DietrichGebert/ponytail --skill ponytail` |
+| `rtk` | CLI 输出压缩，降低 LLM token（工具，非 skill 包） | [rtk-ai/rtk](https://github.com/rtk-ai/rtk) · `brew install rtk` 后 `rtk init -g --agent hermes`（Claude/Codex 见上游） |
 | `ppt-agent` | PPT 全流程生成 | [Akxan/ppt-agent-skill](https://github.com/Akxan/ppt-agent-skill) |
 | `taste-skill` | 反模板化前端审美 | [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill) |
 | `ui-ux-pro-max` | UI/UX 设计参考 | [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) |
+| Superpowers | 头脑风暴、计划、技能编写、并行代理 | [obra/superpowers](https://github.com/obra/superpowers) |
 
-### 给 AI：外部技能安装约束
+### 给 AI：推荐技能安装约束
 
-1. 不得主动安装任何外部技能。
+1. 不得主动安装任何推荐/外部技能。
 2. 能力不在本仓库时，先说明上游并给出下载/安装地址。
 3. 必须获得用户明确同意后方可执行安装。
-
-## Superpowers
-
-[Superpowers](https://github.com/obra/superpowers) — 头脑风暴、计划、技能编写、并行代理等。安装见上游 README：https://github.com/obra/superpowers
-
-常用：`brainstorming` · `writing-plans` · `writing-skills` · `dispatching-parallel-agents` · `using-superpowers`
 
 ## 常用工作流入口
 

@@ -23,7 +23,7 @@ Agent 自动读取入口（内容一致）：[AGENTS.md](AGENTS.md) / [CLAUDE.md
 2. 给最短总览和 3-5 个常用说法示例，不要一次灌输全部细节。
 3. 结尾问用户想重点了解哪一组；如果用户明确说不用介绍，就收住。
 4. 用户问知识库、RAG、Obsidian 或论文来源补充时，说明相关技能已拆到 `kb-skills-repo`。
-5. 用户问实时搜索、前端设计、技能发现/创建、浏览器自动化、PPT、UI 设计、头脑风暴时，说明这些能力需从上游安装，见下方「需要额外安装的能力」。
+5. 用户问实时搜索、前端设计、技能发现/创建、浏览器自动化、反过度工程、token 压缩、PPT、UI 设计、头脑风暴时，说明这些能力在「推荐技能」清单、需从上游安装，见下方。
 
 ---
 
@@ -84,24 +84,26 @@ Agent 自动读取入口（内容一致）：[AGENTS.md](AGENTS.md) / [CLAUDE.md
 
 ---
 
-## 需要额外安装的能力
+## 推荐技能（自用清单，需额外安装）
 
-以下能力不在本技能包，需从上游安装：
+以下是维护者自用推荐，不在本技能包，需从上游安装：
 
-| 能力 | 上游 / 下载 |
+| 能力 | 上游 / 安装 |
 |------|-------------|
 | 实时搜索 `anysearch` | [anysearch-ai/anysearch-skill](https://github.com/anysearch-ai/anysearch-skill) |
 | 方案质询 `grill-me` | [mattpocock/skills · grill-me](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me) |
 | 前端设计 `frontend-design` | [anthropics/skills · frontend-design](https://github.com/anthropics/skills/tree/main/skills/frontend-design) |
 | 技能创建 `skill-creator` | [clawhub.ai](https://clawhub.ai) |
 | 技能发现 `find-skills` | [vercel-labs/skills · find-skills](https://github.com/vercel-labs/skills/tree/main/skills/find-skills) |
-| 浏览器自动化 | [browser-use](https://github.com/browser-use/browser-use) |
+| 浏览器自动化 `playwright-cli` | [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli) · `npx skills add microsoft/playwright-cli@playwright-cli` |
+| 反过度工程 `ponytail` | [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) |
+| Token 压缩 CLI `rtk` | [rtk-ai/rtk](https://github.com/rtk-ai/rtk) · `brew install rtk` |
 | PPT 演示文稿 | [ppt-agent](https://github.com/Akxan/ppt-agent-skill) |
 | 前端设计审美 | [taste-skill](https://github.com/Leonxlnx/taste-skill) |
 | UI/UX 设计参考 | [ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) |
-| 通用方法论（头脑风暴、计划、调试、核验） | [Superpowers](https://github.com/obra/superpowers) |
+| 通用方法论 Superpowers | [obra/superpowers](https://github.com/obra/superpowers) |
 
-跟 AI 说「安装 anysearch」或「安装 Superpowers」，AI 会先告知上游地址，获得你同意后再执行拉取，不会自动安装。
+跟 AI 说「安装 anysearch」或「安装 playwright-cli」，AI 会先告知上游地址，获得你同意后再执行拉取，不会自动安装。
 
 ---
 

@@ -24,18 +24,20 @@
 
 安装：`bash setup.sh`。
 
-## 外部技能安装铁律
+## 推荐技能（自用清单）安装铁律
 
-以下能力**不在本仓库**，需从上游安装。请求到这些能力时：先给地址 → 等用户明确同意 → 再安装。
+以下是维护者自用推荐能力，**不在本仓库**。请求到这些能力时：先给地址 → 等用户明确同意 → 再安装。
 
-| 技能 | 上游 / 下载 |
+| 技能 | 上游 / 安装 |
 |------|-------------|
 | `anysearch` | https://github.com/anysearch-ai/anysearch-skill · `npx skills add https://github.com/anysearch-ai/anysearch-skill --skill anysearch` |
 | `grill-me` | https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me · `npx skills add https://github.com/mattpocock/skills --skill grill-me` |
 | `frontend-design` | https://github.com/anthropics/skills/tree/main/skills/frontend-design · `npx skills add https://github.com/anthropics/skills --skill frontend-design` |
 | `skill-creator` | https://clawhub.ai （slug: `skill-creator`） |
 | `find-skills` | https://github.com/vercel-labs/skills/tree/main/skills/find-skills · `npx skills add https://github.com/vercel-labs/skills --skill find-skills` |
-| `browser-use` | https://github.com/browser-use/browser-use |
+| `playwright-cli` | https://github.com/microsoft/playwright-cli · `npx skills add microsoft/playwright-cli@playwright-cli` |
+| `ponytail` | https://github.com/DietrichGebert/ponytail · `npx skills add https://github.com/DietrichGebert/ponytail --skill ponytail` |
+| `rtk` | https://github.com/rtk-ai/rtk · `brew install rtk`；`rtk init -g --agent hermes`（其它 agent 见上游） |
 | `ppt-agent` | https://github.com/Akxan/ppt-agent-skill |
 | `taste-skill` | https://github.com/Leonxlnx/taste-skill |
 | `ui-ux-pro-max` | https://github.com/nextlevelbuilder/ui-ux-pro-max-skill |
@@ -43,7 +45,7 @@
 
 **三条规则：**
 
-1. 不得主动安装任何外部技能。
+1. 不得主动安装任何推荐/外部技能。
 2. 能力不在本仓库时，先说明上游并给出下载/安装地址。
 3. 必须获得用户明确同意后方可执行安装。
 
