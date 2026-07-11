@@ -1,138 +1,93 @@
 # Hermes Executor Mode
 
-Detailed two-session workflow for Hermes Agent Loop.
+只有用户在 PLAN 明确要求 Hermes-native 执行时使用本模式。固定角色仍只有两个：父 Hermes 负责编排与 checker；一个独立 persistent Hermes worker session 是 maker。
 
-## Architecture
+| 角色 | 负责 | 禁止 |
+| --- | --- | --- |
+| worker / maker | ACT、LOOP、OPTIMIZE_NOW | verdict、issue closure、写 `review.md` |
+| 父 Hermes / checker | PLAN、OBSERVE、AUDIT、VERIFY、prompts、OPTIMIZE、FINAL_VERIFY、DELIVER | 修改交付物 |
 
-Hermes orchestrates two independent `hermes -z` sessions:
+worker 必须使用 `hermes chat -Q -q`；`-z` one-shot 路径不能恢复旧 session。`delegate_task` 只用于按需辅助任务，不能充当 persistent maker。
 
-- **Worker session**: executes ACT, LOOP fixes, OPTIMIZE changes. Persistent via `--resume`.
-- **Checker session**: performs AUDIT, VERIFY, FINAL_VERIFY. Persistent via `--resume`.
+公共 schema、gate 与阶段路由见 `protocol.md`。
 
-Both sessions are Hermes instances with their own context. The worker never sees the checker's reasoning; the checker never sees the worker's internal process. Communication flows through `state.md` and `review.md` files, orchestrated by the Hermes parent.
+## 1. Session ID 捕获规则
 
-**Do NOT use `delegate_task` to create these sessions.** `delegate_task` spawns one-shot subagents — the conversation ends when the task completes, and the session cannot be resumed with `--resume`. When the checker finds a gap and LOOP fires, you need to send the fix instruction to the *same* worker that has all the prior context. A `delegate_task` subagent is already gone. Use `terminal` to invoke `hermes -z --pass-session-id` directly, capture the session ID, and use `--resume "$SESSION_ID"` for all subsequent calls. This is non-negotiable — without persistent sessions, LOOP/VERIFY/OPTIMIZE cannot function.
+quiet query 将最终回复写到 stdout，并在 stderr 末尾输出：
 
-## Session Lifecycle
-
-### Worker — First Call (ACT)
-
-```bash
-hermes -z "You are the worker Agent. Read state/<slug>/state.md for the contract.
-Execute only the contracted steps. Do not expand scope.
-Record what you did and any test output." \
-  --pass-session-id
+```text
+session_id: <exact-id>
 ```
 
-Capture the session ID from output. Record in `state.md` as `worker_session`.
+每次首次调用和 resume 都必须：
 
-### Checker — First Call (AUDIT)
+1. 单独捕获 stderr。
+2. 只匹配 `^session_id: `，并确认命令 exit code 为 0、ID 非空。
+3. 把返回 ID 写回 `maker_session`；压缩可能产生新的 continuation ID。
+4. 删除本次捕获用临时文件，保留调用结果与 ID 变化记录。
 
-```bash
-hermes -z "You are the independent checker Agent. Review only; do not modify deliverables.
-Read state/<slug>/state.md and review.md (if present).
-First check PLAN quality. On later rounds, close old issues before checking new ones.
-Run all six gates: contract / completeness / correctness / reuse_existing / budget / evidence_regression.
-Append AUDIT section to state/<slug>/review.md.
-Decision: PROCEED_TO_VERIFY | CONTINUE_FIX | ESCALATE_REPLAN | STOP_WITH_BLOCKER." \
-  --pass-session-id
-```
+不要用 `--continue`、`hermes sessions list`、最新 session 或本地目录猜 ID。
 
-Capture the session ID from output. Record in `state.md` as `checker_session`.
-
-### Subsequent Calls (LOOP, VERIFY, OPTIMIZE, FINAL_VERIFY)
-
-Worker (for fixes and optimization execution):
-```bash
-hermes -z "<fix_instruction or optimize_instruction>" \
-  --resume "$WORKER_SESSION_ID"
-```
-
-Checker (for re-audit, verify, final verify):
-```bash
-hermes -z "<audit / verify / final_verify instruction>" \
-  --resume "$CHECKER_SESSION_ID"
-```
-
-`--resume` restores full conversation history. The worker remembers prior ACT context, files read, and changes made. The checker remembers prior audit rounds, issue closures, and verdicts.
-
-### OPTIMIZE Prompt (checker)
-
-When resuming the checker for OPTIMIZE, include this instruction so the checker loads the new format instead of relying on prior AUDIT context:
+## 2. 启动 Worker
 
 ```bash
-hermes -z "Continue as checker Agent. Now switch perspective: stop verifying correctness, start hunting for optimization.
-Read references/protocol.md OPTIMIZE_TRIAGE format before triage.
-Pre-scan changed files AND logically adjacent files in the same skill/module directory.
-Append an OPTIMIZE section to state/<slug>/review.md using the seven-dimension block format.
-All seven dimensions required; NO_CANDIDATE needs a one-line reason." \
-  --resume "$CHECKER_SESSION_ID"
-```
-
-In CC executor mode Hermes is the checker itself, so this prompt is not sent externally — Hermes reads `references/protocol.md` OPTIMIZE_TRIAGE format directly when entering OPTIMIZE_LOOP.
-
-### Cleanup
-
-Do NOT clear session IDs on DELIVER — only the user can authorize cleanup of `state.md`.
-
-## Toolset Guidance
-
-Hermes `-z` inherits the profile's configured toolsets. Control scope with `-t` / `--toolsets`:
-
-### Worker (needs full execution capability)
-
-```bash
-hermes -z "<instruction>" \
-  -t terminal,file,web \
-  --pass-session-id
-```
-
-### Checker (needs read + test execution, not write to deliverables)
-
-```bash
-hermes -z "<instruction>" \
+WORKER_ERR=$(mktemp)
+hermes chat -Q -q "你是 worker/maker。读取 state/<slug>/state.md 与所列技能。
+只执行已确认的步骤，不扩大范围，不审查自己的工作，也不要写 review.md。
+完成后报告实际 diff、验证输出和剩余风险。" \
   -t terminal,file \
-  --pass-session-id
+  --max-turns 10 \
+  2>"$WORKER_ERR"
+WORKER_EXIT=$?
+cat "$WORKER_ERR" >&2
+WORKER_ID=$(sed -n 's/^session_id: //p' "$WORKER_ERR" | tail -n 1)
+rm -f "$WORKER_ERR"
+test "$WORKER_EXIT" -eq 0 && test -n "$WORKER_ID"
 ```
 
-The checker's prompt instruction ("do not modify deliverables") is the primary guard. Toolset restriction is secondary — the checker needs `terminal` to run verification commands and `file` to read evidence and write `review.md`.
+把 `WORKER_ID` 写入 `maker_session`，记录 `maker_transport: hermes_chat`、`maker_generation: 1` 和实际调用结果。
 
-## Session ID Discovery
+完整 handoff 必须包含绝对工作目录、过程目录、交付物、checklist、停止条件和必须加载的技能。
 
-`--pass-session-id` includes the session ID in the agent's system prompt. After the call completes, find the session ID:
+默认只启用 `terminal,file`。若合约确需 web 或其它 toolset，必须在 USER_GATE 中明确；无人值守时需要 `--yolo` 也必须先有同等明确授权，不要静默添加。
+
+## 3. 父 Hermes 审查
+
+worker 返回后，父 Hermes 必须亲自读取实际 diff、文件、日志和命令输出，再按 `protocol.md`：
+
+1. 把 AUDIT、VERIFY、OPTIMIZE 和 FINAL_VERIFY 追加到 `review.md`。
+2. 为每个 issue 写独立 `fix_prompt`，记录 SHA-256 后原样发送给 worker。
+3. 独立重跑 checklist；worker 自述不能替代证据或 PASS。
+4. 不修改交付物，也不让 worker 判定 issue closure。
+
+## 4. 续轮
+
+父 Hermes 从 `review.md` 读取完整 prompt，记录 SHA-256，再原样发送：
 
 ```bash
-# Most recent session
-hermes sessions list 2>&1 | head -5
+hermes chat -Q -q "<verbatim fix_prompt 或 optimize_prompt>" \
+  -t terminal,file \
+  --max-turns 5 \
+  --resume "$WORKER_ID"
 ```
 
-Or capture from the output when `--pass-session-id` echoes it.
+每次 resume 都按第 1 节捕获 stderr，并用返回值更新 `maker_session`。不得改写、拼接、弱化或补全 prompt。
 
-## Evidence Capture
+worker 返回无法执行或证据错误时，父 Hermes 把反证写入 `appeal.md`，再以 checker 身份裁决；`CLARIFIED` 必须给完整 replacement prompt。
 
-After each worker or checker call:
+## 5. 按需辅助委派
 
-1. Read the stdout output
-2. Read the actual deliverable files (do not trust self-report)
-3. Run verification commands yourself (Hermes parent executes, not the worker)
-4. Record all evidence in `state.md`
+父 Hermes 可在任务能从并行或专长分工中实际受益时调用 `delegate_task`，无需为每次普通委派另行确认；更高优先级指令、外部动作和不可逆操作仍照常受限。
 
-## Comparison with CC Executor Mode
+- 只委派独立、有限、可验证的一次性任务。
+- delegate agent 不替代 persistent maker 或 checker，不参与 AUDIT / VERIFY。
+- 优先委派只读探索、测试、日志分析和资料核验；禁止与 worker 并发修改重叠文件。
+- 把 handoff、结果和父 Hermes 的独立验证写入 `state.md`；self-report 不能直接作为证据。
+- 若 delegate agent 修改隔离的子交付物，必须在 OBSERVE 前由 maker-side 完成整合，并纳入父 Hermes 的完整审查。
 
-| Aspect | Hermes executor | CC executor |
-|-------|----------------|-------------|
-| Sessions | Two (worker + checker) | One CC (maker) + Hermes (checker) |
-| Maker-checker | Fully separated — two hermes sessions | CC is maker; Hermes is checker (Hermes never touches deliverables) |
-| Session ID | Auto-generated, captured via `--pass-session-id` | UUID, pre-assigned via `--session-id` |
-| Turn limit | None — Hermes decides when to stop | `--max-turns` (ACT 10, LOOP/OPTIMIZE 5) |
-| Tool control | `-t` / `--toolsets` | `--allowedTools` |
-| Multi-round memory | Both sessions persist via `--resume` | Single session persists via `--resume` |
+## 6. 预算与恢复
 
-## Prompt Cache Considerations
-
-`--resume` reloads full conversation history as prefix. Two sessions means two independent cache chains:
-
-- Worker cache: benefits from tight ACT → LOOP → OPTIMIZE loops
-- Checker cache: benefits from tight AUDIT → VERIFY → FINAL_VERIFY loops
-- Cross-session gaps (worker finishes, then checker starts) do not affect each other's cache
-- Long gaps (user confirmation between phases) may exceed cache TTL for either session
+- 常规预算：worker ACT 10 turns，LOOP / OPTIMIZE_NOW 5。父 Hermes 的审查成本由合约停止护栏控制。
+- worker 不可恢复且排除临时 provider / auth / quota 故障：保留旧 ID，递增 `maker_generation`，把合约、真实 diff、已执行 prompts 和未决工作交给 replacement worker。
+- 父 Hermes 从 `state.md` 与 `review.md` 恢复 checker 进度，不创建 checker session。
+- DELIVER 时保留 maker session ID 与过程文件；只有用户能授权清理。

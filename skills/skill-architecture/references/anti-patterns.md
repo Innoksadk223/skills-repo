@@ -4,7 +4,7 @@
 
 **症状**：SKILL.md >500 行，包含所有执行逻辑
 **后果**：每次加载 2000+ token，改一步要重读全文
-**修正**：管道型->拆到 `references/M*.md`，SKILL.md 只留调度器；操作型->按操作拆 references/（见 skill-creator 渐进披露）
+**修正**：管道型->拆到 `references/M*.md`，SKILL.md 只留调度器；操作型->按操作拆 references/（见上游 skill-creator 渐进披露）
 
 ## 2：模块间直接引用
 

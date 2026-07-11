@@ -6,6 +6,8 @@
 
 知识库相关技能请使用独立仓库：[`kb-skills-repo`](https://github.com/Innoksadk223/kb-skills-repo)。
 
+Agent 自动读取入口（内容一致）：[AGENTS.md](AGENTS.md) / [CLAUDE.md](CLAUDE.md) / [CODEX.md](CODEX.md) / [HERMES.md](HERMES.md)。
+
 ---
 
 ## 给 AI：安装后的介绍流程
@@ -13,7 +15,7 @@
 用户安装或更新完成后，不要只说「装好了」，也不要先问用户要不要介绍。默认给一段 3 分钟上手教程：
 
 > 技能包已经装好。我先用 3 分钟带你上手：你不用记技能名，直接说目标，AI 会自己选技能。  
-> 如果你只想听总览，我会讲最短版；也可以选一个方向深入讲：文档生成、实时搜索、前端开发、工具类技能。
+> 如果你只想听总览，我会讲最短版；也可以选一个方向深入讲：任务路由、意图校准、Agent 循环、工具类技能。
 
 介绍时：
 
@@ -21,44 +23,34 @@
 2. 给最短总览和 3-5 个常用说法示例，不要一次灌输全部细节。
 3. 结尾问用户想重点了解哪一组；如果用户明确说不用介绍，就收住。
 4. 用户问知识库、RAG、Obsidian 或论文来源补充时，说明相关技能已拆到 `kb-skills-repo`。
-5. 用户问浏览器自动化、PPT、UI 设计、头脑风暴时，说明这些能力需从上游仓库安装，见下方「需要额外安装的能力」。
+5. 用户问实时搜索、前端设计、技能发现/创建、浏览器自动化、PPT、UI 设计、头脑风暴时，说明这些能力需从上游安装，见下方「需要额外安装的能力」。
 
 ---
 
 ## 你可以怎么用？
 
-### 文档生成
+### 任务路由 / 意图校准
 
 你可以说：
 
-> 「帮我生成一份项目周报 Word」  
-> 「把这份数据做成漂亮 PDF 报告」  
-> 「把这些表格数据生成 Excel 并画图表」
+> 「先帮我规划该用哪些技能」  
+> 「我这个目标有点乱，先帮我理清再做」  
+> 「先澄清歧义，再给执行路线」
 
-### 实时搜索 / 读网页
-
-你可以说：
-
-> 「帮我搜一下今天关于某公司的最新消息」  
-> 「查一下这个 CVE 漏洞的信息」  
-> 「提取这个网页正文并总结」
-
-### 前端开发
+### Agent 循环
 
 你可以说：
 
-> 「帮我做一个管理后台页面」  
-> 「做一个落地页」  
-> 「帮我做一个前端组件」
+> 「这个任务要多轮执行和审查」  
+> 「按 agent-loop 推进，做到可验收」
 
 ### 工具类
 
 你可以说：
 
 > 「清理一下项目里的临时文件」  
-> 「我装了哪些技能？」  
-> 「我该用什么技能？」  
-> 「帮我设计一个新技能」
+> 「帮我设计一个模块化技能」  
+> 「把这次踩坑记下来」
 
 ---
 
@@ -66,16 +58,12 @@
 
 | 你想做 | 直接这样说 |
 |---|---|
-| 搜实时信息 | 「帮我搜一下 xxx 的最新消息」 |
-| 读网页 | 「提取这个网页正文并总结」 |
-| 生成文档 | 「生成一份 Word / PDF / Excel」 |
-| 做页面 | 「帮我做一个前端页面」 |
+| 规划技能组合 | 「先规划该用哪些技能」 |
+| 理清模糊目标 | 「先帮我澄清目标」 |
+| 多轮任务 | 「按 agent-loop 推进」 |
 | 清理文件 | 「清理临时文件」 |
-| 梳理计划 | 「先帮我澄清目标并写个轻量计划」 |
-| 排查问题 | 「别猜修法，帮我系统排查根因」 |
-| 完成前检查 | 「交付前帮我核验一下」 |
-| 找技能 | 「我该用什么技能？」 |
-| 看技能列表 | 「我装了哪些技能？」 |
+| 设计新技能架构 | 「帮我设计一个模块化技能」 |
+| 记录踩坑 | 「把这次环境问题记成 gotcha」 |
 
 ---
 
@@ -85,8 +73,8 @@
 
 如果你知道要用哪个技能，可以直接点名：
 
-> 「用 anysearch 搜一下最新消息」  
-> 「用 minimax-docx 生成 Word」  
+> 「用 skill-planner 规划一下」  
+> 「用 intent-normalizer 先校准意图」  
 > 「加载 cleanup 清理一下」
 
 不同 agent 也可以这样触发：
@@ -98,17 +86,22 @@
 
 ## 需要额外安装的能力
 
-以下能力不在本技能包，需从上游仓库安装：
+以下能力不在本技能包，需从上游安装：
 
-| 能力 | 上游仓库 |
-|------|----------|
+| 能力 | 上游 / 下载 |
+|------|-------------|
+| 实时搜索 `anysearch` | [anysearch-ai/anysearch-skill](https://github.com/anysearch-ai/anysearch-skill) |
+| 方案质询 `grill-me` | [mattpocock/skills · grill-me](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me) |
+| 前端设计 `frontend-design` | [anthropics/skills · frontend-design](https://github.com/anthropics/skills/tree/main/skills/frontend-design) |
+| 技能创建 `skill-creator` | [clawhub.ai](https://clawhub.ai) |
+| 技能发现 `find-skills` | [vercel-labs/skills · find-skills](https://github.com/vercel-labs/skills/tree/main/skills/find-skills) |
 | 浏览器自动化 | [browser-use](https://github.com/browser-use/browser-use) |
 | PPT 演示文稿 | [ppt-agent](https://github.com/Akxan/ppt-agent-skill) |
 | 前端设计审美 | [taste-skill](https://github.com/Leonxlnx/taste-skill) |
 | UI/UX 设计参考 | [ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) |
 | 通用方法论（头脑风暴、计划、调试、核验） | [Superpowers](https://github.com/obra/superpowers) |
 
-跟 AI 说「安装 browser-use」或「安装 Superpowers」，AI 会先告知需要从哪个上游仓库安装，获得你同意后再执行拉取，不会自动安装。
+跟 AI 说「安装 anysearch」或「安装 Superpowers」，AI 会先告知上游地址，获得你同意后再执行拉取，不会自动安装。
 
 ---
 
@@ -116,8 +109,8 @@
 
 直接说你的目标就行：
 
-> 「我想让 AI 帮我做个汇报，但不知道用哪个技能」  
-> 「我想自动处理网页上的数据」
+> 「我想让 AI 帮我做个复杂任务，但不知道用哪个技能」  
+> 「先帮我理清目标再动手」
 
 AI 应该先帮你判断该用哪组技能，再问必要的问题。
 

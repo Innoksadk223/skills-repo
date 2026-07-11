@@ -1,4 +1,6 @@
-# AGENTS.md
+# CLAUDE.md
+
+> Claude Code 项目入口。正文与 [AGENTS.md](AGENTS.md) 同步。
 
 本仓库是 Inno's Skills Pack，为 **Claude Code**、**Codex**、**Hermes** 提供通用技能。
 

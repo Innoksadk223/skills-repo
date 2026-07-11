@@ -1,6 +1,6 @@
 # 调度器模板
 
-> 复制到你的 SKILL.md，替换 `{...}` 占位符。YAML frontmatter 由 skill-creator 负责。
+> 复制到你的 SKILL.md，替换 `{...}` 占位符。YAML frontmatter 由上游 skill-creator 负责（clawhub.ai）。
 
 ```markdown
 # {技能名}

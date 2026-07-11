@@ -5,22 +5,18 @@ REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILLS_FLAT="$REPO_DIR/skills"
 AGENTS_SKILLS_DIR="${AGENTS_SKILLS_DIR:-$HOME/.agents/skills}"
 
-GROUP_KEYS=(minimax search tools)
+GROUP_KEYS=(tools)
 GROUP_DESC=(
-    "[Minimax] document generation: DOCX, PDF, XLSX"
-    "[Search] AnySearch real-time web/vertical search"
-    "[Tools] agent-loop, skill-planner, cleanup, skill tools, frontend, wiki"
+    "[Tools] agent-loop, skill-planner, cleanup, architecture, intent, gotcha"
 )
 
 RECOMMENDED_SKILLS=(
     hermes-agent-loop
-    anysearch
     cleanup
-    find-skills
-    skill-creator
     skill-architecture
     skill-planner
     capture-gotcha
+    intent-normalizer
 )
 
 PRESET=""
@@ -61,10 +57,10 @@ Inno's Skills Pack 安装器
   bash setup.sh --preset all
     安装仓库内全部技能。
 
-  bash setup.sh --target codex --groups tools,search
+  bash setup.sh --target codex --groups tools
     只给 Codex 安装指定分组。
 
-  bash setup.sh --target codex --skills agent-loop,anysearch
+  bash setup.sh --target codex --skills hermes-agent-loop,cleanup
     只安装指定技能。
 
   bash setup.sh --update-only
@@ -78,8 +74,8 @@ Inno's Skills Pack 安装器
   --target codex|claude|hermes|all
                               安装目标，可用逗号多选
   --dir PATH                  自定义 skills 目录；需和单个 --target 搭配
-  --groups LIST               分组列表，如 tools,search；也支持数字
-  --skills LIST               技能名列表，如 agent-loop,anysearch
+  --groups LIST               分组列表，如 tools；也支持数字
+  --skills LIST               技能名列表，如 hermes-agent-loop,cleanup
   --update-only               只更新已有技能
   --dry-run                   只预览，不写入
   --yes, -y                   自动确认
@@ -131,9 +127,7 @@ detect_agents() {
 
 skill_group() {
     case "$1" in
-        minimax-*|pptx) echo "minimax" ;;
-        anysearch) echo "search" ;;
-        cleanup|find-skills|grill-me|skill-creator|skill-architecture|skill-planner|agent-loop|capture-gotcha|intent-normalizer|frontend-design|wiki-to-okf|cc-agent-loop|codex-agent-loop|hermes-agent-loop) echo "tools" ;;
+        cleanup|skill-architecture|skill-planner|agent-loop|capture-gotcha|intent-normalizer|cc-agent-loop|codex-agent-loop|hermes-agent-loop) echo "tools" ;;
         *) echo "" ;;
     esac
 }
@@ -351,7 +345,7 @@ choose_mode_interactive() {
             if [ -n "$group_choice" ]; then
                 GROUP_ARG="$group_choice"
             else
-                read -p "输入技能名（例如 agent-loop,anysearch）: " skill_choice
+                read -p "输入技能名（例如 hermes-agent-loop,cleanup）: " skill_choice
                 [ -n "$skill_choice" ] || die "自定义安装至少要选择分组或技能"
                 SKILL_ARG="$skill_choice"
             fi

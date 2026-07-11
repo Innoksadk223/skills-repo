@@ -1,6 +1,6 @@
 ---
 name: skill-architecture
-description: "Modular skill architecture design system with pipeline modules, state-based resumability, and loose coupling via state/ file IPC. Use when creating, updating, or refactoring skills that need: (1) multi-step pipelines with checkpoint/resume, (2) module decomposition with file-based communication between steps, (3) coordination with skill-creator during the edit phase, or (4) anti-pattern diagnosis in existing modular skills."
+description: "Modular skill architecture design system with pipeline modules, state-based resumability, and loose coupling via state/ file IPC. Use when creating, updating, or refactoring skills that need: (1) multi-step pipelines with checkpoint/resume, (2) module decomposition with file-based communication between steps, (3) coordination with external skill-creator during the edit phase, or (4) anti-pattern diagnosis in existing modular skills."
 ---
 
 # 技能架构设计原则
@@ -48,7 +48,7 @@ state 格式统一：结构化数据用 `.json`，长文本用 `.md`，模板保
 | 场景 | 模式 | 何时不用本技能 |
 |------|------|---------------|
 | 线性管道，步骤有先后依赖，需断点续跑 | **管道模块**（本技能） | -- |
-| 操作独立，无前后依赖，按需加载 | **渐进披露** | 用 skill-creator |
+| 操作独立，无前后依赖，按需加载 | **渐进披露** | 用上游 `skill-creator`（clawhub.ai） |
 | ≤3 步，SKILL.md <200 行 | **不拆** | 直接写 |
 
 **不需要管道模块的信号**：操作之间无前后依赖、不需要断点续跑、SKILL.md 短且稳定。
@@ -57,8 +57,8 @@ state 格式统一：结构化数据用 `.json`，长文本用 `.md`，模板保
 
 | 本技能负责 | 不负责（交给谁） |
 |-----------|----------------|
-| 模块边界、耦合/内聚、可维护性 | 创建流程 init->edit->package（skill-creator） |
-| 调度器写法、模块契约、断点设计 | 渐进披露拆分、YAML frontmatter（skill-creator） |
+| 模块边界、耦合/内聚、可维护性 | 创建流程 init->edit->package（上游 skill-creator） |
+| 调度器写法、模块契约、断点设计 | 渐进披露拆分、YAML frontmatter（上游 skill-creator） |
 | 反模式诊断 | 验证方法论、TDD、SDO（writing-skills） |
 
 ## 场景入口

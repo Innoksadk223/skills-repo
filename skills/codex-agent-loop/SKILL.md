@@ -1,187 +1,104 @@
 ---
 name: codex-agent-loop
-description: "Use when work has high cost of silent errors, repeated correction, resumable review state, strict evidence requirements, or an explicit /agent-loop request. Separates doing from judging with independent review, persistent session-based resumability, and bounded optimization. This is the Codex version."
+description: "Use when a Codex task needs independent maker-checker review, evidence-backed verification, issue-specific fix prompts, repeated correction, resumable review state, bounded optimization, or an explicit /agent-loop request. Keep the primary Codex responsible for planning, changes, and delivery while one native audit subagent is reused across AUDIT, VERIFY, OPTIMIZE, and FINAL_VERIFY."
 ---
 
 # Codex Agent Loop
 
-Separate doing from judging. The primary Codex handles PLAN, ACT, fixes, and delivery. An audit subagent — spawned within the same Codex session as a child thread — reviews evidence, writes verdicts, verifies readiness, and controls safe optimization.
+把执行与裁判分开。主 Codex 负责 PLAN、ACT、修正和交付；独立审查 agent 负责判定、复验、为每个 issue 编写可直接执行的 `fix_prompt`，并控制优化分流。
 
-Use existing planning first: Plan mode, `writing-plans`, or another suitable planning skill. Auxiliary Q&A-type skills are not excluded from PLAN — use them to stress-test assumptions, explore alternatives, or sharpen the contract before locking it in. If no usable plan exists, write the minimal contract before changing deliverables.
+把本技能当作当前 Codex 根任务内的原生 multi-agent 工作流，不要把 child agent 当作独立 CLI session。
 
-## Use
+## 加载与状态
 
-When independent review is needed before delivery, a failed change would be costly/subtle/hard to notice, the user asks for `/agent-loop` or multi-round review, or work may need recovery after interruption. Skip for one-shot answers, tiny edits, or tasks where a normal check is enough.
+先复用已有 Plan mode、`writing-plans` 或其它可用计划。没有可执行计划时，先写最小合约。
 
-## State
+1. 修改交付物前，把 `references/contract-template.md` 复制到 `state/<slug>/state.md`。
+2. 向用户展示目标、非目标、假设、停止护栏和 checklist；必须取得显式确认。
+3. 首次 AUDIT 前完整读取 `references/protocol.md`，后续阶段按其中格式续跑。
 
-| File | Owner | Purpose |
+| 文件 | 所有者 | 用途 |
 | --- | --- | --- |
-| `state.md` | primary Codex | contract, progress, evidence, session tracker, recovery, baseline, delivery notes |
-| `review.md` | audit subagent | audit, appeals, verify, optimize triage, final verdict |
-| `inbox.md` | primary Codex | optional unresolved items across tasks |
+| `state/<slug>/state.md` | 主 Codex | 合约、进度、证据、agent handle、恢复、基线、交付摘要 |
+| `state/<slug>/review.md` | 审查 agent | AUDIT、appeal 裁决、VERIFY、OPTIMIZE、FINAL_VERIFY |
+| `state/<slug>/appeal.md` | 主 Codex | 可选的证据化申诉 |
+| `state/inbox.md` | 主 Codex | 可选的跨任务未决项 |
 
-Create `state/<slug>/state.md` before changing deliverables. Use `references/contract-template.md` for the template. Load `references/protocol.md` for exact AUDIT/VERIFY/OPTIMIZE formats, spawn templates, and recovery routing.
+过程文件只负责路由，不能替代真实 diff、命令输出、日志或产物。
 
-## Workflow
-
-```
-PLAN → USER_GATE → ACT → OBSERVE
-                        │
-          ┌─────────────┘
-          ▼
-   ┌── AUDIT ←─────────────────┐
-   │    │ CONTINUE_FIX         │
-   │    ▼                      │
-   │  LOOP → ACT → OBSERVE ────┘
-   │    │ PROCEED_TO_VERIFY
-   │    ▼
-   │  VERIFY
-   │    │
-   │    ▼
-   │  BASELINE_LOCK
-   │    │
-   │    ▼
-   │  OPTIMIZE_LOOP ──────────┐
-   │    │ triage → execute    │
-   │    ▼                     │
-   └── AUDIT(re-verify) ──────┘
-        │ PROCEED
-        ▼
-   FINAL_VERIFY → DELIVER
-```
-
-两个审查循环：**正确性循环**（AUDIT → LOOP → ACT → AUDIT，修到无 issue）和 **优化循环**（OPTIMIZE_LOOP → AUDIT 复验，确认优化安全）。
-
-1. **PLAN**: reuse an existing plan when available; otherwise write `state.md` contract and checklist before deliverable changes. Present the contract to the user — goal, non-goals, assumptions, stop guardrails, checklist — and wait for explicit approval before ACT.
-2. **USER_GATE**: primary Codex must not proceed past PLAN until the user confirms the contract. No implicit approval.
-3. **ACT**: primary Codex executes only contracted work. If the checklist contains testable items (tests, lint, typecheck, build), run the corresponding verification commands and record raw output before handoff.
-4. **OBSERVE**: primary Codex reads and records real evidence — test output, diffs, logs, file contents — in `state.md` before handing off to audit. Do not rely on the ACT agent self-reported summary. If tests were run in ACT, record the exact commands and raw terminal output, not paraphrased results.
-5. **AUDIT**: spawn the audit subagent via natural language prompt within the Codex session. Record the session ID in `state.md` `audit_session`. The audit subagent checks plan quality first, then all six gates. Writes results to `review.md`.
-6. **LOOP**: primary Codex follows `CONTINUE_FIX` instructions or writes an evidence-backed appeal. If the audit subagent returns `ESCALATE_REPLAN` (stall detected — same issue recurs across rounds), primary Codex drafts a contract update (re-decompose steps, adjust scope) and presents it to the user — the contract must not be modified without user confirmation. After user approval, re-enter ACT. Two consecutive `ESCALATE_REPLAN` without progress → report to user and stop.
-7. **VERIFY**: audit subagent independently re-executes verification commands for each checklist item. Records the actual command and raw output in `review.md`.
-8. **BASELINE_LOCK**: primary Codex records a baseline without changing deliverables.
-9. **OPTIMIZE_LOOP**: mandatory triage after baseline. Pre-scan changed + adjacent files (pre-scan evidence gate applies — see Rules). Triage across four dimensions (see `references/protocol.md`); each dimension gets its own block with `NO_CANDIDATE` + one-line reason if none. **Primary Codex zero-candidate review**: reviews `OPTIMIZE_TRIAGE` only when ALL four report `NO_CANDIDATE`; insufficient reasons → reject and re-scan. Primary Codex executes `OPTIMIZE_NOW`, audit subagent re-verifies. Present `SUGGEST_TO_USER` to user. Skip only when zero candidates and review passes.
-10. **FINAL_VERIFY**: audit subagent confirms baseline integrity and optimization stop reason.
-11. **DELIVER**: primary Codex summarizes evidence and presents the deliverable. Session IDs and process files must not be modified or removed without user confirmation — the user decides when to clean up.
-
-## Review
-
-`review.md` must decide `PROCEED_TO_VERIFY`, `CONTINUE_FIX`, `ESCALATE_REPLAN`, or `STOP_WITH_BLOCKER`.
-
-All six gates must pass:
-
-- `contract`: goal, non-goals, assumptions, checklist, handoff, and recovery are checkable.
-- `completeness`: the result satisfies the user goal without scope expansion.
-- `correctness`: logic, edge cases, structure, and necessary simplicity are acceptable.
-- `reuse_existing`: standard library, platform features, project code, or installed dependencies were preferred.
-- `budget`: time, tools, agent calls, continuation value, and stop signals are recorded.
-- `evidence_regression`: evidence exists and no known behavior was broken.
-
-Second and later audits must close old issues first, then rerun all six gates.
-
-## Rules
-
-- **Maker-checker split.** The Codex thread that produces the output must not be the thread that grades it. The audit subagent is a separate agent thread with its own context. Self-review is not an audit.
-- **audit_session tracking.** Record the Codex session ID in `state.md` `audit_session` at first spawn. The audit subagent runs as a child thread within this session — use `codex exec resume "$AUDIT_SESSION_ID"` to resume the session after interruption.
-- Primary Codex may provide templates and handoff context, but must not write audit findings or final verdicts.
-- Oral PASS is FAIL. Evidence must be file paths, diff summaries, command output, or deliverable paths.
-- Scope control is part of strictness. Unrequested features go to notes or `state/inbox.md`, not blocking issues.
-- After `BASELINE_LOCK`, pre-scan changed + adjacent files in the skill/module directory, record the file list as evidence, then triage across four dimensions (see `references/protocol.md`); each dimension gets its own block in `OPTIMIZE_TRIAGE`. Pre-scan evidence is mandatory — if the scanned file list is empty or missing, reject and re-scan. Primary Codex reviews `OPTIMIZE_TRIAGE` only when ALL four dimensions report `NO_CANDIDATE`; insufficient reasons → reject and re-scan. Execute `OPTIMIZE_NOW` only when gain >=5%, risk is low, no regression, no new deps, no user approval needed. `enrichment` dimension candidates bypass `OPTIMIZE_NOW` — always use `SUGGEST_TO_USER` with user confirmation required.
-- On `DELIVER`, summarize key evidence. Do not delete process files or modify `state.md` without user confirmation. Keep `state/inbox.md` when unresolved items remain.
-
-## Codex Subagent Management
-
-### Audit Subagent Spawn
-
-Codex spawns subagents via natural language prompt — no CLI flag needed. Within the Codex session, instruct:
+## 工作流
 
 ```text
-Spawn a subagent to audit the work. Use the "reviewer" custom agent if available.
-
-The audit subagent must:
-- Read state/<slug>/state.md and review.md (if present)
-- Check PLAN quality first, then run all six gates
-- Append AUDIT section to state/<slug>/review.md
-- Decision: PROCEED_TO_VERIFY | CONTINUE_FIX | ESCALATE_REPLAN | STOP_WITH_BLOCKER
-- Do NOT modify deliverable files — only write to review.md
+PLAN → USER_GATE → ACT → OBSERVE → AUDIT
+                                      │
+                    CONTINUE_FIX ─────┤
+                    ESCALATE_REPLAN ──┤
+                    PROCEED_TO_VERIFY ▼
+                                   VERIFY
+                                      ▼
+                               BASELINE_LOCK
+                                      ▼
+                  OPTIMIZE → AUDIT(re-verify)
+                                      ▼
+                              FINAL_VERIFY → DELIVER
 ```
 
-After spawn, capture the session ID from Codex output or `~/.codex/sessions/`. Record it in `state.md` `audit_session`.
+每个环节完成后在 `state.md` 的 `loop_todo` 对应项打勾；`loop_todo` 是 `stage` 的可视化防漏，冲突时以 `stage` 为准。
 
-### Custom Audit Agent (recommended)
+1. **PLAN / USER_GATE**：锁定可检查的 goal、non-goals、assumptions、checklist、handoff、预算和停止条件。未获用户明确确认，不得进入 ACT。
+2. **ACT / OBSERVE**：只做已确认范围；主 Codex 亲自读取并记录 diff、文件、日志和验证命令原始输出，不采信执行者口头总结。
+3. **AUDIT**：首次审查只生成一个独立 agent，使用 `fork_turns="none"`，让它从状态文件读取上下文并写 `review.md`。
+4. **LOOP**：reviewer 为每个 issue 生成独立 `fix_prompt`；主 Codex 按 execution order 原样执行或提交 appeal，不得代写、弱化或合并约束。
+5. **VERIFY**：复用同一审查 agent，独立重跑每个 checklist 的验证命令。
+6. **BASELINE_LOCK**：VERIFY 通过后，由主 Codex 记录文件、hash、回滚入口和证据；不得修改交付物。
+7. **OPTIMIZE**：复用同一审查 agent 先写 `optimize_todo`（四维度 + 已知候选逐条登记），再执行四维预扫描并逐项关闭 todo，为 `OPTIMIZE_NOW` 生成 `optimize_prompt`。只自动执行低风险、无新依赖、无需确认且预期收益不少于 5% 的候选；`enrichment` 一律先问用户。
+8. **FINAL_VERIFY / DELIVER**：让同一审查 agent 确认基线完整和停止理由；主 Codex 再汇总交付。
 
-Define a dedicated audit agent in `~/.codex/agents/reviewer.toml`:
+## 原生 Agent 生命周期
 
-```toml
-name = "reviewer"
-description = "Independent audit agent for agent-loop review. Read-only."
-model = "gpt-5.4"
-model_reasoning_effort = "high"
-sandbox_mode = "read-only"
-developer_instructions = """
-Review code like an owner.
-Prioritize correctness, security, behavior regressions, and missing test coverage.
-Write findings only to review.md. Do not modify deliverable files.
-"""
-```
+优先调用当前 Codex host 暴露的同义原生工具；工具名可能带 `collaboration.` namespace。
 
-`sandbox_mode = "read-only"` prevents the audit subagent from modifying deliverables at the sandbox level — stronger than prompt-only restriction.
+| 动作 | 工具 | 规则 |
+| --- | --- | --- |
+| 首次创建 reviewer | `spawn_agent` | 只调用一次；canonical task name 必记，agent ID 仅在 host 实际返回时选记 |
+| 无进行中 turn 后进入下一阶段 | `followup_task` | 对 idle / completed 的同一 agent 触发新 turn |
+| agent 正在运行时补充或纠偏 | `send_message` | 只投递消息，不把它当成新 turn |
+| 等待 agent 更新 | `wait_agent` | 使用有界等待；返回的是通知，不是审查证据 |
+| 查询与恢复 | `list_agents` | 用已记录 handle 判断 agent 是否仍可达 |
+| 停止当前 agent turn | `interrupt_agent` | 中断后仍可用 `followup_task` 复用该 agent |
 
-### Subagent Steering
+- 直接调用 agent 工具；不要把它们包进 shell、`functions.exec` 或其它工具调用。
+- 默认把 `spawn_agent` 返回的 canonical task name 作为 target；仅在 host 确实返回且后续工具接受时使用 agent ID，绝不猜测。
+- 不要为每个阶段新建 reviewer，也不要用 `create_thread`、`fork_thread`、`codex exec resume`、`--last` 或扫描 `~/.codex/sessions/` 控制 child agent。
+- `wait_agent` 返回后，亲自读取 `review.md` 和实际证据；agent 的 final summary 本身不是 PASS。
+- agent 共享当前工作区；禁止主 Codex 与 reviewer 并发写同一文件，禁止 reviewer 修改交付物。
 
-Use `/agent` in the CLI to switch between the primary thread and the audit subagent thread. Ask Codex directly to steer the subagent, stop it, or close completed threads.
+## 审查硬规则
 
-### Session Resume
+- 保持 maker-checker split：产出交付物的 agent 不得给自己判定 PASS。
+- 让 reviewer 只写 `review.md`；若实际 sandbox 为只读，允许主 Codex 原样转存 reviewer 返回的完整审查块，但必须记录 `primary_verbatim`、内容 hash，且不得编辑结论。
+- 不要声称 custom agent 的 `sandbox_mode` 一定覆盖父任务实时权限；subagent 继承父任务工具和 live runtime overrides，先以实际权限为准。
+- 运行六个 gate：`contract`、`completeness`、`correctness`、`reuse_existing`、`budget`、`evidence_regression`。
+- 第二轮及以后先关闭旧 issue，再重跑全部六个 gate。
+- 每个阻塞 issue 必须有唯一 ID、证据、`fix_instruction` 和独立 `fix_prompt`；prompt 必含目标、证据、必改、禁改、验证和完成回报。
+- `CLARIFIED` 必须由 reviewer 输出完整 replacement prompt；主 Codex 不得自行澄清。
+- 把范围外建议放进 notes 或 `state/inbox.md`，不得伪装成阻塞项。
+- 需要测试、lint、typecheck 或 build 时，在 ACT 记录输出，并在 VERIFY 由 reviewer 独立重跑。
+- 本技能允许主 Codex 根据任务需要派出辅助 agent；只委派独立、有限、可验证的一次性任务，不让它参与 AUDIT / VERIFY、替代 reviewer 或与其它 agent 并发修改重叠文件。
+- 口头 PASS 视为 FAIL；每个判定必须指向文件、diff、命令输出、日志或产物。
 
-If the Codex session is interrupted, resume with the explicit session ID:
+## 恢复
 
-```bash
-codex exec resume "$AUDIT_SESSION_ID" "Continue the agent-loop workflow."
-```
+先读 `state.md`、`review.md`、`appeal.md` 和 `state/inbox.md` 中实际存在的文件，再按 `references/protocol.md` 路由。
 
-`resume "$AUDIT_SESSION_ID"` restores the full conversation history including all subagent threads. The session ID is stored under `~/.codex/sessions/`.
+- 当前根任务内：只用 `audit_task` 的 canonical prefix 调用 `list_agents`；可达就复用。
+- agent 正在运行：等待或用 `send_message` 纠偏；agent 无进行中 turn（如 idle / completed）：用 `followup_task` 进入下一阶段。
+- handle 不可达：记录 `UNREACHABLE` 和原因，递增 `audit_generation`，生成 replacement reviewer；让它从过程文件恢复并先关闭旧 issue。
+- 不要删除旧审查记录，不要通过扫描本地 session 目录猜测恢复目标。
+- `user-confirm` 非空、合约需变更、外部动作需授权或连续两次 `ESCALATE_REPLAN` 无进展时，停止并询问用户。
 
-### Session ID Discovery
+## 交付
 
-```bash
-ls -t ~/.codex/sessions/ | head -1
-```
+只有 `FINAL_VERIFY: VERIFIED` 才能交付。总结改了什么、为什么、验证证据、风险和下一步。保留 agent handle 与过程文件，除非用户明确授权清理。
 
-Or capture from Codex output at spawn time.
-
-## Gotchas
-
-- **Stall detection**: `ESCALATE_REPLAN` is not a softer `STOP_WITH_BLOCKER` — it means the audit subagent sees the same issue class recur across fix rounds and the current decomposition cannot resolve it. Primary Codex drafts a contract update (re-decompose steps, adjust scope), presents it to the user for confirmation, then re-enters ACT. If the contract is unchanged and ACT is re-entered, it will loop again on the same issue.
-- **Evidence trust**: The ACT agent self-reported summary is NOT evidence. Read test output, diffs, and logs yourself.
-- **Subagent inherits sandbox**: The audit subagent inherits the parent session's sandbox policy. Set `sandbox_mode = "read-only"` in the custom agent file to prevent deliverable modification — this is stronger than prompt-only restriction.
-- **Codex only spawns subagents when asked**: Subagent workflows are not automatic. The primary Codex must explicitly instruct "spawn a subagent" to trigger the audit thread.
-- **Self-review is not audit**: A fresh subagent without prior context starts blind. Always resume the session or inject prior `review.md`.
-- **VERIFY must re-run tests**: Reading OBSERVE evidence is not verification. The audit subagent must independently execute the checklist's verification commands and record raw output.
-- **Session ID precision**: Use `codex exec resume "$AUDIT_SESSION_ID"`, not `--last` — `--last` resumes whatever was most recent, not necessarily the agent-loop session.
-- **Codex --resume context accumulation**: Each `codex exec resume` reloads full conversation history. Processing time grows with every resume. No hard timeout — let the call complete naturally. If a call hangs, the orchestrator can kill it manually.
-
-For full protocol formats and recovery routing, see `references/protocol.md`.
-
-## Recovery
-
-Before resuming, read `state/<slug>/state.md`, `review.md` if present, and `state/inbox.md` if present.
-
-Route by state:
-
-- `user-confirm` is non-empty -> ask the user first.
-- Pending appeal -> resume the same Codex session and steer the audit subagent for ruling.
-- Unfinished `next` fix -> apply it, updating the contract first if scope or checklist changed.
-- `ESCALATE_REPLAN` -> primary Codex drafts contract update, presents to user for confirmation before modifying `state.md`. After approval, re-enter ACT. Two consecutive `ESCALATE_REPLAN` without progress -> report to user and stop.
-- `PROCEED_TO_VERIFY` -> send VERIFY to the audit subagent.
-- `VERIFIED` without baseline section in `state.md` -> append baseline lock.
-- Baseline exists and optimization not started -> OPTIMIZE_LOOP.
-- OPTIMIZE changes applied and not yet re-audited -> AUDIT (audit subagent re-verifies the optimization).
-- Optimization stopped or ineligible -> send FINAL_VERIFY.
-- Final `VERDICT: VERIFIED` -> DELIVER.
-- Blocker, hard limit, appeal deadlock, or low-value continuation -> stop and report.
-
-## References
-
-- `references/contract-template.md`: copy when creating `state.md`.
-- `references/protocol.md`: full AUDIT/VERIFY/OPTIMIZE/FINAL_VERIFY formats, appeal protocol, optimization triage, and recovery routing.
+精确调用模板、判定格式、appeal、优化和恢复分支见 `references/protocol.md`。

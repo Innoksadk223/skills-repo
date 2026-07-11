@@ -91,7 +91,7 @@ test_single_skill_install() {
     assert_symlink "$target/hermes-agent-loop" "single-skill install links agent skill to shared store"
     assert_exists "$target/hermes-agent-loop/SKILL.md" "single-skill install exposes requested skill through link"
     assert_same_file "$ROOT_DIR/skills/hermes-agent-loop/SKILL.md" "$target/hermes-agent-loop/SKILL.md" "agent skill content matches repository"
-    assert_not_exists "$target/anysearch/SKILL.md" "single-skill install skips unrequested skill"
+    assert_not_exists "$target/capture-gotcha/SKILL.md" "single-skill install skips unrequested skill"
 }
 
 test_update_only_skips_new_skills() {
@@ -127,8 +127,9 @@ test_recommended_preset_is_small() {
     target="$tmp/codex-skills"
     HOME="$tmp/home" bash "$SETUP" --preset recommended --target codex --dir "$target" --yes >/dev/null
     assert_exists "$target/hermes-agent-loop/SKILL.md" "recommended preset includes hermes-agent-loop"
-    assert_exists "$target/anysearch/SKILL.md" "recommended preset includes anysearch"
-    assert_not_exists "$target/minimax-docx/SKILL.md" "recommended preset does not install non-recommended skills"
+    assert_exists "$target/cleanup/SKILL.md" "recommended preset includes cleanup"
+    assert_exists "$target/skill-planner/SKILL.md" "recommended preset includes skill-planner"
+    assert_not_exists "$target/cc-agent-loop/SKILL.md" "recommended preset does not install non-recommended skills"
 }
 
 test_help

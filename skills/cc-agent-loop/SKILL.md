@@ -1,167 +1,87 @@
 ---
 name: cc-agent-loop
-description: "Use when work has high cost of silent errors, repeated correction, resumable review state, strict evidence requirements, or an explicit /agent-loop request. Separates doing from judging with independent review, persistent session-based resumability, and bounded optimization. This is the Claude Code version."
+description: "Use when a Claude Code task needs independent maker-checker review, evidence-backed verification, repeated correction, resumable audit state, issue-specific fix prompts, bounded optimization, or an explicit /agent-loop request. Keep the primary Claude Code session responsible for planning, changes, and delivery while one independent persistent audit session is reused across AUDIT, VERIFY, OPTIMIZE, and FINAL_VERIFY."
 ---
 
 # CC Agent Loop
 
-Separate doing from judging. The primary CC handles PLAN, ACT, fixes, and delivery. An independent CC audit process reviews evidence, writes verdicts, verifies readiness, and controls safe optimization.
+把执行与裁判分开。主 Claude Code 负责 PLAN、ACT、修正和交付；独立 audit CC session 负责判定、复验、为每个 issue 编写可直接执行的 `fix_prompt`，并控制优化分流。
 
-Use existing planning first: Plan mode, `writing-plans`, or another suitable planning skill. Auxiliary Q&A-type skills are not excluded from PLAN — use them to stress-test assumptions, explore alternatives, or sharpen the contract before locking it in. If no usable plan exists, write the minimal contract before changing deliverables.
+## 加载与状态
 
-## Use
+先复用已有 Plan mode、`writing-plans` 或其它可执行计划。没有可用计划时先写最小合约。
 
-When independent review is needed before delivery, a failed change would be costly/subtle/hard to notice, the user asks for `/agent-loop` or multi-round review, or work may need recovery after interruption. Skip for one-shot answers, tiny edits, or tasks where a normal check is enough.
+1. 修改交付物前，把 `references/contract-template.md` 复制到 `state/<slug>/state.md`。
+2. 向用户展示 goal、non-goals、assumptions、stop guardrails 和 checklist；必须取得显式确认。
+3. 首次 AUDIT 前完整读取 `references/protocol.md`；后续阶段继续复用同一 audit session。
 
-## State
-
-| File | Owner | Purpose |
+| 文件 | 所有者 | 用途 |
 | --- | --- | --- |
-| `state.md` | primary CC | contract, progress, evidence, audit session tracker, recovery, baseline, delivery notes |
-| `review.md` | audit CC | audit, appeals, verify, optimize triage, final verdict |
-| `inbox.md` | primary CC | optional unresolved items across tasks |
+| `state/<slug>/state.md` | 主 CC | 合约、进度、证据、audit session、恢复、基线、交付摘要 |
+| `state/<slug>/review.md` | audit CC | AUDIT、fix prompts、appeal、VERIFY、OPTIMIZE、FINAL_VERIFY |
+| `state/<slug>/appeal.md` | 主 CC | 可选的证据化申诉 |
+| `state/inbox.md` | 主 CC | 可选的跨任务未决项 |
 
-Create `state/<slug>/state.md` before changing deliverables. Use `references/contract-template.md` for the template. Load `references/protocol.md` for exact AUDIT/VERIFY/OPTIMIZE formats, spawn templates, and recovery routing.
+过程文件只负责路由，不能替代真实 diff、命令输出、日志或产物。
 
-## Workflow
+## 工作流
 
-```
-PLAN → USER_GATE → ACT → OBSERVE
-                        │
-          ┌─────────────┘
-          ▼
-   ┌── AUDIT ←─────────────────┐
-   │    │ CONTINUE_FIX         │
-   │    ▼                      │
-   │  LOOP → ACT → OBSERVE ────┘
-   │    │ PROCEED_TO_VERIFY
-   │    ▼
-   │  VERIFY
-   │    │
-   │    ▼
-   │  BASELINE_LOCK
-   │    │
-   │    ▼
-   │  OPTIMIZE_LOOP ──────────┐
-   │    │ triage → execute    │
-   │    ▼                     │
-   └── AUDIT(re-verify) ──────┘
-        │ PROCEED
-        ▼
-   FINAL_VERIFY → DELIVER
+```text
+PLAN → USER_GATE → ACT → OBSERVE → AUDIT
+                                      │
+                    CONTINUE_FIX ─────┤
+                    ESCALATE_REPLAN ──┤
+                    PROCEED_TO_VERIFY ▼
+                                   VERIFY
+                                      ▼
+                               BASELINE_LOCK
+                                      ▼
+                  OPTIMIZE → AUDIT(re-verify)
+                                      ▼
+                              FINAL_VERIFY → DELIVER
 ```
 
-两个审查循环：**正确性循环**（AUDIT → LOOP → ACT → AUDIT，修到无 issue）和 **优化循环**（OPTIMIZE_LOOP → AUDIT 复验，确认优化安全）。
+每个环节完成后在 `state.md` 的 `loop_todo` 对应项打勾；`loop_todo` 是 `stage` 的可视化防漏，冲突时以 `stage` 为准。
 
-1. **PLAN**: reuse an existing plan when available; otherwise write `state.md` contract and checklist before deliverable changes. Present the contract to the user — goal, non-goals, assumptions, stop guardrails, checklist — and wait for explicit approval before ACT.
-2. **USER_GATE**: primary CC must not proceed past PLAN until the user confirms the contract. No implicit approval.
-3. **ACT**: primary CC executes only contracted work. If the checklist contains testable items (tests, lint, typecheck, build), run the corresponding verification commands and record raw output before handoff.
-4. **OBSERVE**: primary CC reads and records real evidence — test output, diffs, logs, file contents — in `state.md` before handing off to audit. Do not rely on the ACT agent self-reported summary. If tests were run in ACT, record the exact commands and raw terminal output, not paraphrased results.
-5. **AUDIT**: spawn the audit CC process with a fixed session ID. Generate a UUID, record it in `state.md` `audit_session`. The audit CC checks plan quality first, then all six gates. Writes results to `review.md`.
-6. **LOOP**: primary CC follows `CONTINUE_FIX` instructions or writes an evidence-backed appeal. If the audit CC returns `ESCALATE_REPLAN` (stall detected — same issue recurs across rounds), primary CC drafts a contract update (re-decompose steps, adjust scope) and presents it to the user — the contract must not be modified without user confirmation. After user approval, re-enter ACT. Two consecutive `ESCALATE_REPLAN` without progress → report to user and stop.
-7. **VERIFY**: audit CC independently re-executes verification commands for each checklist item. Records the actual command and raw output in `review.md`.
-8. **BASELINE_LOCK**: primary CC records a baseline without changing deliverables.
-9. **OPTIMIZE_LOOP**: mandatory triage after baseline. Pre-scan changed + adjacent files (pre-scan evidence gate applies — see Rules). Triage across four dimensions (see `references/protocol.md`); each dimension gets its own block with `NO_CANDIDATE` + one-line reason if none. **Primary CC zero-candidate review**: reviews `OPTIMIZE_TRIAGE` only when ALL four report `NO_CANDIDATE`; insufficient reasons → reject and re-scan. Primary CC executes `OPTIMIZE_NOW`, audit CC re-verifies. Present `SUGGEST_TO_USER` to user. Skip only when zero candidates and review passes.
-10. **FINAL_VERIFY**: audit CC confirms baseline integrity and optimization stop reason.
-11. **DELIVER**: primary CC summarizes evidence and presents the deliverable. Session IDs and process files must not be modified or removed without user confirmation — the user decides when to clean up.
+1. **PLAN / USER_GATE**：锁定可检查的合约、handoff、预算和停止条件；未获用户明确确认不得 ACT。
+2. **ACT / OBSERVE**：主 CC 只做已确认范围，并亲自记录实际文件、diff、日志和验证命令原始输出。
+3. **AUDIT**：首次创建一个独立 `claude -p` audit session；先查 PLAN，再运行六 gate。
+4. **LOOP**：audit CC 为每个 issue 产出独立 `fix_prompt`；主 CC 必须原样执行或 appeal，不得代写、弱化或合并掉约束。
+5. **VERIFY**：同一 audit session 独立重跑 checklist 的验证命令。
+6. **BASELINE_LOCK / OPTIMIZE**：主 CC 锁定 hash 与回滚入口；audit CC 先写 `optimize_todo`（四维度 + 已知候选逐条登记），再做四维扫描并逐项关闭 todo。只自动执行低风险、无新依赖、无需确认且收益不少于 5% 的 `OPTIMIZE_NOW`。
+7. **FINAL_VERIFY / DELIVER**：同一 audit session 确认基线与停止理由；主 CC 再交付。
 
-## Review
+## Claude Code Session 生命周期
 
-`review.md` must decide `PROCEED_TO_VERIFY`, `CONTINUE_FIX`, `ESCALATE_REPLAN`, or `STOP_WITH_BLOCKER`.
+| 动作 | 调用 | 规则 |
+| --- | --- | --- |
+| 首次 AUDIT | `claude -p --session-id <uuid>` | 预分配 UUID，记录 `audit_session` 和 generation |
+| 后续阶段 | `claude -p --resume <uuid>` | 始终恢复同一 audit session |
+| 失效恢复 | 新 UUID + replacement audit | 仅原 session 确认不可恢复时替换；先关闭旧 issue |
 
-All six gates must pass:
+- 使用显式 UUID；不要用 `--continue`、最近 session 或扫描本地 session 目录猜目标。
+- 不要使用 `--no-session-persistence`；不要在 resume 时使用 `--fork-session`。
+- 首次调用锁定完整 `--allowedTools`；resume 不得假设可以扩大工具权限。
+- audit CC 只写 `review.md`。Claude Code 没有 per-file write sandbox；以 tool scope、prompt 和事后 diff 共同约束。
 
-- `contract`: goal, non-goals, assumptions, checklist, handoff, and recovery are checkable.
-- `completeness`: the result satisfies the user goal without scope expansion.
-- `correctness`: logic, edge cases, structure, and necessary simplicity are acceptable.
-- `reuse_existing`: standard library, platform features, project code, or installed dependencies were preferred.
-- `budget`: time, tools, agent calls, continuation value, and stop signals are recorded.
-- `evidence_regression`: evidence exists and no known behavior was broken.
+## 审查硬规则
 
-Second and later audits must close old issues first, then rerun all six gates.
+- 保持 maker-checker split：主 CC 不得给自己的交付物判 PASS，audit CC 不得修改交付物。
+- 每个阻塞 issue 必须有唯一 ID、证据、`fix_instruction` 和一段可直接执行的 `fix_prompt`；prompt 必含目标对象、问题证据、必改内容、禁止变化、验证命令和完成回报。
+- `CLARIFIED` 必须由 audit CC 输出替换后的完整 prompt；主 CC 不得自行澄清。
+- 第二轮及以后先关闭旧 issue，再重跑全部六 gate。
+- 口头 PASS 视为 FAIL；每个结论必须指向文件、diff、命令输出、日志或产物。
+- 把范围外建议放进 notes 或 `state/inbox.md`，不得伪装成阻塞项。
+- 需要测试、lint、typecheck 或 build 时，ACT 记录输出，VERIFY 由 audit CC 独立重跑。
+- 本技能允许主 CC 根据任务需要派出 auxiliary agent；只委派独立、有限、可验证的一次性任务，不让它参与 AUDIT / VERIFY、替代 audit CC 或并发修改重叠文件。
 
-## Rules
+## 恢复与交付
 
-- **Maker-checker split.** The CC that produces the output must not be the CC process that grades it. The audit CC is an independent process with its own session ID. Self-review is not an audit.
-- **Auxiliary agents.** When specialized help is needed (test coverage, external research, parallel exploration, etc.), spawn a one-shot `delegate_task` subagent after user consent; write its output to `state.md` and hand it to the executor. Auxiliary agents do not participate in AUDIT/VERIFY.
-- **audit_session tracking.** Record the audit CC session UUID in `state.md` `audit_session` at first spawn. Resume the same session for all subsequent phases — do NOT spawn a new process per phase.
-- Primary CC may provide templates and handoff context, but must not write audit findings or final verdicts.
-- **Phase gate.** 每次进入新阶段前必须更新 `state.md` 的 `stage` 字段。DELIVER 前核对 stage 路径必须经过 `AUDIT`(PROCEED_TO_VERIFY 或 CONTINUE_FIX 闭环后) + `VERIFY`(VERIFIED) + `FINAL_VERIFY`(VERIFIED);缺任一视为跳步 FAIL,回退到缺失阶段。`USER_GATE` 未获用户确认禁止进入 `ACT`。`BASELINE_LOCK` 前禁止 `OPTIMIZE_LOOP`。audit CC 在 AUDIT 时将"stage 路径不完整"作为 `contract` gate FAIL 的证据。
-- Oral PASS is FAIL. Evidence must be file paths, diff summaries, command output, or deliverable paths.
-- Scope control is part of strictness. Unrequested features go to notes or `state/inbox.md`, not blocking issues.
-- After `BASELINE_LOCK`, pre-scan changed + adjacent files in the skill/module directory, record the file list as evidence, then triage across four dimensions (see `references/protocol.md`); each dimension gets its own block in `OPTIMIZE_TRIAGE`. Pre-scan evidence is mandatory — if the scanned file list is empty or missing, reject and re-scan. Primary CC reviews `OPTIMIZE_TRIAGE` only when ALL four dimensions report `NO_CANDIDATE`; insufficient reasons → reject and re-scan. Execute `OPTIMIZE_NOW` only when gain >=5%, risk is low, no regression, no new deps, no user approval needed. `enrichment` dimension candidates bypass `OPTIMIZE_NOW` — always use `SUGGEST_TO_USER` with user confirmation required.
-- On `DELIVER`, summarize key evidence. Do not delete process files or modify `state.md` without user confirmation. Keep `state/inbox.md` when unresolved items remain.
+先读 `state.md`、`review.md`、`appeal.md` 和 `state/inbox.md` 中实际存在的文件，再按 `references/protocol.md` 路由。
 
-## CC Session Management
+- `user-confirm` 非空、合约需变更、外部动作需授权或同类问题连续两轮无进展：停止并询问用户。
+- audit session 可恢复：继续同一 UUID；不可恢复：记录 `UNREACHABLE`、递增 generation，创建 replacement audit。
+- 不删除旧 verdict、fix prompt、session ID 或过程文件；只有用户能授权清理。
+- 只有 `FINAL_VERIFY: VERIFIED` 才能交付；总结 changed、why、关键证据、风险和下一步。
 
-### Audit CC Spawn (first phase)
-
-Generate a UUID, record in `state.md`, then spawn:
-
-```bash
-AUDIT_ID=$(python3 -c "import uuid; print(uuid.uuid4())")
-# Record AUDIT_ID in state.md audit_session
-
-claude -p "You are the independent audit Agent. Review only; do not modify deliverables.
-Read state/<slug>/state.md and review.md (if present).
-First check PLAN quality. On later rounds, close old issues before checking new ones.
-Run all six gates: contract / completeness / correctness / reuse_existing / budget / evidence_regression.
-Append AUDIT section to state/<slug>/review.md.
-Decision: PROCEED_TO_VERIFY | CONTINUE_FIX | ESCALATE_REPLAN | STOP_WITH_BLOCKER." \
-  --session-id "$AUDIT_ID" \
-  --allowedTools "Read,Write,Grep,Glob,Bash(grep *,find *,cat *,head *,tail *,pytest *,npm test *,npx *,make *,cargo *,go test *,python -m *,ruff *,mypy *,eslint *,tsc *,prettier *)" \
-  --max-turns 5
-```
-
-### Audit CC Resume (subsequent phases)
-
-```bash
-claude -p "<phase-specific audit prompt>" \
-  --resume "$AUDIT_ID" \
-  --max-turns 5
-```
-
-`--resume` restores the full conversation history. The audit CC remembers prior rounds, issue closures, and appeal rulings.
-
-### Tool Scope
-
-`--allowedTools` is set at spawn time and inherited by all `--resume` calls. CC `--resume` cannot widen tools per phase. The expanded Bash patterns cover both AUDIT (read-only inspection) and VERIFY (running test/lint/typecheck commands). The prompt instruction ("do not modify deliverables") is the guard against touching deliverable files.
-
-## Gotchas
-
-- **Stall detection**: `ESCALATE_REPLAN` is not a softer `STOP_WITH_BLOCKER` — it means the audit CC sees the same issue class recur across fix rounds and the current decomposition cannot resolve it. Primary CC drafts a contract update (re-decompose steps, adjust scope), presents it to the user for confirmation, then re-enters ACT. If the contract is unchanged and ACT is re-entered, it will loop again on the same issue.
-- **Evidence trust**: The ACT agent self-reported summary is NOT evidence. Read test output, diffs, and logs yourself.
-- **CC --max-turns trap**: 3 turns fails for multi-file ACT in practice. ACT needs 10+ turns; LOOP and OPTIMIZE need 5. The spawn commands use these values — do not reduce them without understanding the cost.
-- **CC --session-id requires UUID**: `--session-id "audit-<slug>"` fails. Generate with `python3 -c "import uuid; print(uuid.uuid4())"`.
-- **CC -p auto-exits**: No explicit termination needed. Cleanup means clearing the UUID from `state.md`.
-- **CC --allowedTools without Write**: The audit process cannot write `review.md` without Write. Add it and trust the prompt to guard deliverables.
-- **CC per-file write restriction**: Not supported. The audit prompt instruction ("do not modify deliverables") is the only guard.
-- **Self-review is not audit**: A fresh audit process without prior session context starts blind. Always `--resume` or inject prior `review.md`.
-- **VERIFY must re-run tests**: Reading OBSERVE evidence is not verification. The audit CC must independently execute the checklist's verification commands and record raw output.
-- **Prompt cache TTL affects cost**: CC `--resume` reloads full conversation history as prefix. If the Anthropic prompt cache is valid (default 5 min TTL), cached prefix tokens cost ~10% of normal input. If expired, cache is rebuilt at 125% of normal input cost. Consecutive phases within minutes benefit most; long gaps may exceed TTL and trigger cache rebuild.
-- **CC --resume context accumulation**: Each `--resume` reloads full conversation history. Processing time grows with every resume. No hard timeout — let the call complete naturally. If a call hangs, the orchestrator can kill it manually.
-
-For full protocol formats and recovery routing, see `references/protocol.md`.
-
-## Recovery
-
-Before resuming, read `state/<slug>/state.md`, `review.md` if present, and `state/inbox.md` if present.
-
-Route by state:
-
-- `user-confirm` is non-empty -> ask the user first.
-- Pending appeal -> resume the same audit CC for ruling.
-- Unfinished `next` fix -> apply it, updating the contract first if scope or checklist changed.
-- `ESCALATE_REPLAN` -> primary CC drafts contract update, presents to user for confirmation before modifying `state.md`. After approval, re-enter ACT. Two consecutive `ESCALATE_REPLAN` without progress -> report to user and stop.
-- `PROCEED_TO_VERIFY` -> send VERIFY to the same audit CC.
-- `VERIFIED` without baseline section in `state.md` -> append baseline lock.
-- Baseline exists and optimization not started -> OPTIMIZE_LOOP.
-- OPTIMIZE changes applied and not yet re-audited -> AUDIT (re-verify the optimization).
-- Optimization stopped or ineligible -> send FINAL_VERIFY.
-- Final `VERDICT: VERIFIED` -> DELIVER.
-- Blocker, hard limit, appeal deadlock, or low-value continuation -> stop and report.
-
-## References
-
-- `references/contract-template.md`: copy when creating `state.md`.
-- `references/protocol.md`: full AUDIT/VERIFY/OPTIMIZE/FINAL_VERIFY formats, appeal protocol, optimization triage, and recovery routing.
+精确 CLI 模板、六 gate、`fix_prompt` schema、appeal、优化和恢复分支见 `references/protocol.md`。
