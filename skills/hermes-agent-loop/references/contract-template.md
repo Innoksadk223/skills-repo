@@ -11,6 +11,8 @@
 - 计划来源：
 - 停止护栏：
 - executor mode：CC（默认）| HERMES | SELF
+- maker_model: <model> | (config 默认)
+- checker_model: <model> | (父 Hermes 内联)
 - 角色边界：父 Hermes=编排+checker 不改交付物；唯一 maker 改主交付物
 - prompt 契约：每 issue 独立 fix_prompt → review.md + SHA-256 → 原样发送
 - 辅助 Agent：允许 delegate_task | 禁用（候选/边界/预算）
@@ -41,6 +43,8 @@
   - [ ] FINAL_VERIFY
   - [ ] DELIVER
 - executor_mode: CC | HERMES | SELF
+- maker_model:
+- checker_model:
 - maker_transport: claude_print | hermes_chat | direct_write
 - maker_session:
 - maker_generation: 0

@@ -11,6 +11,38 @@ worker 必须使用 `hermes chat -Q -q`；`-z` one-shot 路径不能恢复旧 se
 
 公共 schema、gate 与阶段路由见 `protocol.md`。
 
+## 0. 模型配置
+
+合约 `state.md` 可选指定 maker 或 checker 的模型，实现跨模型审查。provider 始终继承 config 默认，无需单独指定。
+
+| 字段 | 用途 | 留空时 |
+| --- | --- | --- |
+| `maker_model` | worker spawn + resume | 走 config 默认模型 |
+| `checker_model` | AUDIT/VERIFY 推理 | 父 Hermes 内联审查（当前模型） |
+
+- **Maker**：`maker_model` 非空时，`hermes chat` 命令带 `-m "$MAKER_MODEL"`；留空则省略，走 config 默认。
+- **Checker**：`checker_model` 非空时，父 Hermes 将证据 + checklist 组装为 prompt，用 `hermes chat -Q -q -m "$CHECKER_MODEL"` 一次性调用该模型产出 verdict，再写入 `review.md`。留空则父 Hermes 自行内联审查（当前行为）。
+
+命令中用 bash 参数展开 `${MAKER_MODEL:+-m "$MAKER_MODEL"}`：变量非空时展开为 `-m "model"`，为空时展开为空串，不影响其余参数。
+
+checker 一次性调用模板（无工具、纯推理）：
+
+```bash
+CHECKER_ERR=$(mktemp)
+hermes chat -Q -q "<AUDIT/VERIFY prompt + 全部证据 + checklist + 输出格式要求>" \
+  ${CHECKER_MODEL:+-m "$CHECKER_MODEL"} \
+  --max-turns 1 \
+  --ignore-rules \
+  2>"$CHECKER_ERR"
+CHECKER_EXIT=$?
+rm -f "$CHECKER_ERR"
+test "$CHECKER_EXIT" -eq 0
+```
+
+- checker 不需要工具（`--max-turns 1`、`--ignore-rules`），只做推理产出 verdict。
+- 父 Hermes 仍负责写 `review.md`、路由决策和 prompt 转发。
+- checker session 一次性使用，不需 resume。
+
 ## 1. Session ID 捕获规则
 
 quiet query 将最终回复写到 stdout，并在 stderr 末尾输出：
@@ -37,6 +69,7 @@ hermes chat -Q -q "你是 worker/maker。读取 state/<slug>/state.md 与所列�
 完成后报告实际 diff、验证输出和剩余风险。" \
   -t terminal,file \
   --max-turns 10 \
+  ${MAKER_MODEL:+-m "$MAKER_MODEL"} \
   2>"$WORKER_ERR"
 WORKER_EXIT=$?
 cat "$WORKER_ERR" >&2
@@ -68,6 +101,7 @@ worker 返回后，父 Hermes 必须亲自读取实际 diff、文件、日志和
 hermes chat -Q -q "<verbatim fix_prompt 或 optimize_prompt>" \
   -t terminal,file \
   --max-turns 5 \
+  ${MAKER_MODEL:+-m "$MAKER_MODEL"} \
   --resume "$WORKER_ID"
 ```
 

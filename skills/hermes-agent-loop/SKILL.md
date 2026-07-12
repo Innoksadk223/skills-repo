@@ -15,6 +15,8 @@ description: "Use when a Hermes-orchestrated task needs maker-checker review, ev
 | Hermes（PLAN 要求） | `hermes chat` 持久 | 父 Hermes |
 | Self（低风险文档/skill） | 父 Hermes 直写 | 后置命令证据；或独立 Hermes checker |
 
+Maker/Checker 模型由合约 `maker_model`/`checker_model` 可选指定，provider 始终继承 config 默认；留空则用当前模型。Checker 指定不同模型时，用 `hermes chat -Q -q -m` 一次性调用外部模型审查（见 `hermes-executor-mode.md` §0）。
+
 ## 开卷
 
 | 阶段 | 必读 |

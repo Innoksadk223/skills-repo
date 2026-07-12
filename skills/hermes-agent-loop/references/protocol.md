@@ -16,6 +16,8 @@
 
 ```md
 - executor_mode: CC | HERMES | SELF
+- maker_model: <model|n/a>
+- checker_model: <model|n/a>
 - maker_transport: claude_print | hermes_chat | direct_write
 - maker_session: <id|n/a>
 - maker_generation: 1
