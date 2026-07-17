@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""capture-gotcha 环境教训管理器：add / search / list / update / check / self-test。add 后自动清理 >30 天条目。"""
+"""capture-gotcha 环境教训管理器：add / search / list / update / check / self-test。"""
 
 from __future__ import annotations
 
@@ -7,11 +7,10 @@ import argparse
 import re
 import sys
 import tempfile
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
-ENV_PATH = Path.home() / '.hermes' / 'env.md'
-MAX_AGE_DAYS = 30
+ENV_PATH = Path.home() / '.agents' / 'env.md'
 
 
 def normalize(s: str) -> str:
@@ -36,27 +35,6 @@ def find_similar(text: str, title: str, scene: str) -> bool:
     key2 = normalize(scene)
     body = normalize(text)
     return key1 in body or key2 in body
-
-
-def auto_clean(env_path: Path, max_days: int = MAX_AGE_DAYS) -> str:
-    """删除距今 >max_days 的条目。每次 add 后自动调用。"""
-    text = read_env(env_path)
-    lines = text.split('\n')
-    cutoff = date.today()
-    kept = []
-    removed = 0
-    for line in lines:
-        m = re.match(r'- \*\*\[(\d{4}-\d{2}-\d{2})\]', line)
-        if m:
-            entry_date = date.fromisoformat(m.group(1))
-            if (cutoff - entry_date).days > max_days:
-                removed += 1
-                continue
-        kept.append(line)
-    if removed:
-        env_path.write_text('\n'.join(kept), encoding='utf-8')
-        return f'auto_clean: removed {removed} expired entr{"y" if removed == 1 else "ies"} (>{max_days}d)'
-    return ''
 
 
 def add_entry(env_path: Path, title: str, scene: str, cause: str, fix: str,
@@ -86,13 +64,7 @@ def add_entry(env_path: Path, title: str, scene: str, cause: str, fix: str,
     new_text = before.rstrip() + '\n\n' + entry + '\n' + rest
     env_path.parent.mkdir(parents=True, exist_ok=True)
     env_path.write_text(new_text, encoding='utf-8')
-
-    # auto-clean 无声运行
-    clean_msg = auto_clean(env_path)
-    out = f'ADDED: {entry}\nFILE: {env_path}'
-    if clean_msg:
-        out += f'\n{clean_msg}'
-    return out
+    return f'ADDED: {entry}\nFILE: {env_path}'
 
 
 def search_entries(env_path: Path, keyword: str) -> str:
@@ -131,7 +103,7 @@ def list_entries(env_path: Path, section_filter: str | None = None) -> str:
 
 def update_entry(env_path: Path, keyword: str, title: str | None = None,
                  cause: str | None = None, fix: str | None = None,
-                 section: str | None = None, dry_run: bool = False) -> str:
+                 dry_run: bool = False) -> str:
     """按关键词匹配条目并更新。刷新日期为今天。"""
     text = read_env(env_path)
     lines = text.split('\n')
@@ -223,19 +195,10 @@ def self_test() -> None:
         out11 = check_error(env_path, 'ENOENT: 读取不存在目录')
         assert '路径测试' in out11, out11
 
-        # auto_clean: 添加一条旧日期条目再 add 触发清理
-        old_text = env_path.read_text(encoding='utf-8')
-        old_entry = '- **[2020-01-01] 远古条目**：场景 → 原因 → 解法\n'
-        env_path.write_text(old_text.rstrip() + '\n\n' + old_entry)
-        out12 = add_entry(env_path, '新条目', '测试自动清理', '逻辑', '解法', today)
-        assert 'auto_clean: removed 1' in out12, out12
-        final_text = env_path.read_text(encoding='utf-8')
-        assert '远古条目' not in final_text, final_text
-
         # regression: add 不丢已有条目
-        count_before = final_text.count('- **[')
-        out13 = add_entry(env_path, '回归测试', '验证不丢数据', '逻辑', '解法', today)
-        assert 'ADDED' in out13, out13
+        count_before = env_path.read_text(encoding='utf-8').count('- **[')
+        out12 = add_entry(env_path, '回归测试', '验证不丢数据', '逻辑', '解法', today)
+        assert 'ADDED' in out12, out12
         assert env_path.read_text(encoding='utf-8').count('- **[') == count_before + 1
 
     print('SELF_TEST: ok')
@@ -258,7 +221,7 @@ def main():
     p.set_defaults(command='add')
     sub = p.add_subparsers(dest='command')
 
-    a = sub.add_parser('add', help='新增条目（自动清理 >30 天）')
+    a = sub.add_parser('add', help='新增条目')
     _add_args(a)
 
     s = sub.add_parser('search', help='按关键词搜索')
@@ -274,7 +237,6 @@ def main():
     u.add_argument('--title', default=None)
     u.add_argument('--cause', default=None)
     u.add_argument('--fix', default=None)
-    u.add_argument('--section', default=None)
     u.add_argument('--dry-run', action='store_true')
     u.add_argument('--env-path', type=Path, default=ENV_PATH)
 
@@ -304,7 +266,7 @@ def main():
         print(list_entries(args.env_path, args.section))
     elif args.command == 'update':
         print(update_entry(args.env_path, args.keyword, args.title, args.cause, args.fix,
-                           args.section, args.dry_run))
+                           args.dry_run))
     elif args.command == 'check':
         print(check_error(args.env_path, args.error_text))
 

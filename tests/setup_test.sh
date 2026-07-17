@@ -128,8 +128,18 @@ test_recommended_preset_is_small() {
     HOME="$tmp/home" bash "$SETUP" --preset recommended --target codex --dir "$target" --yes >/dev/null
     assert_exists "$target/hermes-agent-loop/SKILL.md" "recommended preset includes hermes-agent-loop"
     assert_exists "$target/cleanup/SKILL.md" "recommended preset includes cleanup"
-    assert_exists "$target/skill-planner/SKILL.md" "recommended preset includes skill-planner"
+    assert_exists "$target/capture-gotcha/SKILL.md" "recommended preset includes capture-gotcha"
     assert_not_exists "$target/cc-agent-loop/SKILL.md" "recommended preset does not install non-recommended skills"
+}
+
+test_env_md_initialized() {
+    local tmp target
+    make_tmp
+    tmp="$TMP_RESULT"
+    target="$tmp/codex-skills"
+    HOME="$tmp/home" bash "$SETUP" --preset recommended --target codex --dir "$target" --yes >/dev/null
+    assert_exists "$tmp/home/.agents/env.md" "capture-gotcha install initializes shared env.md"
+    assert_symlink "$tmp/home/.codex/env.md" "agent env.md is a symlink to shared env.md"
 }
 
 test_help
@@ -138,5 +148,6 @@ test_single_skill_install
 test_update_only_skips_new_skills
 test_update_only_refreshes_existing_skill
 test_recommended_preset_is_small
+test_env_md_initialized
 
 printf '# %s assertions passed\n' "$PASS_COUNT"

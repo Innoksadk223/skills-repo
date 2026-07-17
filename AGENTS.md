@@ -13,11 +13,11 @@
 
 > 改本文件后请同步上述副本（内容应一致）。人类说明见 [README.md](README.md)，上手见 [START.md](START.md)。
 
-## 仓库技能（8 个）
+## 仓库技能（7 个）
 
 | 分组 | 技能 |
 |------|------|
-| 工具 | `skill-architecture` / `skill-planner` / `cleanup` / `capture-gotcha` / `intent-normalizer` |
+| 工具 | `skill-architecture` / `cleanup` / `capture-gotcha` / `intent-normalizer` |
 | Agent 循环 | `cc-agent-loop` / `codex-agent-loop` / `hermes-agent-loop` |
 
 安装：`bash setup.sh`。
@@ -49,6 +49,6 @@
 
 ## 给 AI 的仓库内行为
 
-- 本仓技能以 `skills/` 扁平目录为准；不要假设已删除的 `anysearch` / `minimax-*` 等仍在仓内。
+- 本仓技能以 `skills/` 扁平目录为准；不要假设已删除的 `anysearch` / `minimax-*` / `skill-planner` 等仍在仓内。
 - 知识库技能在 [`kb-skills-repo`](https://github.com/Innoksadk223/kb-skills-repo)，不在本仓。
 - `setup.sh` 会同步到 `~/.agents/skills` 主副本，再给 Claude/Codex/Hermes 建链接；**不会删除**用户已有的外部/Hub 技能。

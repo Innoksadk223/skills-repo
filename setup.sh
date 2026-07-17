@@ -7,14 +7,13 @@ AGENTS_SKILLS_DIR="${AGENTS_SKILLS_DIR:-$HOME/.agents/skills}"
 
 GROUP_KEYS=(tools)
 GROUP_DESC=(
-    "[Tools] agent-loop, skill-planner, cleanup, architecture, intent, gotcha"
+    "[Tools] agent-loop, cleanup, architecture, intent, gotcha"
 )
 
 RECOMMENDED_SKILLS=(
     hermes-agent-loop
     cleanup
     skill-architecture
-    skill-planner
     capture-gotcha
     intent-normalizer
 )
@@ -86,6 +85,7 @@ Inno's Skills Pack 安装器
   - 不会删除不在本仓库里的技能。
   - 仓库技能会先同步到 ~/.agents/skills 主副本。
   - 默认在 ~/.codex/skills、~/.claude/skills、~/.hermes/skills 创建指向主副本的链接。
+  - 安装 capture-gotcha 时会初始化 ~/.agents/env.md 并建各端软链。
   - 三个 agent 均使用扁平结构。
 EOF
 }
@@ -127,7 +127,7 @@ detect_agents() {
 
 skill_group() {
     case "$1" in
-        cleanup|skill-architecture|skill-planner|agent-loop|capture-gotcha|intent-normalizer|cc-agent-loop|codex-agent-loop|hermes-agent-loop) echo "tools" ;;
+        cleanup|skill-architecture|agent-loop|capture-gotcha|intent-normalizer|cc-agent-loop|codex-agent-loop|hermes-agent-loop) echo "tools" ;;
         *) echo "" ;;
     esac
 }
@@ -604,6 +604,33 @@ install_target() {
     echo "  -> 新增 ${new}，更新 ${upd}，跳过 ${skip}"
 }
 
+ensure_env_md() {
+    selected_skill "capture-gotcha" || return 0
+    local master="$HOME/.agents/env.md"
+    if [ "$DRY_RUN" -eq 1 ]; then
+        echo "预览：将初始化 $master 并为各端建 env.md 软链"
+        return 0
+    fi
+    if [ ! -e "$master" ]; then
+        printf '# 全局编程环境\n\n## 常见陷阱\n' > "$master"
+        echo "  + 创建 $master"
+    fi
+    local target agent envfile
+    for target in "${TARGETS[@]}"; do
+        agent="${target%%|*}"
+        envfile="$HOME/.$agent/env.md"
+        if [ -L "$envfile" ]; then
+            continue
+        elif [ -e "$envfile" ]; then
+            echo "  ! $envfile 已是真实文件，未建软链；建议合并到 $master 后替换为软链"
+        else
+            mkdir -p "$(dirname "$envfile")"
+            ln -s "$master" "$envfile"
+            echo "  + $envfile -> $master"
+        fi
+    done
+}
+
 validate_selected_skills() {
     local name missing
     missing=0
@@ -653,12 +680,20 @@ main() {
         install_target "$agent" "$dir"
     done
 
+    ensure_env_md
+
     echo ""
     if [ "$DRY_RUN" -eq 1 ]; then
         echo "预览完成。确认无误后去掉 --dry-run 重新运行。"
     else
         echo "完成。更新命令: cd $REPO_DIR && git pull && bash setup.sh"
         echo ""
+        if selected_skill "capture-gotcha"; then
+            echo "capture-gotcha 的教训写入 ~/.agents/env.md（各端 env.md 已软链共享）。"
+            echo "建议在核心提示词加一行（~/.claude/CLAUDE.md 或 ~/.codex/AGENTS.md，按端改路径）："
+            echo "  感知当前配置环境 ~/.claude/env.md"
+            echo ""
+        fi
         echo "浏览器自动化 / PPT / UI 设计 / Superpowers 等技能不在本仓库。"
         echo "需要时跟 AI 说目标，AI 会从上游仓库安装（须先征得你同意）。"
         echo "详见 README.md"

@@ -17,11 +17,11 @@
 3. **再安装** — `bash setup.sh`（仅本仓技能）
 4. **最后教** — 安装/更新完成后，直接读 [START.md](START.md)，给用户一段 3 分钟上手教程
 
-## 本仓库技能（8 个）
+## 本仓库技能（7 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
-| 工具 | `skill-architecture` / `skill-planner` / `cleanup` / `capture-gotcha` / `intent-normalizer` (5) | 模块化架构、任务路由、清理、环境记录、意图校准 |
+| 工具 | `skill-architecture` / `cleanup` / `capture-gotcha` / `intent-normalizer` (4) | 模块化架构、清理、环境记录、意图校准 |
 | Agent 循环 | `cc-agent-loop` / `codex-agent-loop` / `hermes-agent-loop` (3) | 各平台 Agent 编排循环（执行-审查分离） |
 
 ## 推荐技能（自用清单）
@@ -54,7 +54,6 @@
 | 场景 | 入口 | 何时用 | 产物 |
 |------|------|--------|------|
 | 复杂任务循环 | `hermes-agent-loop` / `cc-agent-loop` / `codex-agent-loop` | 多步、可验收、需执行+审查 | `state/`、审查结果 |
-| 任务路由 | `skill-planner` | 规划 skill 组合与顺序 | 路由表 |
 | 意图校准 | `intent-normalizer` | 目标模糊、歧义 | 可执行意图 |
 | 清理 | `cleanup` | 任务结束后 | 清理报告 |
 
@@ -63,7 +62,6 @@
 | 技能 | 用途 | 来源 |
 |------|------|------|
 | `skill-architecture` | 模块化技能架构 | 本仓库 |
-| `skill-planner` | 任务 skill 路由 | 本仓库 |
 | `cleanup` | 清理临时文件 | 本仓库 |
 | `capture-gotcha` | 环境踩坑记录 | 本仓库 |
 | `intent-normalizer` | 意图校准 | 本仓库 |
@@ -88,7 +86,7 @@ bash setup.sh --update-only
 bash setup.sh --help
 ```
 
-`setup.sh` 会：检测 agent → 同步到 `~/.agents/skills` → 在 Codex/Claude/Hermes skills 目录建链接；**不删除**仓外已有技能。
+`setup.sh` 会：检测 agent → 同步到 `~/.agents/skills` → 在 Codex/Claude/Hermes skills 目录建链接；安装 capture-gotcha 时初始化 `~/.agents/env.md` 并建各端软链；**不删除**仓外已有技能。
 
 ## 更新
 
@@ -102,7 +100,7 @@ bash setup.sh --update-only
 
 ```text
 skills-repo/
-├── skills/          # 本仓 8 个技能（扁平）
+├── skills/          # 本仓 7 个技能（扁平）
 ├── AGENTS.md        # Agent 通用入口
 ├── CLAUDE.md        # Claude Code 入口（与 AGENTS 同步）
 ├── CODEX.md         # Codex 入口（与 AGENTS 同步）
