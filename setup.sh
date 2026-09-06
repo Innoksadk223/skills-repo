@@ -7,13 +7,12 @@ AGENTS_SKILLS_DIR="${AGENTS_SKILLS_DIR:-$HOME/.agents/skills}"
 
 GROUP_KEYS=(tools)
 GROUP_DESC=(
-    "[Tools] four agent-loops (including pi-agent-loop), cleanup, architecture, intent, gotcha"
+    "[Tools] four agent-loops (including pi-agent-loop), cleanup, intent, gotcha"
 )
 
 RECOMMENDED_SKILLS=(
     hermes-agent-loop
     cleanup
-    skill-architecture
     capture-gotcha
     intent-normalizer
 )
@@ -127,7 +126,7 @@ detect_agents() {
 
 skill_group() {
     case "$1" in
-        cleanup|skill-architecture|agent-loop|capture-gotcha|intent-normalizer|cc-agent-loop|codex-agent-loop|hermes-agent-loop) echo "tools" ;;
+        cleanup|agent-loop|capture-gotcha|intent-normalizer|cc-agent-loop|codex-agent-loop|hermes-agent-loop|pi-agent-loop) echo "tools" ;;
         *) echo "" ;;
     esac
 }

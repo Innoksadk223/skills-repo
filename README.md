@@ -17,11 +17,11 @@
 3. **再安装** — `bash setup.sh`（仅本仓技能）
 4. **最后教** — 安装/更新完成后，直接读 [START.md](START.md)，给用户一段 3 分钟上手教程
 
-## 本仓库技能（8 个）
+## 本仓库技能（7 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
-| 工具 | `skill-architecture` / `cleanup` / `capture-gotcha` / `intent-normalizer` (4) | 模块化架构、清理、环境记录、意图校准 |
+| 工具 | `cleanup` / `capture-gotcha` / `intent-normalizer` (3) | 清理、环境记录、意图校准 |
 | Agent 循环 | `cc-agent-loop` / `codex-agent-loop` / `hermes-agent-loop` / `pi-agent-loop` (4) | 各平台 Agent 编排循环（执行-审查分离） |
 
 ## Pi Agent Team（独立扩展包）
@@ -79,7 +79,6 @@ pi install ./extensions/pi-agent-orchestrator
 
 | 技能 | 用途 | 来源 |
 |------|------|------|
-| `skill-architecture` | 模块化技能架构 | 本仓库 |
 | `cleanup` | 清理临时文件 | 本仓库 |
 | `capture-gotcha` | 环境踩坑记录 | 本仓库 |
 | `intent-normalizer` | 意图校准 | 本仓库 |
@@ -118,7 +117,7 @@ bash setup.sh --update-only
 
 ```text
 skills-repo/
-├── skills/          # 本仓 8 个技能（扁平，含 pi-agent-loop）
+├── skills/          # 本仓 7 个技能（扁平，含 pi-agent-loop）
 ├── extensions/
 │   └── pi-agent-orchestrator/  # 独立 Pi extension + pi-agent-team skill
 ├── AGENTS.md        # Agent 通用入口
