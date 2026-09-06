@@ -7,7 +7,7 @@ AGENTS_SKILLS_DIR="${AGENTS_SKILLS_DIR:-$HOME/.agents/skills}"
 
 GROUP_KEYS=(tools)
 GROUP_DESC=(
-    "[Tools] agent-loop, cleanup, architecture, intent, gotcha"
+    "[Tools] four agent-loops (including pi-agent-loop), cleanup, architecture, intent, gotcha"
 )
 
 RECOMMENDED_SKILLS=(

@@ -2,7 +2,7 @@
 
 > Hermes 项目入口。正文与 [AGENTS.md](AGENTS.md) 同步。
 
-本仓库是 Inno's Skills Pack，为 **Claude Code**、**Codex**、**Hermes** 提供通用技能。
+本仓库是 Inno's Skills Pack，为 **Claude Code**、**Codex**、**Hermes** 与 **Pi** 提供通用技能。
 
 同内容副本（方便各端自动注入）：
 
@@ -15,14 +15,24 @@
 
 > 改本文件后请同步上述副本（内容应一致）。人类说明见 [README.md](README.md)，上手见 [START.md](START.md)。
 
-## 仓库技能（7 个）
+## 仓库技能（8 个）
 
 | 分组 | 技能 |
 |------|------|
 | 工具 | `skill-architecture` / `cleanup` / `capture-gotcha` / `intent-normalizer` |
-| Agent 循环 | `cc-agent-loop` / `codex-agent-loop` / `hermes-agent-loop` |
+| Agent 循环 | `cc-agent-loop` / `codex-agent-loop` / `hermes-agent-loop` / `pi-agent-loop` |
 
-安装：`bash setup.sh`。
+安装根技能：`bash setup.sh`。
+
+## Pi 独立包
+
+`extensions/pi-agent-orchestrator/` 同时提供 `agent_team` extension 与包内 `pi-agent-team` 配套 skill。它不计入上述 8 个根技能，也不由 `setup.sh` 安装：
+
+```bash
+pi install ./extensions/pi-agent-orchestrator
+```
+
+默认单 Agent；仅复杂可拆分或用户明确要求时组队。新成员必须先经扩展 confirmation，持久配置与 child UUID 跟随父 branch；Pi 更新不兼容时 fail closed。复杂、多轮或需恢复的团队由主 Pi维护一份成员只读、摘要选择性发布的共享进度文档；一次性独立派工不创建。
 
 ## 推荐技能（自用清单）安装铁律
 
@@ -53,4 +63,5 @@
 
 - 本仓技能以 `skills/` 扁平目录为准；不要假设已删除的 `anysearch` / `minimax-*` / `skill-planner` 等仍在仓内。
 - 知识库技能在 [`kb-skills-repo`](https://github.com/Innoksadk223/kb-skills-repo)，不在本仓。
-- `setup.sh` 会同步到 `~/.agents/skills` 主副本，再给 Claude/Codex/Hermes 建链接；**不会删除**用户已有的外部/Hub 技能。
+- `setup.sh` 会同步 8 个根技能到 `~/.agents/skills` 主副本，再给 Claude/Codex/Hermes 建链接；**不会删除**用户已有的外部/Hub 技能。
+- 包内 `pi-agent-team` 只随 Pi package 安装，不要和根 `pi-agent-loop` 重复计数或复制进 recommended preset。

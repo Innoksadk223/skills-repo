@@ -94,6 +94,27 @@ test_single_skill_install() {
     assert_not_exists "$target/capture-gotcha/SKILL.md" "single-skill install skips unrequested skill"
 }
 
+test_pi_agent_loop_is_selectable() {
+    local tmp target out list expected
+    make_tmp
+    tmp="$TMP_RESULT"
+    target="$tmp/pi-skills"
+    list="$(HOME="$tmp/home" bash "$SETUP" --list)"
+    for expected in skill-architecture cleanup capture-gotcha intent-normalizer cc-agent-loop codex-agent-loop hermes-agent-loop pi-agent-loop; do
+        case "$list" in
+            *"  - $expected"*) ;;
+            *) fail "skill list is missing maintained root skill $expected" ;;
+        esac
+    done
+    pass "skill list includes all eight maintained root skills"
+
+    out="$(HOME="$tmp/home" bash "$SETUP" --target codex --dir "$target" --skills pi-agent-loop --yes)"
+    assert_contains "$out" "pi-agent-loop" "pi-agent-loop install output mentions selection"
+    assert_exists "$target/pi-agent-loop/SKILL.md" "pi-agent-loop installs as a root skill"
+    assert_exists "$target/pi-agent-loop/scripts/audit_rpc.py" "pi-agent-loop fallback driver is installed"
+    assert_not_exists "$target/pi-agent-team/SKILL.md" "package companion skill is not copied by setup"
+}
+
 test_update_only_skips_new_skills() {
     local tmp target out
     make_tmp
@@ -130,6 +151,7 @@ test_recommended_preset_is_small() {
     assert_exists "$target/cleanup/SKILL.md" "recommended preset includes cleanup"
     assert_exists "$target/capture-gotcha/SKILL.md" "recommended preset includes capture-gotcha"
     assert_not_exists "$target/cc-agent-loop/SKILL.md" "recommended preset does not install non-recommended skills"
+    assert_not_exists "$target/pi-agent-loop/SKILL.md" "recommended preset does not install extension-dependent pi-agent-loop"
 }
 
 test_env_md_initialized() {
@@ -145,6 +167,7 @@ test_env_md_initialized() {
 test_help
 test_dry_run_does_not_write
 test_single_skill_install
+test_pi_agent_loop_is_selectable
 test_update_only_skips_new_skills
 test_update_only_refreshes_existing_skill
 test_recommended_preset_is_small

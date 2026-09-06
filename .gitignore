@@ -5,3 +5,4 @@ __pycache__/
 *.pyc
 state/
 skills/.skills-repo-path
+.pi/agent-team/

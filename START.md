@@ -1,6 +1,6 @@
 # 3 分钟上手 Inno's Skills Pack
 
-这个技能包会给 Claude Code、Codex、Hermes 增加一组常用能力。你不用记技能名，也不用懂技术。
+这个技能包会给 Claude Code、Codex、Hermes 与 Pi 增加一组常用能力。你不用记技能名，也不用懂技术。
 
 **直接告诉 AI 你想做什么，它会自己选择合适的技能。**
 
@@ -41,7 +41,28 @@ Agent 自动读取入口（内容一致）：[AGENTS.md](AGENTS.md) / [CLAUDE.md
 你可以说：
 
 > 「这个任务要多轮执行和审查」  
-> 「按 agent-loop 推进，做到可验收」
+> 「按 pi-agent-loop 推进，做到可验收」
+
+Pi 的 `pi-agent-loop` 会首选一个已授权、持久的 auditor；扩展不可用时才退回 Python RPC driver。
+
+### Pi Agent Team（独立安装）
+
+先从仓库根目录安装一次：
+
+```bash
+pi install ./extensions/pi-agent-orchestrator
+```
+
+然后可以说：
+
+> 「这个任务很复杂，先解释团队分工，再创建测试和审查 Agent」
+> 「查看团队状态」
+
+简单任务不会建队。每个新成员首次创建前，扩展会展示职责、instructions、模型、思考级别、工具权限、持续费用和只读仪表盘说明；你拒绝就不会创建。父 Pi 重启或恢复会话后，成员仍使用原 child session UUID。
+
+在 macOS 的 Pi 交互界面中，首次实际派工会自动打开一个独立 Terminal.app 窗口：所有 Agent 集中在一个 tmux 仪表盘，每人一个实时只读 pane。主 Pi 仍留在原窗口并负责所有输入；pane 不能输入 prompt 或 shell。关闭仪表盘会中断正在运行的成员，已接受的任务不会自动重放。RPC、JSON 和 print 模式不会弹出桌面窗口。
+
+复杂、多轮或可能中断的团队会由主 Pi维护一份共享进度文档，记录目标、分工、已确认结论和下一步。成员只提交自己的报告，主 Pi审核后决定哪些摘要公开；一次性、互不依赖的任务不额外建文档。
 
 ### 工具类
 
@@ -60,7 +81,8 @@ Agent 自动读取入口（内容一致）：[AGENTS.md](AGENTS.md) / [CLAUDE.md
 | 你想做 | 直接这样说 |
 |---|---|
 | 理清模糊目标 | 「先帮我澄清目标」 |
-| 多轮任务 | 「按 agent-loop 推进」 |
+| 多轮任务 | 「按 pi-agent-loop 推进」 |
+| Pi 持久团队 | 「复杂任务才组队，先解释角色并征得同意」 |
 | 清理文件 | 「清理临时文件」 |
 | 设计新技能架构 | 「帮我设计一个模块化技能」 |
 | 记录踩坑 | 「把这次环境问题记成 gotcha」 |
@@ -80,6 +102,7 @@ Agent 自动读取入口（内容一致）：[AGENTS.md](AGENTS.md) / [CLAUDE.md
 
 - Claude Code / Codex：直接说人话，或说「用 xxx 技能」。
 - Hermes：可以直接说「加载 xxx 技能」，也可以用 `/skill-name`。
+- Pi：可以用 `/skill:pi-agent-loop`；安装独立扩展包后还可用 `/skill:pi-agent-team`、`/team-status`、`/team-doctor`。
 
 ---
 

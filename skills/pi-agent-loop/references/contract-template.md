@@ -1,89 +1,124 @@
-# Pi Agent Loop state.md 模板
+# Pi Agent Loop Plan Contract
 
-> 复制到 `state/<task-slug>/state.md`。主 Pi 维护本文件；audit 写 `review.md`。
+> PLAN/USER_GATE 时按此清单组装一次 `agent_team plan`。不要复制为强制 runtime 状态文件；TeamState 是结构化事实源，`leader/plan.md` 由 runtime 生成精简恢复视图。
 
-## Contract
+## User-facing Contract
 
-- 意图：
-- 完成判定：
-- 非目标：
-- 假设 / 澄清：
-- 计划来源：
-- 停止护栏：
-- audit 子 Agent：独立、同任务复用、途径自定；只写 review.md；不可用则重新派发
-- prompt 契约：audit 出 fix_prompt；主 Pi 原样执行或 appeal
-- 辅助 Agent：允许 | 禁用（候选/边界/预算）
-- 必须加载的技能：
+- Goal / observable result:
+- Non-goals:
+- Assumptions / clarifications:
+- Stop conditions:
+- Verification authorization and commands:
+- Human acceptance entry point:
 
-## Steps
+## Roster
 
-1. [名] - [动作 + 完成标准]
-   - handoff:
+| id | kind | role / reason | permissions | model override | stop condition |
+| --- | --- | --- | --- | --- | --- |
+| coder | coder | implementation | owned paths only | inherit | two rounds no progress |
+| reviewer | reviewer | independent verdict | read-only | inherit | review budget |
+| optional | debugger/product/optimizer | explicit reason | read-only | inherit | objective answered |
 
-## Checklist
+Reviewer must be unique. Optional experts are registered now only when justified; later additions require amendment.
 
-- [ ] [二元标准] - evidence:
+## Execution DAG
 
-## Progress
+| taskId | coder memberId | objective | dependsOn | ownedPaths | acceptance | relevantPaths |
+| --- | --- | --- | --- | --- | --- | --- |
+|  |  |  |  |  |  |  |
 
-- round: 0
-- stage: PLAN | USER_GATE | ACT | OBSERVE | AUDIT | LOOP | ESCALATE_REPLAN | VERIFY | BASELINE_LOCK | OPTIMIZE | FINAL_VERIFY | DELIVER
-- loop_todo:
-  - [ ] PLAN
-  - [ ] USER_GATE
-  - [ ] ACT
-  - [ ] OBSERVE
-  - [ ] AUDIT
-  - [ ] VERIFY
-  - [ ] BASELINE_LOCK
-  - [ ] OPTIMIZE
-  - [ ] FINAL_VERIFY
-  - [ ] DELIVER
-- audit: 可用 | 需重新派发（保留 review.md 历史）
-- done:
-- tried:
-- next:
-- open:
-- user-confirm: 无 |
-- cost:
+Checks:
 
-## Evidence
+- IDs unique; dependencies exist; graph acyclic.
+- ownedPaths are concrete cwd-relative paths, with no absolute path, `..`, glob, normalized duplicate, or unordered parent/child conflict.
+- Each task packet is minimal: objective, constraints, dependency summaries, owned paths, acceptance, relevant paths, output contract.
+- Parallel candidates have no dependency relationship, distinct members, and non-overlapping ownership.
 
-- changed:
-- commands:
-- audit_calls:
-- auxiliary_calls:
-- review: `state/<task-slug>/review.md`
-- appeal: `state/<task-slug>/appeal.md`（按需）
-- inbox: `state/inbox.md`（按需）
+## Plan Call
 
-## Recovery
+```json
+{
+  "action": "plan",
+  "team": "<team>",
+  "plan": {
+    "members": [
+      {
+        "id": "coder",
+        "kind": "coder",
+        "role": "Coder/Executor",
+        "instructions": "Follow the TaskPacket and emit the execution envelope."
+      },
+      {
+        "id": "reviewer",
+        "kind": "reviewer",
+        "role": "Independent Reviewer",
+        "instructions": "Read-only; emit ReviewRound decisions.",
+        "tools": ["read", "grep", "find", "ls"]
+      }
+    ],
+    "reviewerId": "reviewer",
+    "tasks": [
+      {
+        "id": "task-a",
+        "memberId": "coder",
+        "objective": "<result>",
+        "constraints": ["<boundary>"],
+        "dependsOn": [],
+        "ownedPaths": ["src/path"],
+        "acceptance": ["<binary check>"],
+        "relevantPaths": ["src/path/file.ts"]
+      }
+    ],
+    "acceptance": ["<global binary condition>", "HUMAN_ACCEPT is required"]
+  }
+}
+```
 
-读现存过程文件 -> **stage 与恢复路由见 `references/protocol.md` §7**。
+Amendment resends the complete plan plus the exact current revision:
 
-本端摘要：
+```json
+{"action":"plan","team":"<team>","expectedRevision":1,"plan":"<complete replacement object>"}
+```
 
-- audit 子 Agent 不可用/上下文丢失 -> 重新派发；交 state/完整 review/appeal/未决 issue，先关旧 issue。
-- 临时故障不立即替换；保留 review.md 历史。
+## Loop Checklist
 
-## Baseline
+- [ ] USER_GATE approved plan revision
+- [ ] Leader manually dispatched READY execution nodes
+- [ ] Every Coder report has a valid execution envelope
+- [ ] Every SUBMITTED task received an independent ReviewRound
+- [ ] FIX_REQUIRED prompts were passed unchanged to the same task's next attempt
+- [ ] All required tasks are VERIFIED
+- [ ] Required debugger/product/optimizer ExpertRounds are closed, or N/A with reason
+- [ ] Reviewer FINAL_VERIFY is VERIFIED
+- [ ] Pending requests and known blockers are closed
+- [ ] Leader presented completion criteria, evidence, limits, and manual entry
+- [ ] User HUMAN_ACCEPT is ACCEPTED
 
-<!-- VERIFY 后；不改交付物 -->
+## Recovery Snapshot
 
-- locked_at:
-- deliverable_paths:
-- checklist_passed:
-- evidence_paths:
-- baseline_fingerprint:
-- rollback_entry:
-- baseline_status: deliverable
+Use compact `agent_team status` and record only what the human needs:
 
-## Deliver
+- plan revision:
+- current task/review/expert IDs and states:
+- blockers / pending requests:
+- next explicit Leader action:
+- never auto-replay:
 
-<!-- FINAL 后；session/过程文件等用户授权清理 -->
+Use `status full:true` only when the roster, DAG, or exact TaskPacket is needed to recover. Long member prose stays in child Session or the referenced on-demand output.
 
-- completed:
-- why:
-- verified_by: `state/<task-slug>/review.md`
-- risks_or_limits:
-- next:
+## Context Policy
+
+Members enable Pi native auto-compaction at startup. The orchestrator sets no custom thresholds, does not invoke compact after settlement, and writes no compaction handoff files. Native compaction or session failure surfaces as `ERROR/INTERRUPTED` without automatic replay. The Leader decides whether to rotate or continue and records any needed handoff summary outside orchestrator state.
+
+## Human Acceptance
+
+```md
+STATUS: PENDING_ACCEPT | ACCEPTED | REJECTED
+COMPLETION_CRITERIA:
+EVIDENCE:
+LIMITS:
+EXPERIENCE_ENTRY:
+USER_FEEDBACK:
+```
+
+`FINAL_VERIFY: VERIFIED` never fills ACCEPTED automatically. Contract-external feedback returns to amendment / USER_GATE.

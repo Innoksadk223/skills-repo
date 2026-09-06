@@ -1,6 +1,6 @@
 # Inno's Skills Pack
 
-个人 AI Coding Agent 技能包，支持 **Claude Code**、**Codex**、**Hermes**。
+个人 AI Coding Agent 技能包，支持 **Claude Code**、**Codex**、**Hermes** 与 **Pi**；另含一个可独立安装的 Pi Agent Team 包。
 
 > 小白上手看 [START.md](START.md) — 不用懂技术，会说目标就行。
 >
@@ -17,12 +17,29 @@
 3. **再安装** — `bash setup.sh`（仅本仓技能）
 4. **最后教** — 安装/更新完成后，直接读 [START.md](START.md)，给用户一段 3 分钟上手教程
 
-## 本仓库技能（7 个）
+## 本仓库技能（8 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
 | 工具 | `skill-architecture` / `cleanup` / `capture-gotcha` / `intent-normalizer` (4) | 模块化架构、清理、环境记录、意图校准 |
-| Agent 循环 | `cc-agent-loop` / `codex-agent-loop` / `hermes-agent-loop` (3) | 各平台 Agent 编排循环（执行-审查分离） |
+| Agent 循环 | `cc-agent-loop` / `codex-agent-loop` / `hermes-agent-loop` / `pi-agent-loop` (4) | 各平台 Agent 编排循环（执行-审查分离） |
+
+## Pi Agent Team（独立扩展包）
+
+`extensions/pi-agent-orchestrator/` 不是第 9 个根技能，而是一个同时声明 extension 与配套 `pi-agent-team` skill 的独立 Pi package：
+
+- `agent_team` 提供持久、需首次授权、可恢复的具名 child Pi Agent；
+- macOS TUI 派工前会自动打开一个独立 Terminal.app tmux 仪表盘，每个 Agent 一个只读 pane；主 Pi 原窗口和唯一控制权不变，关闭仪表盘会中断活动任务且不自动重放；
+- RPC/JSON/print 不启动桌面仪表盘，并保持原有输出行为；
+- `/skill:pi-agent-team` 教主 Pi 只在复杂可拆分或用户明确要求时组队；
+- `/team-doctor` 无 LLM 检查当前 Pi 更新后是否仍兼容；不兼容时派工 fail closed，保留状态与 session；
+- 复杂、多轮或需要恢复的团队，由主 Pi维护 `.pi/agent-team/<任务>/plan.md` 公共进度；成员通过原结果通道提交报告，主 Pi审核后选择性发布摘要。
+
+```bash
+pi install ./extensions/pi-agent-orchestrator
+```
+
+此安装与 `setup.sh` 分开；`setup.sh` 只管理根 `skills/`。详见 [扩展 README](extensions/pi-agent-orchestrator/README.md)。
 
 ## 推荐技能（自用清单）
 
@@ -53,7 +70,8 @@
 
 | 场景 | 入口 | 何时用 | 产物 |
 |------|------|--------|------|
-| 复杂任务循环 | `hermes-agent-loop` / `cc-agent-loop` / `codex-agent-loop` | 多步、可验收、需执行+审查 | `state/`、审查结果 |
+| 复杂任务循环 | `hermes-agent-loop` / `cc-agent-loop` / `codex-agent-loop` / `pi-agent-loop` | 多步、可验收、需执行+审查 | `state/`、审查结果 |
+| Pi 多 Agent | `pi-agent-team`（随扩展包安装） | 复杂可拆分或用户明确要求；简单任务不建队 | 持久成员、child session、按需共享进度 |
 | 意图校准 | `intent-normalizer` | 目标模糊、歧义 | 可执行意图 |
 | 清理 | `cleanup` | 任务结束后 | 清理报告 |
 
@@ -65,7 +83,7 @@
 | `cleanup` | 清理临时文件 | 本仓库 |
 | `capture-gotcha` | 环境踩坑记录 | 本仓库 |
 | `intent-normalizer` | 意图校准 | 本仓库 |
-| `*-agent-loop` | 各平台 Agent 循环 | 本仓库 |
+| `*-agent-loop` | 四个平台的 Agent 循环 | 本仓库 |
 
 ## 安装
 
@@ -81,7 +99,7 @@ bash setup.sh
 bash setup.sh --dry-run
 bash setup.sh --preset all
 bash setup.sh --target codex --groups tools
-bash setup.sh --target codex --skills hermes-agent-loop,cleanup
+bash setup.sh --target codex --skills pi-agent-loop,cleanup
 bash setup.sh --update-only
 bash setup.sh --help
 ```
@@ -100,7 +118,9 @@ bash setup.sh --update-only
 
 ```text
 skills-repo/
-├── skills/          # 本仓 7 个技能（扁平）
+├── skills/          # 本仓 8 个技能（扁平，含 pi-agent-loop）
+├── extensions/
+│   └── pi-agent-orchestrator/  # 独立 Pi extension + pi-agent-team skill
 ├── AGENTS.md        # Agent 通用入口
 ├── CLAUDE.md        # Claude Code 入口（与 AGENTS 同步）
 ├── CODEX.md         # Codex 入口（与 AGENTS 同步）
