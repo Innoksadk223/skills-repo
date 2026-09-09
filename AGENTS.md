@@ -2,16 +2,7 @@
 
 本仓库是 Inno's Skills Pack，为 **Claude Code**、**Codex**、**Hermes** 与 **Pi** 提供通用技能。
 
-同内容副本（方便各端自动注入）：
-
-| 文件 | 主要读者 |
-|------|----------|
-| `AGENTS.md` | 通用 / Codex / 多端 |
-| `CLAUDE.md` | Claude Code |
-| `CODEX.md` | Codex |
-| `HERMES.md` | Hermes |
-
-> 改本文件后请同步上述副本（内容应一致）。人类说明见 [README.md](README.md)，上手见 [START.md](START.md)。
+`AGENTS.md` 是仓库唯一的 Agent 入口文件。人类说明见 [README.md](README.md)，上手见 [START.md](START.md)。
 
 ## 仓库技能（7 个）
 

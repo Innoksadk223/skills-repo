@@ -6,7 +6,7 @@
 
 知识库相关技能请使用独立仓库：[`kb-skills-repo`](https://github.com/Innoksadk223/kb-skills-repo)。
 
-Agent 自动读取入口（内容一致）：[AGENTS.md](AGENTS.md) / [CLAUDE.md](CLAUDE.md) / [CODEX.md](CODEX.md) / [HERMES.md](HERMES.md)。
+Agent 自动读取入口：[AGENTS.md](AGENTS.md)。人类说明见 [README.md](README.md)。
 
 ---
 

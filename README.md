@@ -6,7 +6,8 @@
 >
 > 知识库相关技能已拆到 [`kb-skills-repo`](https://github.com/Innoksadk223/kb-skills-repo)。
 >
-> Agent 入口文件（内容一致）：[AGENTS.md](AGENTS.md) / [CLAUDE.md](CLAUDE.md) / [CODEX.md](CODEX.md) / [HERMES.md](HERMES.md)
+> Agent 入口文件：[AGENTS.md](AGENTS.md)
+> 人类说明：[README.md](README.md) · 上手：[START.md](START.md)
 
 ## AI 使用流程
 
@@ -120,10 +121,7 @@ skills-repo/
 ├── skills/          # 本仓 7 个技能（扁平，含 pi-agent-loop）
 ├── extensions/
 │   └── pi-agent-orchestrator/  # 独立 Pi extension + pi-agent-team skill
-├── AGENTS.md        # Agent 通用入口
-├── CLAUDE.md        # Claude Code 入口（与 AGENTS 同步）
-├── CODEX.md         # Codex 入口（与 AGENTS 同步）
-├── HERMES.md        # Hermes 入口（与 AGENTS 同步）
+├── AGENTS.md        # 唯一 Agent 入口
 ├── START.md         # 人类上手
 ├── README.md
 └── setup.sh
