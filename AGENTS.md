@@ -1,57 +1,18 @@
 # AGENTS.md
 
-本仓库是 Inno's Skills Pack，为 **Claude Code**、**Codex**、**Hermes** 与 **Pi** 提供通用技能。
+本仓库是 Inno's Skills Pack，为 Claude Code、Codex、Hermes 与 Pi 提供通用技能。
 
-`AGENTS.md` 是仓库唯一的 Agent 入口文件。人类说明见 [README.md](README.md)，上手见 [START.md](START.md)。
+介绍、技能清单、安装与使用说明统一见 [README.md](README.md)，供人和 AI 共同阅读。本文件只记录仓库维护规则。
 
-## 仓库技能（7 个）
+## 仓库边界
 
-| 分组 | 技能 |
-|------|------|
-| 工具 | `cleanup` / `capture-gotcha` |
-| Agent 循环 | `cc-agent-loop` / `codex-agent-loop` / `hermes-agent-loop` / `pi-agent-loop` |
+- 根技能以 `skills/` 下实际目录为准，当前共 9 个；不要假设已删除或外部技能仍在仓内。
+- 知识库技能位于独立的 `kb-skills-repo`，不在本仓。
+- 安装或更新完整技能目录时，检查目标 Agent 的实际加载位置，保留用户修改和已有外部技能；不得盲目覆盖同名内容。
+- 推荐能力及其上游地址统一见 README。不得主动安装外部技能；请求涉及外部技能时先给出上游与安装地址，获得用户明确同意后执行。
 
-安装根技能：`bash setup.sh`。
+## 经验与清理
 
-## Pi 独立包
-
-`extensions/pi-agent-orchestrator/` 同时提供 `agent_team` extension 与包内 `pi-agent-team` 配套 skill。它不计入上述 7 个根技能，也不由 `setup.sh` 安装：
-
-```bash
-pi install ./extensions/pi-agent-orchestrator
-```
-
-默认单 Agent；仅复杂可拆分或用户明确要求时组队。新成员必须先经扩展 confirmation，持久配置与 child UUID 跟随父 branch；Pi 更新不兼容时 fail closed。复杂、多轮或需恢复的团队由主 Pi维护一份成员只读、摘要选择性发布的共享进度文档；一次性独立派工不创建。
-
-## 推荐技能（自用清单）安装铁律
-
-以下是维护者自用推荐能力，**不在本仓库**。请求到这些能力时：先给地址 → 等用户明确同意 → 再安装。
-
-| 技能 | 上游 / 安装 |
-|------|-------------|
-| `anysearch` | https://github.com/anysearch-ai/anysearch-skill · `npx skills add https://github.com/anysearch-ai/anysearch-skill --skill anysearch` |
-| `grill-with-docs` | https://github.com/mattpocock/skills/tree/main/skills/engineering/grill-with-docs · `npx skills add https://github.com/mattpocock/skills --skill grill-with-docs` |
-| `frontend-design` | https://github.com/anthropics/skills/tree/main/skills/frontend-design · `npx skills add https://github.com/anthropics/skills --skill frontend-design` |
-| `skill-creator` | https://clawhub.ai （slug: `skill-creator`） |
-| `find-skills` | https://github.com/vercel-labs/skills/tree/main/skills/find-skills · `npx skills add https://github.com/vercel-labs/skills --skill find-skills` |
-| `playwright-cli` | https://github.com/microsoft/playwright-cli · `npx skills add microsoft/playwright-cli@playwright-cli` |
-| `ponytail` | https://github.com/DietrichGebert/ponytail · `npx skills add https://github.com/DietrichGebert/ponytail --skill ponytail` |
-| `rtk` | https://github.com/rtk-ai/rtk · `brew install rtk`；`rtk init -g --agent hermes`（其它 agent 见上游） |
-| `ppt-agent` | https://github.com/Akxan/ppt-agent-skill |
-| `taste-skill` | https://github.com/Leonxlnx/taste-skill |
-| `ui-ux-pro-max` | https://github.com/nextlevelbuilder/ui-ux-pro-max-skill |
-| Superpowers | https://github.com/obra/superpowers |
-
-**三条规则：**
-
-1. 不得主动安装任何推荐/外部技能。
-2. 能力不在本仓库时，先说明上游并给出下载/安装地址。
-3. 必须获得用户明确同意后方可执行安装。
-
-## 给 AI 的仓库内行为
-
-- 本仓技能以 `skills/` 扁平目录为准；不要假设已删除的 `anysearch` / `minimax-*` / `skill-planner` 等仍在仓内。
-- 知识库技能在 [`kb-skills-repo`](https://github.com/Innoksadk223/kb-skills-repo)，不在本仓。
-- `setup.sh` 会同步 7 个根技能到 `~/.agents/skills` 主副本，再给 Claude/Codex/Hermes 建链接；**不会删除**用户已有的外部/Hub 技能。
-- 包内 `pi-agent-team` 只随 Pi package 安装，不要和根 `pi-agent-loop` 重复计数或复制进 recommended preset。
-- 涉及项目、终端、浏览器、MCP、文件系统、构建、测试、部署或工具调用时，任务开始必须运行 `python ~/.agents/skills/capture-gotcha/scripts/add_gotcha.py recall`；先读项目记忆，再读全局记忆。遇到错误先按关键词 recall，修复并验证后再按项目/全局边界记录经验，未经确认的经验只写项目候选，不参与 recall。
+- 涉及项目、终端、浏览器、MCP 或文件操作时，任务开始运行 `python ~/.agents/skills/capture-gotcha/scripts/add_gotcha.py recall`。安装位置不同时使用已确认的实际路径；从项目根目录读取项目记忆，再读取全局记忆。
+- 遇到错误先按关键词 recall，修复并验证后按项目/全局边界记录经验；未经确认的经验只写项目候选，不参与 recall。
+- 任务结束遵循 `cleanup`：按用途检查本次过程产物，保护最终产品、可复用测试和用户资料；一次性制作工具先列明范围并取得授权，不确定则保留。

@@ -1,46 +1,18 @@
 # Inno's Skills Pack
 
-个人 AI Coding Agent 技能包，支持 **Claude Code**、**Codex**、**Hermes** 与 **Pi**；另含一个可独立安装的 Pi Agent Team 包。
+个人 AI Coding Agent 技能包，支持 **Claude Code**、**Codex**、**Hermes** 与 **Pi**。
 
-> 小白上手看 [START.md](START.md) — 不用懂技术，会说目标就行。
->
-> 知识库相关技能已拆到 [`kb-skills-repo`](https://github.com/Innoksadk223/kb-skills-repo)。
->
-> Agent 入口文件：[AGENTS.md](AGENTS.md)
-> 人类说明：[README.md](README.md) · 上手：[START.md](START.md)
+本文供人和 AI 共同阅读，包含技能介绍、安装和使用说明。仓库维护规则见 [AGENTS.md](AGENTS.md)。
 
-## AI 使用流程
+知识库相关技能位于独立仓库 [`kb-skills-repo`](https://github.com/Innoksadk223/kb-skills-repo)。
 
-收到安装请求后，AI 应按以下步骤：
-
-1. **先介绍** — 按分组介绍技能，每组一句话概括
-2. **再确认** — 问用户要装到哪个 agent、选哪些分组。涉及推荐/外部技能时，列出上游地址，等用户确认后再安装
-3. **再安装** — `bash setup.sh`（仅本仓技能）
-4. **最后教** — 安装/更新完成后，直接读 [START.md](START.md)，给用户一段 3 分钟上手教程
-
-## 本仓库技能（7 个）
+## 本仓库技能（9 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
 | 工具 | `cleanup` / `capture-gotcha` (2) | 清理、环境记录 |
 | Agent 循环 | `cc-agent-loop` / `codex-agent-loop` / `hermes-agent-loop` / `pi-agent-loop` (4) | 各平台 Agent 编排循环（执行-审查分离） |
-
-## Pi Agent Team（独立扩展包）
-
-`extensions/pi-agent-orchestrator/` 不是第 9 个根技能，而是一个同时声明 extension 与配套 `pi-agent-team` skill 的独立 Pi package：
-
-- `agent_team` 提供持久、需首次授权、可恢复的具名 child Pi Agent；
-- macOS TUI 派工前会自动打开一个独立 Terminal.app tmux 仪表盘，每个 Agent 一个只读 pane；主 Pi 原窗口和唯一控制权不变，关闭仪表盘会中断活动任务且不自动重放；
-- RPC/JSON/print 不启动桌面仪表盘，并保持原有输出行为；
-- `/skill:pi-agent-team` 教主 Pi 只在复杂可拆分或用户明确要求时组队；
-- `/team-doctor` 无 LLM 检查当前 Pi 更新后是否仍兼容；不兼容时派工 fail closed，保留状态与 session；
-- 复杂、多轮或需要恢复的团队，由主 Pi维护 `.pi/agent-team/<任务>/plan.md` 公共进度；成员通过原结果通道提交报告，主 Pi审核后选择性发布摘要。
-
-```bash
-pi install ./extensions/pi-agent-orchestrator
-```
-
-此安装与 `setup.sh` 分开；`setup.sh` 只管理根 `skills/`。详见 [扩展 README](extensions/pi-agent-orchestrator/README.md)。
+| 内容与提示词 | `image-prompt-designer` / `uiux-prompt-designer` / `xiaohongshu-content-formatter` (3) | 图片提示词、界面提示词与小红书图文整理 |
 
 ## 推荐技能（自用清单）
 
@@ -72,57 +44,31 @@ pi install ./extensions/pi-agent-orchestrator
 | 场景 | 入口 | 何时用 | 产物 |
 |------|------|--------|------|
 | 复杂任务循环 | `hermes-agent-loop` / `cc-agent-loop` / `codex-agent-loop` / `pi-agent-loop` | 多步、可验收、需执行+审查 | `state/`、审查结果 |
-| Pi 多 Agent | `pi-agent-team`（随扩展包安装） | 复杂可拆分或用户明确要求；简单任务不建队 | 持久成员、child session、按需共享进度 |
-| 意图校准 |  | 目标模糊、歧义 | 可执行意图 |
+| 经验记忆 | `capture-gotcha` | 任务开始与修复后 | 项目、全局经验及候选记录 |
 | 清理 | `cleanup` | 任务结束后 | 清理报告 |
 
-## 本仓库技能来源
+## 安装与更新
 
-| 技能 | 用途 | 来源 |
-|------|------|------|
-| `cleanup` | 清理临时文件 | 本仓库 |
-| `capture-gotcha` | 环境踩坑记录 | 本仓库 |
-|  | 意图校准 | 本仓库 |
-| `*-agent-loop` | 四个平台的 Agent 循环 | 本仓库 |
+可以直接告诉 AI：“把本仓库的 cleanup 和 capture-gotcha 安装到我正在使用的 Agent。”
 
-## 安装
+AI 先确认目标 Agent 与所需技能，检查其实际支持的技能目录，再将 `skills/<技能名>/` 完整目录链接或复制到该位置。保留脚本和参考资料，不只复制 `SKILL.md`；遇到已有同名内容先比较，保护用户修改与外部技能。
 
-```bash
-git clone https://github.com/Innoksadk223/skills-repo.git ~/inno-skills
-cd ~/inno-skills
-bash setup.sh
-```
+优先链接到本仓库，更新仓库后链接即可读取最新内容；如果使用复制安装，更新后还需同步对应技能目录。更新前检查本地修改，不强制覆盖。安装完成后确认 Agent 能发现技能，并说明如何调用。
 
-常用：
+## 使用
 
-```bash
-bash setup.sh --dry-run
-bash setup.sh --preset all
-bash setup.sh --target codex --groups tools
-bash setup.sh --target codex --skills pi-agent-loop,cleanup
-bash setup.sh --update-only
-bash setup.sh --help
-```
+直接描述目标，或点名技能，例如“用 cleanup 检查本次过程文件”“按 capture-gotcha 读取已有经验”。复杂任务按所用 Agent 选择对应的循环技能。
 
-`setup.sh` 会：检测 agent → 同步到 `~/.agents/skills` → 在 Codex/Claude/Hermes skills 目录建链接；安装 capture-gotcha 时初始化 `~/.agents/gotchas.md`；**不删除**仓外已有技能。
+- `capture-gotcha`：任务开始读取项目与全局正式记忆，修复后记录可复用经验；候选不参与正常召回。具体命令见其 `SKILL.md`，从项目根目录执行，脚本路径以实际安装位置为准。
+- `cleanup`：结束前按用途检查过程产物；一次性制作工具先列明再确认删除，最终产品、正式测试和用户资料保留。
 
-## 更新
-
-```bash
-cd $(cat ~/.agents/skills/.skills-repo-path)
-git pull
-bash setup.sh --update-only
-```
+技能的自动触发取决于 Agent 配置。需要稳定读取记忆时，将任务开始执行 `recall` 的要求加入实际生效的 Agent 规则入口；不要把安装技能等同于安装自动钩子。
 
 ## 目录结构
 
 ```text
 skills-repo/
-├── skills/          # 本仓 7 个技能（扁平，含 pi-agent-loop）
-├── extensions/
-│   └── pi-agent-orchestrator/  # 独立 Pi extension + pi-agent-team skill
-├── AGENTS.md        # 唯一 Agent 入口
-├── START.md         # 人类上手
-├── README.md
-└── setup.sh
+├── skills/          # 9 个根技能
+├── AGENTS.md        # 仓库维护规则
+└── README.md        # 人与 AI 共用的介绍、安装和上手说明
 ```
