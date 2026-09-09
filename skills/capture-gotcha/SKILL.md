@@ -1,57 +1,87 @@
 ---
 name: capture-gotcha
-description: Records reusable local-environment lessons (paths, permissions, proxies, SSL, env vars, ports, tool installs, shell differences) to ~/.agents/env.md so future tasks don't hit the same environment trap twice. Use when terminal, browser, MCP, skill, or filesystem validation failures reveal a stable, reproducible environment-level fix. Also consult ~/.agents/env.md before terminal/browser/MCP/filesystem-heavy tasks to avoid known traps. Skip code bugs, business logic errors, user misunderstandings, and temporary outages.
+description: >
+  记录并召回有证据、可复用的项目、环境和工具调用经验。开始任何项目任务、
+  终端/浏览器/MCP/文件操作，或遇到错误、命令失败和工具调用失败时使用。
+  任务开始必须先运行 recall，读取当前项目与全局正式记忆；项目记忆优先。
+  修复并验证后，把项目特有经验写入项目记忆，把跨项目仍成立的经验写入全局记忆，
+  无法确认的经验写入候选记忆，不让候选参与 recall。
 ---
 
 # Capture Gotcha
 
-把跨任务可复用的本机环境教训写入 `~/.agents/env.md`（三端软链共享），让后续任务少踩同一个坑。
+把已验证的失败经验变成下一次任务开始时可直接执行的提醒。这个技能的价值在于稳定召回，所以每次相关任务都遵循固定顺序：**recall → 执行 → 按错误查询 → 修复验证 → 沉淀**。
 
-## Workflow
+## 开始任务：强制 recall
 
-1. **查重** — 先读 `~/.agents/env.md` 对应区段查已有解法（`add_gotcha.py search '关键词'` 快速查重）。确认无覆盖且满足四条件（环境层 + 可复用 + 稳定解法 + 真实根因已定位）才继续。
-2. **写入** — 组织条目（问题 + 真实报错证据 → 根因 → 可执行解法，优先归入已有 `##` 区段），脚本写入或手动编辑，逐条过 [Audit Gates](#audit-gates)。
-3. **验证** — 读 `~/.agents/env.md` 确认条目存在、格式正确、无重复；口头 PASS 不算 PASS。
-
-## Audit Gates
-
-条目必须全部通过：
-
-| 门 | 检查 |
-|---|---|
-| `scope` | 属环境层（路径/权限/代理/SSL/版本/环境变量/端口/工具安装/symlink/shell差异/包装层策略）。**不记**：代码bug、业务逻辑、用户误解、远端临时故障、无稳定解法的模糊报错 |
-| `evidence` | 有真实报错/日志支撑，非包装层摘要（`Command failed` 不算证据） |
-| `placement` | 归入正确区段；标题/场景无重复（脚本自动去重 skip；条目过时用 `update` 刷新内容或手动编辑） |
-| `actionability` | 解法稳定可执行，非单次外推或"试试看" |
-
-## Script
+只要任务涉及项目、终端、浏览器、MCP、文件系统、构建、测试、部署或工具调用，先运行：
 
 ```bash
-SKILL_DIR=~/.agents/skills/capture-gotcha
-python $SKILL_DIR/scripts/add_gotcha.py add \
-  --title '标题' --scene '场景' --cause '原因' --fix '解法'
-
-python $SKILL_DIR/scripts/add_gotcha.py search '关键词'
-python $SKILL_DIR/scripts/add_gotcha.py list [--section 'Git']
-python $SKILL_DIR/scripts/add_gotcha.py update '匹配词' --fix '新解法'
-python $SKILL_DIR/scripts/add_gotcha.py check '原始报错文本'
-python $SKILL_DIR/scripts/add_gotcha.py self-test
+python ~/.agents/skills/capture-gotcha/scripts/add_gotcha.py recall
 ```
 
-参数：`--dry-run`（预览）、`--date YYYY-MM-DD`、`--section '## 区段名'`、`--env-path PATH`（测试用）。`update` 支持 `--title`/`--cause`/`--fix`（可选，只传要改的）。
+不要凭记忆猜测文件位置，也不要因为任务看起来简单而跳过。无关键词 `recall` 会按项目记忆、全局记忆的顺序输出正式经验；候选记忆不会输出。若命令失败，先报告失败原因并直接读取对应的 `.agents/gotchas.md` 作为降级路径；读取失败本身可以在验证后记录为全局工具经验。
 
-## Format
+读完后检查三件事：
 
-`##` 区段下每条一行：
+1. 当前任务是否命中某条经验。
+2. 项目经验是否覆盖全局经验；冲突时遵守项目经验。
+3. 是否有记忆中的命令、路径或工具限制需要在动手前调整。
 
-```markdown
-- **[YYYY-MM-DD] 标题**：场景 → 原因 → 解法
+遇到具体错误时，再用关键词查询：
+
+```bash
+python ~/.agents/skills/capture-gotcha/scripts/add_gotcha.py recall '关键词或错误码'
 ```
 
-标题短到可扫读；场景写触发条件不写流水账；原因写底层机制；解法写可执行动作。
+## 判断记忆范围
 
-## Rules
+正式记忆只有两处：
 
-- 先查后记 — 读 env.md 确认无已有解法再动手
-- 不因记一笔打断主任务 — 先修复，再回头记
-- 不替用户决定 — 不确定是否该记时，列证据让用户判断
+- **项目记忆**：`<项目根>/.agents/gotchas.md`。当前代码、配置、目录结构、业务约定或项目工具链特有的经验写这里。
+- **全局记忆**：`~/.agents/gotchas.md`。脱离当前项目仍成立的本机环境、通用工具行为、权限、代理、路径、shell 和包装层经验才写这里。
+
+问自己：换到一个完全无关的项目，这条经验是否仍然成立？是，才考虑全局；否，写项目。项目特例绝不能污染全局。无法判断范围时，先写项目候选，验证后再提升。
+
+## 什么时候记录
+
+只有同时满足以下条件，才写正式记忆：
+
+- 有真实错误、日志或可重复行为作为 `evidence`。
+- 根因已经比“可能是……”更明确。
+- `fix` 已经执行并验证成功。
+- 未来任务能据此改变行动。
+
+普通代码 bug、一次性远端故障、用户误解和未经验证的猜测不要直接写正式记忆。暂时有价值但尚未确认时，写当前项目候选：
+
+```bash
+python ~/.agents/skills/capture-gotcha/scripts/add_gotcha.py add \
+  --scope candidate --title '标题' --scene '触发场景' \
+  --cause '待确认原因' --evidence '真实现象' --fix '待验证方案'
+```
+
+候选位于 `<项目根>/.agents/gotchas-candidates.md`，不参与 recall。相同问题再次复现且解法稳定后，用唯一关键词提升：
+
+```bash
+python ~/.agents/skills/capture-gotcha/scripts/add_gotcha.py promote '关键词' --scope project
+python ~/.agents/skills/capture-gotcha/scripts/add_gotcha.py promote '关键词' --scope global
+```
+
+## 写入与验证
+
+正式记录示例：
+
+```bash
+python ~/.agents/skills/capture-gotcha/scripts/add_gotcha.py add \
+  --scope project --title '标题' --scene '触发场景' \
+  --cause '已确认根因' --evidence '原始报错或验证结果' \
+  --fix '可执行且已验证的解法'
+```
+
+敏感信息会在落盘前脱敏，但仍应主动隐藏密码、令牌和认证 URL。添加或提升后，再运行一次带关键词的 `recall`，确认条目出现在正确作用域、顺序正确且内容可执行。更新文件使用同目录临时文件和原子替换。
+
+支持的覆盖参数用于测试或特殊工作区：`--project-path`、`--global-path`、`--dry-run`。自检命令：
+
+```bash
+python ~/.agents/skills/capture-gotcha/scripts/add_gotcha.py self-test
+```

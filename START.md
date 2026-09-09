@@ -72,7 +72,7 @@ pi install ./extensions/pi-agent-orchestrator
 > 「帮我设计一个模块化技能」  
 > 「把这次踩坑记下来」
 
-踩坑记录写入 `~/.agents/env.md`，三端共享；按安装提示在核心提示词加一行「环境感知」，AI 开工前就会先查已知坑。
+踩坑支持 project/global/candidate 三种范围，使用 recall 查找、promote 提升候选；全局正式记忆写入 `~/.agents/gotchas.md`；项目正式记忆写入 `<项目根>/.agents/gotchas.md`，候选写入 `<项目根>/.agents/gotchas-candidates.md`；按安装提示在核心提示词加一行「环境感知」，AI 开工前就会先查已知坑。
 
 ---
 
@@ -95,7 +95,6 @@ pi install ./extensions/pi-agent-orchestrator
 
 如果你知道要用哪个技能，可以直接点名：
 
-> 「用 intent-normalizer 先校准意图」  
 > 「加载 cleanup 清理一下」
 
 不同 agent 也可以这样触发：

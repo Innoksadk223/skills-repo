@@ -19,7 +19,7 @@
 
 | 分组 | 技能 |
 |------|------|
-| 工具 | `cleanup` / `capture-gotcha` / `intent-normalizer` |
+| 工具 | `cleanup` / `capture-gotcha` |
 | Agent 循环 | `cc-agent-loop` / `codex-agent-loop` / `hermes-agent-loop` / `pi-agent-loop` |
 
 安装根技能：`bash setup.sh`。
@@ -65,3 +65,4 @@ pi install ./extensions/pi-agent-orchestrator
 - 知识库技能在 [`kb-skills-repo`](https://github.com/Innoksadk223/kb-skills-repo)，不在本仓。
 - `setup.sh` 会同步 7 个根技能到 `~/.agents/skills` 主副本，再给 Claude/Codex/Hermes 建链接；**不会删除**用户已有的外部/Hub 技能。
 - 包内 `pi-agent-team` 只随 Pi package 安装，不要和根 `pi-agent-loop` 重复计数或复制进 recommended preset。
+- 涉及项目、终端、浏览器、MCP、文件系统、构建、测试、部署或工具调用时，任务开始必须运行 `python ~/.agents/skills/capture-gotcha/scripts/add_gotcha.py recall`；先读项目记忆，再读全局记忆。遇到错误先按关键词 recall，修复并验证后再按项目/全局边界记录经验，未经确认的经验只写项目候选，不参与 recall。

@@ -21,7 +21,7 @@
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
-| 工具 | `cleanup` / `capture-gotcha` / `intent-normalizer` (3) | 清理、环境记录、意图校准 |
+| 工具 | `cleanup` / `capture-gotcha` (2) | 清理、环境记录 |
 | Agent 循环 | `cc-agent-loop` / `codex-agent-loop` / `hermes-agent-loop` / `pi-agent-loop` (4) | 各平台 Agent 编排循环（执行-审查分离） |
 
 ## Pi Agent Team（独立扩展包）
@@ -72,7 +72,7 @@ pi install ./extensions/pi-agent-orchestrator
 |------|------|--------|------|
 | 复杂任务循环 | `hermes-agent-loop` / `cc-agent-loop` / `codex-agent-loop` / `pi-agent-loop` | 多步、可验收、需执行+审查 | `state/`、审查结果 |
 | Pi 多 Agent | `pi-agent-team`（随扩展包安装） | 复杂可拆分或用户明确要求；简单任务不建队 | 持久成员、child session、按需共享进度 |
-| 意图校准 | `intent-normalizer` | 目标模糊、歧义 | 可执行意图 |
+| 意图校准 |  | 目标模糊、歧义 | 可执行意图 |
 | 清理 | `cleanup` | 任务结束后 | 清理报告 |
 
 ## 本仓库技能来源
@@ -81,7 +81,7 @@ pi install ./extensions/pi-agent-orchestrator
 |------|------|------|
 | `cleanup` | 清理临时文件 | 本仓库 |
 | `capture-gotcha` | 环境踩坑记录 | 本仓库 |
-| `intent-normalizer` | 意图校准 | 本仓库 |
+|  | 意图校准 | 本仓库 |
 | `*-agent-loop` | 四个平台的 Agent 循环 | 本仓库 |
 
 ## 安装
@@ -103,7 +103,7 @@ bash setup.sh --update-only
 bash setup.sh --help
 ```
 
-`setup.sh` 会：检测 agent → 同步到 `~/.agents/skills` → 在 Codex/Claude/Hermes skills 目录建链接；安装 capture-gotcha 时初始化 `~/.agents/env.md` 并建各端软链；**不删除**仓外已有技能。
+`setup.sh` 会：检测 agent → 同步到 `~/.agents/skills` → 在 Codex/Claude/Hermes skills 目录建链接；安装 capture-gotcha 时初始化 `~/.agents/gotchas.md`；**不删除**仓外已有技能。
 
 ## 更新
 

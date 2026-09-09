@@ -100,7 +100,7 @@ test_pi_agent_loop_is_selectable() {
     tmp="$TMP_RESULT"
     target="$tmp/pi-skills"
     list="$(HOME="$tmp/home" bash "$SETUP" --list)"
-    for expected in cleanup capture-gotcha intent-normalizer cc-agent-loop codex-agent-loop hermes-agent-loop pi-agent-loop; do
+    for expected in cleanup capture-gotcha cc-agent-loop codex-agent-loop hermes-agent-loop pi-agent-loop; do
         case "$list" in
             *"  - $expected"*) ;;
             *) fail "skill list is missing maintained root skill $expected" ;;
