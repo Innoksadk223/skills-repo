@@ -6,12 +6,12 @@
 
 知识库相关技能位于独立仓库 [`kb-skills-repo`](https://github.com/Innoksadk223/kb-skills-repo)。
 
-## 本仓库技能（10 个）
+## 本仓库技能（7 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
 | 工具 | `cleanup` / `capture-gotcha` (2) | 清理、环境记录 |
-| Agent 循环 | `cc-agent-loop` / `codex-agent-loop` / `hermes-agent-loop` / `pi-agent-loop` (4) | 各平台 Agent 编排循环（执行-审查分离） |
+| Agent 循环 | `pi-agent-loop` (1) | Agent 编排循环（执行-审查分离） |
 | 内容与提示词 | `image-prompt-designer` / `uiux-prompt-designer` / `xiaohongshu-content-formatter` / `plain-output` (4) | 图片提示词、界面提示词、小红书图文整理与中文表达规范 |
 
 ## 推荐技能（自用清单）
@@ -43,7 +43,7 @@
 
 | 场景 | 入口 | 何时用 | 产物 |
 |------|------|--------|------|
-| 复杂任务循环 | `hermes-agent-loop` / `cc-agent-loop` / `codex-agent-loop` / `pi-agent-loop` | 多步、可验收、需执行+审查 | `state/`、审查结果 |
+| 复杂任务循环 | `pi-agent-loop` | 多步、可验收、需执行+审查 | `state/`、审查结果 |
 | 经验记忆 | `capture-gotcha` | 任务开始与修复后 | 项目、全局经验及候选记录 |
 | 清理 | `cleanup` | 任务结束后 | 清理报告 |
 
@@ -57,7 +57,7 @@ AI 先确认目标 Agent 与所需技能，检查其实际支持的技能目录�
 
 ## 使用
 
-直接描述目标，或点名技能，例如“用 cleanup 检查本次过程文件”“按 capture-gotcha 读取已有经验”。复杂任务按所用 Agent 选择对应的循环技能。
+直接描述目标，或点名技能，例如“用 cleanup 检查本次过程文件”“按 capture-gotcha 读取已有经验”。复杂任务使用 `pi-agent-loop`。
 
 - `capture-gotcha`：任务开始读取项目与全局正式记忆，修复后记录可复用经验；候选不参与正常召回。具体命令见其 `SKILL.md`，从项目根目录执行，脚本路径以实际安装位置为准。
 - `cleanup`：结束前按用途检查过程产物；一次性制作工具先列明再确认删除，最终产品、正式测试和用户资料保留。
@@ -68,7 +68,7 @@ AI 先确认目标 Agent 与所需技能，检查其实际支持的技能目录�
 
 ```text
 skills-repo/
-├── skills/          # 10 个根技能
+├── skills/          # 7 个根技能
 ├── AGENTS.md        # 仓库维护规则
 └── README.md        # 人与 AI 共用的介绍、安装和上手说明
 ```
