@@ -6,13 +6,13 @@
 
 知识库相关技能位于独立仓库 [`kb-skills-repo`](https://github.com/Innoksadk223/kb-skills-repo)。
 
-## 本仓库技能（9 个）
+## 本仓库技能（10 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
 | 工具 | `cleanup` / `capture-gotcha` (2) | 清理、环境记录 |
 | Agent 循环 | `cc-agent-loop` / `codex-agent-loop` / `hermes-agent-loop` / `pi-agent-loop` (4) | 各平台 Agent 编排循环（执行-审查分离） |
-| 内容与提示词 | `image-prompt-designer` / `uiux-prompt-designer` / `xiaohongshu-content-formatter` (3) | 图片提示词、界面提示词与小红书图文整理 |
+| 内容与提示词 | `image-prompt-designer` / `uiux-prompt-designer` / `xiaohongshu-content-formatter` / `plain-output` (4) | 图片提示词、界面提示词、小红书图文整理与中文表达规范 |
 
 ## 推荐技能（自用清单）
 
@@ -68,7 +68,7 @@ AI 先确认目标 Agent 与所需技能，检查其实际支持的技能目录�
 
 ```text
 skills-repo/
-├── skills/          # 9 个根技能
+├── skills/          # 10 个根技能
 ├── AGENTS.md        # 仓库维护规则
 └── README.md        # 人与 AI 共用的介绍、安装和上手说明
 ```
