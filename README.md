@@ -1,29 +1,67 @@
 # Inno's Skills Pack
 
-个人 AI Coding Agent 技能包，支持 **Claude Code**、**Codex**、**Hermes** 与 **Pi**。
+个人 AI Agent 技能包，面向 **Claude Code**、**Codex**、**Hermes** 与 **Pi**。具体技能的工具依赖与适用范围见各自说明；`pi-agent-loop` 依赖 Pi 的 Agent Team 编排能力。
 
-本文供人和 AI 共同阅读，包含技能介绍、安装和使用说明。仓库维护规则见 [AGENTS.md](AGENTS.md)。
-
-知识库相关技能位于独立仓库 [`kb-skills-repo`](https://github.com/Innoksadk223/kb-skills-repo)。
+本文供人和 AI 共同阅读，介绍技能、安装与使用；仓库维护规则见 [AGENTS.md](AGENTS.md)。知识库相关技能位于独立仓库 [`kb-skills-repo`](https://github.com/Innoksadk223/kb-skills-repo)。
 
 ## 本仓库技能（7 个）
 
-| 分组 | 技能 | 一句话 |
-|------|------|--------|
-| 工具 | `cleanup` / `capture-gotcha` (2) | 清理、环境记录 |
-| 用户画像 | `user-profile` (1) | 跨任务用户特点、协作偏好与反感，画像和历史各限 4000 字符 |
-| Agent 循环 | `pi-agent-loop` (1) | Agent 编排循环（执行-审查分离） |
-| 内容与提示词 | `image-prompt-designer` / `uiux-prompt-designer` / `plain-output` (3) | 图片提示词、界面提示词与中文表达规范 |
+发布清单以 Git 跟踪的技能目录为准，不包含被忽略的本机技能。点击技能名查看完整规则。
 
-## 推荐技能（自用清单）
+| 技能 | 用途与使用时机 |
+|------|----------------|
+| [cleanup](skills/cleanup/SKILL.md) | 任务收尾或整理目录时，检查过程文件、旧备份和过期资料，按实际用途与恢复价值决定去留，最终产品和用户资料保留。 |
+| [capture-gotcha](skills/capture-gotcha/SKILL.md) | 开始项目、终端、浏览器或文件类任务时，先召回已确认的项目与全局经验；修复验证后再把可复用经验写回对应位置，未证实的只存候选。 |
+| [user-profile](skills/user-profile/SKILL.md) | 维护跨任务有效的用户特点与协作偏好，新对话或上下文丢失后读取；不记具体任务材料。 |
+| [pi-agent-loop](skills/pi-agent-loop/SKILL.md) | 需要用子代理或会话做多代理流程编排时使用：先定计划，再分派执行与独立审查，最后由人验收。 |
+| [image-prompt-designer](skills/image-prompt-designer/SKILL.md) | 把文字需求或成品图片整理成可直接使用的生图提示词，并可保存、复用视觉风格；不直接生成图片。 |
+| [uiux-prompt-designer](skills/uiux-prompt-designer/SKILL.md) | 把产品需求或界面图片整理成可复用的 UI/UX 提示词与风格配置；不直接实现或审查界面。 |
+| [plain-output](skills/plain-output/SKILL.md) | 写中文回复或文档时主动遵循的表达规范，减少空话和无依据判断；属于写作规范，不是润色流程。 |
 
-以下是我自己在用的推荐能力，**不在本仓库**，从上游安装。AI 不得擅自安装，须用户同意。
+## 安装与更新
 
-| 技能 | 用途 | 上游 / 安装 |
-|------|------|-------------|
+可以直接告诉 AI：“把本仓库的 cleanup 和 capture-gotcha 安装到我正在使用的 Agent。”
+
+1. 确认目标 Agent、所需技能及其实际加载目录，不假定所有 Agent 使用相同路径。
+2. 将 `skills/<技能名>/` **完整目录**链接或复制到加载位置，保留脚本和参考资料；遇到同名内容先比较，不覆盖用户修改或已有外部技能。
+3. 优先链接到本仓库，便于后续读取更新；复制安装则需再次同步。更新前检查本地修改，不强制覆盖。
+4. 安装后确认 Agent 能发现技能、所需工具可用，并说明调用方式。
+
+技能的自动触发取决于 Agent 配置，安装不等于增加自动执行钩子。需要在任务开始稳定读取经验或画像时，应将读取要求加入实际生效的 Agent 规则入口；修改配置前先确认。
+
+## 使用
+
+直接描述目标，或点名技能，例如：
+
+- “用 cleanup 检查过程文件和旧备份。”历史文件与一次性制作工具先列清单确认删除；最终产品、正式测试和用户资料保留。
+- “按 capture-gotcha 读取已有经验。”从项目根目录执行 `recall`，脚本路径以实际安装位置为准。
+- “用 pi-agent-loop 推进这项任务。”先确认计划，再分配执行与独立审查。
+- “查看画像”“记住这个偏好”“纠正这条”“忘记这条”。具体记录边界见 `user-profile`。
+
+### 用户画像：数据与接入
+
+- 数据保存在 `~/.agents/user-profile/profile.md` 和 `changes.md`，不进入本仓库；初始无个人条目，两份文件各限 4000 个 Unicode 码点。
+- AI 按技能中的六类规则判断哪些内容值得保存；正式写入统一通过 `profile_store.py`，由脚本检查容量、版本并写入，历史按需读取。手工编辑可绕过写入入口，但读取仍会检查容量。
+- 不把无关背景带入回答；敏感信息先确认，凭证不存。数据保存在本机，读取后仍会进入所用模型的上下文。
+
+本机 PI-Desktop 的接入方式是在 `~/.pi/agent/AGENTS.md` 中要求：新对话先读取 `~/.agents/skills/user-profile/SKILL.md`，再运行：
+
+```bash
+python3 ~/.agents/skills/user-profile/scripts/profile_store.py read
+```
+
+这是指令式加载，不是强制注入。上述路径对应本机安装位置，其他环境需核对实际路径和规则入口，不自动照搬或修改。
+
+## 外部推荐（自用清单）
+
+以下技能与工具**不在本仓库**，需从上游安装。AI 应先说明用途、提供上游与安装地址，取得用户明确同意后再执行；不得主动安装。
+
+| 技能或工具 | 用途 | 上游 / 安装 |
+|------------|------|-------------|
 | `anysearch` | 实时搜索、垂直搜索、批量搜索、URL 提取 | [anysearch-ai/anysearch-skill](https://github.com/anysearch-ai/anysearch-skill) · `npx skills add https://github.com/anysearch-ai/anysearch-skill --skill anysearch` |
 | `grill-me` | 深度质询方案/设计 | [mattpocock/skills · grill-me](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me) · `npx skills add https://github.com/mattpocock/skills --skill grill-me` |
 | `frontend-design` | 高质量前端页面/组件 | [anthropics/skills · frontend-design](https://github.com/anthropics/skills/tree/main/skills/frontend-design) · `npx skills add https://github.com/anthropics/skills --skill frontend-design` |
+| `hallmark` | 反 AI 味界面设计：新建页面、审计、重设计与设计提取 | [Nutlope/hallmark](https://github.com/Nutlope/hallmark) · `npx skills add nutlope/hallmark` |
 | `skill-creator` | 创建新技能 | [clawhub.ai](https://clawhub.ai)（slug: `skill-creator`） |
 | `find-skills` | 发现/安装社区技能 | [vercel-labs/skills · find-skills](https://github.com/vercel-labs/skills/tree/main/skills/find-skills) · `npx skills add https://github.com/vercel-labs/skills --skill find-skills` |
 | `playwright-cli` | 浏览器自动化（Playwright CLI + Skills） | [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli) · `npx skills add microsoft/playwright-cli@playwright-cli` |
@@ -34,48 +72,11 @@
 | `ui-ux-pro-max` | UI/UX 设计参考 | [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) |
 | Superpowers | 头脑风暴、计划、技能编写、并行代理 | [obra/superpowers](https://github.com/obra/superpowers) |
 
-### 给 AI：推荐技能安装约束
-
-1. 不得主动安装任何推荐/外部技能。
-2. 能力不在本仓库时，先说明上游并给出下载/安装地址。
-3. 必须获得用户明确同意后方可执行安装。
-
-## 常用工作流入口
-
-| 场景 | 入口 | 何时用 | 产物 |
-|------|------|--------|------|
-| 复杂任务循环 | `pi-agent-loop` | 多步、可验收、需执行+审查 | `state/`、审查结果 |
-| 经验记忆 | `capture-gotcha` | 任务开始与修复后 | 项目、全局经验及候选记录 |
-| 用户画像 | `user-profile` | 新对话读取、符合规则的信息出现时维护 | 当前画像、简短变更记录 |
-| 清理 | `cleanup` | 任务结束后 | 清理报告 |
-
-## 安装与更新
-
-可以直接告诉 AI：“把本仓库的 cleanup 和 capture-gotcha 安装到我正在使用的 Agent。”
-
-AI 先确认目标 Agent 与所需技能，检查其实际支持的技能目录，再将 `skills/<技能名>/` 完整目录链接或复制到该位置。保留脚本和参考资料，不只复制 `SKILL.md`；遇到已有同名内容先比较，保护用户修改与外部技能。
-
-优先链接到本仓库，更新仓库后链接即可读取最新内容；如果使用复制安装，更新后还需同步对应技能目录。更新前检查本地修改，不强制覆盖。安装完成后确认 Agent 能发现技能，并说明如何调用。
-
-## 使用
-
-直接描述目标，或点名技能，例如“用 cleanup 检查本次过程文件”“按 capture-gotcha 读取已有经验”。复杂任务使用 `pi-agent-loop`。
-
-- `capture-gotcha`：任务开始读取项目与全局正式记忆，修复后记录可复用经验；候选不参与正常召回。具体命令见其 `SKILL.md`，从项目根目录执行，脚本路径以实际安装位置为准。
-- `cleanup`：结束前按用途检查过程产物；一次性制作工具先列明再确认删除，最终产品、正式测试和用户资料保留。
-- `user-profile`：读取并维护跨任务有效的用户特点，不记论文题目等具体任务材料，不把无关背景带入回答。直接说“查看画像”“记住这个偏好”“纠正这条”“忘记这条”即可。规则见 [SKILL.md](skills/user-profile/SKILL.md)。
-
-用户画像数据单独保存于 `~/.agents/user-profile/profile.md` 和 `changes.md`，不进入本仓库；初始无个人条目，两个文件各限 4000 个 Unicode 码点。AI 按六类规则判断内容，`profile_store.py` 负责限长、版本校验与写入；历史按需读取。敏感情况先确认，凭证不存。文件在本机，但读取内容会进入模型上下文。
-
-PI-Desktop 接入：在 `~/.pi/agent/AGENTS.md` 要求新对话先读取 `~/.agents/skills/user-profile/SKILL.md`，再运行 `python3 ~/.agents/skills/user-profile/scripts/profile_store.py read`。此为指令式加载，不是强制注入；手工编辑可绕过写入入口，读取会检查超限。其他工具需另行确认接入，不自动修改。
-
-技能的自动触发取决于 Agent 配置。需要稳定读取记忆时，将任务开始执行 `recall` 的要求加入实际生效的 Agent 规则入口；不要把安装技能等同于安装自动钩子。
-
 ## 目录结构
 
 ```text
 skills-repo/
-├── skills/          # 7 个根技能
-├── AGENTS.md        # 仓库维护规则
-└── README.md        # 人与 AI 共用的介绍、安装和上手说明
+├── skills/          # 发布技能，详见上方清单
+├── AGENTS.md        # AI 维护仓库时遵循的规则
+└── README.md        # 技能介绍、安装与使用说明
 ```
