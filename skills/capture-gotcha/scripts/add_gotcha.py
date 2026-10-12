@@ -43,10 +43,18 @@ def project_root(value=None):
 
 
 def paths_for(project=None, global_path=None, project_path=None):
-    """--project 只是默认位置的基准（默认 cwd），不探测 Git 根。"""
+    """--project 只是默认位置的基准（默认 cwd），不探测 Git 根。
+
+    --project-path 语义是文件路径；若传进来的其实是已存在的目录，
+    按「该目录下的 gotchas.md」处理，避免候选被写到目录的上一级。
+    """
     gpath = Path(global_path).expanduser() if global_path else Path(GLOBAL_PATH).expanduser()
-    ppath = (Path(project_path).expanduser() if project_path
-             else project_root(project) / '.agents' / 'gotchas.md')
+    if project_path:
+        ppath = Path(project_path).expanduser()
+        if ppath.is_dir():
+            ppath = ppath / 'gotchas.md'
+    else:
+        ppath = project_root(project) / '.agents' / 'gotchas.md'
     return {'global': gpath, 'project': ppath, 'candidate': ppath.parent / CANDIDATES_NAME}
 
 
@@ -62,10 +70,12 @@ def read_bytes(path):
 
 
 def decode(raw, label):
+    """解码并丢弃开头的 UTF-8 BOM；写盘时按文本原样写出，不再带 BOM。"""
     try:
-        return raw.decode('utf-8')
+        return raw.decode('utf-8').lstrip('\ufeff')
     except UnicodeDecodeError as exc:
-        raise StoreError('INVALID_UTF8: {} 不是有效 UTF-8（{}）；未写入。'.format(label, exc))
+        raise StoreError('INVALID_UTF8: {} 不是有效 UTF-8（{}）；'
+                         '先手工把它转成 UTF-8，再用 replace 整份提交。'.format(label, exc))
 
 
 def count(text):
@@ -261,9 +271,19 @@ def atomic(path, data):
 
 # ---------- 命令 ----------
 
+def single_line(value, name):
+    """字段值必须是单行：换行会被拼成额外记录或非字段行，等于注入。"""
+    text = redact(value)
+    if '\n' in text or '\r' in text:
+        raise StoreError('FORMAT: {} 不能含换行；一条记录的三字段各占一行，'
+                         '多行内容请压成一句、或改写成并列短语。未写入。'.format(name))
+    return text
+
+
 def make(a):
     return ('### {}\n- 适用: {}\n- 做法: {}\n- 验证: {}\n'.format(
-        redact(a.title), redact(a.when), redact(a.action), redact(a.verified)))
+        single_line(a.title, '--title'), single_line(a.when, '--when'),
+        single_line(a.action, '--action'), single_line(a.verified, '--verified')))
 
 
 def check_legacy_args(a):
@@ -364,6 +384,8 @@ def promote(a):
         item = hits[0] + '\n'
         report = {'ok': True, 'command': 'promote', 'keyword': a.keyword, 'scope': a.scope,
                   'source': str(source), 'target': str(target), 'limit': LIMIT,
+                  'source_version': version_of(source.read_bytes()),
+                  'target_version': version_of(target.read_bytes()),
                   'dry_run': bool(a.dry_run), 'item': item}
         same = duplicate(target_text, item)
         if same:
@@ -384,9 +406,12 @@ def promote(a):
         try:
             atomic(source, new_source.encode('utf-8'))
         except OSError as exc:
-            raise StoreError('PARTIAL: 目标 {} 已写入该记录，但候选 {} 移除失败（{}）；'
-                             '两份文件都请先 inspect 确认，再决定是否手动清理候选。'.format(target, source, exc))
+            raise StoreError('PARTIAL: 目标 {} 已写入该记录（新版本 {}），但候选 {} 移除失败（{}）；'
+                             '先 inspect 两份文件确认实际状态，再决定是否手动清理候选。'
+                             .format(target, version_of(target.read_bytes()), source, exc))
         report['message'] = 'PROMOTED'
+        report['source_version'] = version_of(source.read_bytes())
+        report['target_version'] = version_of(target.read_bytes())
         return report
 
 
@@ -397,7 +422,12 @@ def recall(a):
                ('global', path_for('global', a.project, a.global_path, a.project_path))]
     problems, notes, lines = [], [], []
     for scope, path in targets:
-        _, text = load(path)
+        try:
+            _, text = load(path)
+        except StoreError as exc:  # 单份文件读不出时只报该份，健康的那份照常输出
+            problems.append('[{}] {} 该文件未作为记忆输出。用 inspect --scope {} 查看。'
+                            .format(scope, exc, scope))
+            continue
         if old_over_limit(text, path):
             problems.append('[{}] OVER_LIMIT: {} {} > {} 码点；该文件未作为记忆输出（不截断）。'
                             '用 inspect --scope {} 查看，用 replace 修复。'.format(scope, path, count(text), LIMIT, scope))
@@ -421,29 +451,48 @@ def inspect(a):
     blocks = []
     for scope in ([a.scope] if a.scope else list(SCOPES)):
         path = path_for(scope, a.project, a.global_path, a.project_path)
-        raw, text = load(path)
-        value = count(text)
-        problem, legacy = (None, 0)
-        if text.strip():
-            problem, legacy = audit_structure(text, str(path))
-            if problem is None and legacy == 0:
+        raw = read_bytes(path)
+        text, read_problem, legacy, write_problem = '', None, 0, None
+        try:
+            text = decode(raw, str(path))
+        except StoreError as exc:  # 单份读不出也要给出该份状态，另两份照常显示
+            read_problem = str(exc)
+        if read_problem is None and text.strip():
+            read_problem, legacy = audit_structure(text, str(path))
+            if read_problem is None:
                 try:
                     validate_structure(text, str(path))  # 与写入入口同一把尺子对比现状
                 except StoreError as exc:
-                    problem = str(exc)
-        state = 'ok' if problem is None else 'invalid: ' + problem
-        if problem is None and legacy:
+                    write_problem = str(exc)
+        if read_problem:
+            state = 'invalid: ' + read_problem
+        elif legacy:
             state = 'legacy: {} 条旧五字段（可读，建议用 replace 迁到新格式）'.format(legacy)
+        elif write_problem:
+            # 只读命令不执行写入，去掉校验信息里面向写入入口的「未写入」后缀
+            state = ('readable: {}（recall 仍会原样输出；写入前需先用 replace 修正）'
+                     .format(write_problem.replace('；未写入。', '。')))
+        else:
+            state = 'ok'
+        if read_problem is None:
+            size = 'characters: {} (limit {}) over_limit: {}'.format(
+                count(text), LIMIT, 'true' if count(text) > LIMIT else 'false')
+            entrycount = len(entries(text))
+            body = text + ('' if text.endswith('\n') else '\n')
+        else:
+            size = 'characters: 未知（{} 字节，无法按 UTF-8 解码）'.format(len(raw))
+            entrycount = 0
+            body = '（读不出正文；若是编码问题先手工转成 UTF-8，再用 replace 整份提交）\n'
         blocks.append('\n'.join([
             'scope: {}'.format(scope),
             'path: {}'.format(path),
             'exists: {}'.format('true' if path.exists() else 'false'),
-            'characters: {} (limit {}) over_limit: {}'.format(value, LIMIT, 'true' if value > LIMIT else 'false'),
+            size,
             'version: {}'.format(version_of(raw)),
             'structure: {}'.format(state),
-            'entries: {}'.format(len(entries(text))),
+            'entries: {}'.format(entrycount),
             '--- text ---',
-        ]) + '\n' + text + ('' if text.endswith('\n') else '\n'))
+        ]) + '\n' + body)
     return '\n'.join(blocks)
 
 
@@ -749,7 +798,64 @@ def self_test(scratch):
         checks.append('写入口在短时锁内完成读-改-写；并发写入者收到 BUSY 且内容不变')
 
         assert not list(base.rglob('.gotcha-*')), '临时文件残留'
-        checks.append('写入使用同目录临时文件原子替换，无临时文件残留')
+        assert list(base.rglob(LOCK_NAME)), '锁文件应当持续存在（flock 语义）'
+        checks.append('写入用同目录临时文件原子替换，无 .gotcha-* 残留；锁文件按 flock 语义保留')
+
+        # 输入值不得含换行：换行可注入额外记录并绕过查重
+        put(pp, HEADER + '\n\n' + record('换行基准'))
+        rejected(['add', '--scope', 'project', '--title', '注入甲\n### 伪造记录',
+                  *fields, *overlay()], '不能含换行')
+        assert pp.read_text(encoding='utf-8').count('### ') == 1, '换行注入改动了文件'
+        rejected(['add', '--scope', 'project', '--title', '注入乙', '--when', 's',
+                  '--action', 'a\n- 适用: p', '--verified', '2026-01-01 x', *overlay()], '不能含换行')
+        checks.append('四个字段都拒绝换行，一次 add 无法注入第二条记录')
+
+        # BOM 容忍：头行前有 U+FEFF 时仍能识别，不整份失联
+        raw_bom = put(pp, '\ufeff' + HEADER + '\n\n' + record('带BOM记录'))
+        out = run('inspect', '--scope', 'project', *overlay()).stdout
+        assert 'structure: ok' in out and '带BOM记录' in out, out
+        result = run('recall', *overlay())
+        assert result.returncode == 0 and '带BOM记录' in result.stdout, result.stdout
+        # 写回时不再带 BOM（decode 已剥离），且版本以原始字节计
+        report = json.loads(run('add', '--scope', 'project', '--title', 'BOM后追加',
+                                *fields, *overlay()).stdout)
+        assert report['message'] == 'ADDED' and not pp.read_bytes().startswith(b'\xef\xbb\xbf')
+        assert report['characters_before'] == len(raw_bom.decode('utf-8').lstrip('\ufeff'))
+        checks.append('BOM 文件仍可 inspect/recall/add；写回时剥掉 BOM 且不重复计入容量')
+
+        # 非 UTF-8：单份读不出不拖垮其余作用域
+        put(pp, record('不可读基准').encode('utf-16'))
+        put(Path(str(gp)), HEADER + '\n\n' + record('健康的全局'))
+        result = run('recall', *overlay(), code=1)
+        assert 'INVALID_UTF8' in result.stdout and '健康的全局' in result.stdout, result.stdout
+        out = run('inspect', *overlay()).stdout
+        assert out.count('scope: ') == 3 and '健康的全局' in out and 'INVALID_UTF8' in out, out
+        checks.append('单份文件非 UTF-8 时 recall 仍输出健康的一份、inspect 仍列出三个作用域')
+
+        # 可读但写入前需修：与 recall 结论一致，不再误报 invalid
+        put(pp, HEADER + '\n\n### 缺日期乙\n- 适用: s\n- 做法: a\n- 验证: 只写结论\n')
+        out = run('inspect', '--scope', 'project', *overlay()).stdout
+        assert 'structure: readable:' in out and 'entries: 1' in out, out
+        result = run('recall', *overlay())
+        assert result.returncode == 0 and '缺日期乙' in result.stdout, result.stdout
+        checks.append('缺日期记录：inspect 标 readable（不再 invalid），recall 仍可输出，两者一致')
+
+        # promote 报告两份文件的版本
+        put(pp, HEADER + '\n')
+        put(cp, HEADER + '\n\n' + record('版本候选庚'))
+        report = json.loads(run('promote', '版本候选庚', '--scope', 'project', *overlay()).stdout)
+        assert report['message'] == 'PROMOTED' and len(report['source_version']) == 64 \
+            and len(report['target_version']) == 64, report
+        assert report['target_version'] == version_of(pp.read_bytes())
+        checks.append('promote 结果带两份文件的 version，PARTIAL 时调用方无需再跑一次 inspect')
+
+        # --project-path 传目录时，候选落在该目录内而不是它的上一级
+        put(pp, HEADER + '\n')
+        report = json.loads(run('add', '--scope', 'candidate', '--title', '目录语义辛',
+                                *fields, '--project-path', str(pp.parent), *overlay()[2:]).stdout)
+        assert Path(report['path']) == cp, report
+        assert '目录语义辛' in cp.read_text(encoding='utf-8')
+        checks.append('--project-path 传已存在目录时按该目录下的 gotchas.md 处理，候选不再写错位置')
 
         assert {str(p) for p in script_dir.rglob('__pycache__')} == cache_before, '自检产生了 __pycache__'
         checks.append('子进程以 -B 运行，自检不在脚本目录留下 __pycache__')
