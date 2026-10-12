@@ -6,3 +6,4 @@ __pycache__/
 state/
 skills/.skills-repo-path
 .pi/agent-team/
+/skills/xiaohongshu-content-formatter/

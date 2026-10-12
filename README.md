@@ -6,14 +6,14 @@
 
 知识库相关技能位于独立仓库 [`kb-skills-repo`](https://github.com/Innoksadk223/kb-skills-repo)。
 
-## 本仓库技能（8 个）
+## 本仓库技能（7 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
 | 工具 | `cleanup` / `capture-gotcha` (2) | 清理、环境记录 |
 | 用户画像 | `user-profile` (1) | 跨任务用户特点、协作偏好与反感，画像和历史各限 4000 字符 |
 | Agent 循环 | `pi-agent-loop` (1) | Agent 编排循环（执行-审查分离） |
-| 内容与提示词 | `image-prompt-designer` / `uiux-prompt-designer` / `xiaohongshu-content-formatter` / `plain-output` (4) | 图片提示词、界面提示词、小红书图文整理与中文表达规范 |
+| 内容与提示词 | `image-prompt-designer` / `uiux-prompt-designer` / `plain-output` (3) | 图片提示词、界面提示词与中文表达规范 |
 
 ## 推荐技能（自用清单）
 
@@ -75,7 +75,7 @@ PI-Desktop 接入：在 `~/.pi/agent/AGENTS.md` 要求新对话先读取 `~/.age
 
 ```text
 skills-repo/
-├── skills/          # 8 个根技能
+├── skills/          # 7 个根技能
 ├── AGENTS.md        # 仓库维护规则
 └── README.md        # 人与 AI 共用的介绍、安装和上手说明
 ```
