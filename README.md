@@ -43,7 +43,7 @@
 
 - 数据分三份：全局 `~/.agents/gotchas.md`、项目 `<项目根>/.agents/gotchas.md`、候选 `<项目根>/.agents/gotchas-candidates.md`；候选不参与 `recall`。三份各限 4000 个 Unicode 码点。
 - 记什么、写到哪个范围由 AI 按技能规则判断；`add`、`promote`、`replace` 只保障容量、版本与写入安全，不核实事实、也不保证脱敏完备。
-- 读取用 `recall`（项目在先、全局在后）；查看用 `inspect --scope global|project|candidate`（只读，给出路径、字符数、是否超限、版本与正文，并标出 `ok`／`legacy`／`readable`／`invalid`）。单份文件读不出只影响它自己。已知限制（整份失联、非 UTF-8 需手工修复、锁文件常驻、promote 非事务等）见技能里的「已知限制」一节。
+- 读取用 `recall`（项目在先、全局在后，可选多个关键词，按命中词数排序；全不命中时列出可用标题）；查看用 `inspect --scope global|project|candidate`（只读，给出路径、字符数、是否超限、版本与正文，并标出 `ok`／`legacy`／`readable`／`partial`／`invalid`）。单份文件读不出只影响它自己；格式坏掉的个别记录会被跳过并逐条报出，不连坐同文件其余记录。已知限制（非 UTF-8 或无头行仍整份丢、锁文件常驻、promote 非事务等）见技能里的「已知限制」一节。
 - 精简、合并或删除记录前先说明具体方案并取得同意，再用 `replace --scope ... --from-file <修订稿> --expect <版本>` 整份提交；版本不符则拒绝写入。修复超限文件与把旧格式迁到新格式也只走 `replace`。
 - 每条记录是 `# Gotchas` 下的一条 `### 标题`，字段为 `适用`、`做法`、`验证`；字段值必须单行，标题写可迁移规则名而非某次事故名，`验证` 以 `YYYY-MM-DD` 开头并附最短证据。旧的五字段记录仍可读取，写入入口只接受新格式并要求先迁移。
 
