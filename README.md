@@ -6,11 +6,12 @@
 
 知识库相关技能位于独立仓库 [`kb-skills-repo`](https://github.com/Innoksadk223/kb-skills-repo)。
 
-## 本仓库技能（7 个）
+## 本仓库技能（8 个）
 
 | 分组 | 技能 | 一句话 |
 |------|------|--------|
 | 工具 | `cleanup` / `capture-gotcha` (2) | 清理、环境记录 |
+| 用户画像 | `user-profile` (1) | 跨任务用户特点、协作偏好与反感，画像和历史各限 4000 字符 |
 | Agent 循环 | `pi-agent-loop` (1) | Agent 编排循环（执行-审查分离） |
 | 内容与提示词 | `image-prompt-designer` / `uiux-prompt-designer` / `xiaohongshu-content-formatter` / `plain-output` (4) | 图片提示词、界面提示词、小红书图文整理与中文表达规范 |
 
@@ -45,6 +46,7 @@
 |------|------|--------|------|
 | 复杂任务循环 | `pi-agent-loop` | 多步、可验收、需执行+审查 | `state/`、审查结果 |
 | 经验记忆 | `capture-gotcha` | 任务开始与修复后 | 项目、全局经验及候选记录 |
+| 用户画像 | `user-profile` | 新对话读取、符合规则的信息出现时维护 | 当前画像、简短变更记录 |
 | 清理 | `cleanup` | 任务结束后 | 清理报告 |
 
 ## 安装与更新
@@ -61,6 +63,11 @@ AI 先确认目标 Agent 与所需技能，检查其实际支持的技能目录�
 
 - `capture-gotcha`：任务开始读取项目与全局正式记忆，修复后记录可复用经验；候选不参与正常召回。具体命令见其 `SKILL.md`，从项目根目录执行，脚本路径以实际安装位置为准。
 - `cleanup`：结束前按用途检查过程产物；一次性制作工具先列明再确认删除，最终产品、正式测试和用户资料保留。
+- `user-profile`：读取并维护跨任务有效的用户特点，不记论文题目等具体任务材料，不把无关背景带入回答。直接说“查看画像”“记住这个偏好”“纠正这条”“忘记这条”即可。规则见 [SKILL.md](skills/user-profile/SKILL.md)。
+
+用户画像数据单独保存于 `~/.agents/user-profile/profile.md` 和 `changes.md`，不进入本仓库；初始无个人条目，两个文件各限 4000 个 Unicode 码点。AI 按六类规则判断内容，`profile_store.py` 负责限长、版本校验与写入；历史按需读取。敏感情况先确认，凭证不存。文件在本机，但读取内容会进入模型上下文。
+
+PI-Desktop 接入：在 `~/.pi/agent/AGENTS.md` 要求新对话先读取 `~/.agents/skills/user-profile/SKILL.md`，再运行 `python3 ~/.agents/skills/user-profile/scripts/profile_store.py read`。此为指令式加载，不是强制注入；手工编辑可绕过写入入口，读取会检查超限。其他工具需另行确认接入，不自动修改。
 
 技能的自动触发取决于 Agent 配置。需要稳定读取记忆时，将任务开始执行 `recall` 的要求加入实际生效的 Agent 规则入口；不要把安装技能等同于安装自动钩子。
 
@@ -68,7 +75,7 @@ AI 先确认目标 Agent 与所需技能，检查其实际支持的技能目录�
 
 ```text
 skills-repo/
-├── skills/          # 7 个根技能
+├── skills/          # 8 个根技能
 ├── AGENTS.md        # 仓库维护规则
 └── README.md        # 人与 AI 共用的介绍、安装和上手说明
 ```
