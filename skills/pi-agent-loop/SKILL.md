@@ -1,6 +1,6 @@
 ---
 name: pi-agent-loop
-description: "Use when a Pi task needs orchestrated multi-agent convergence: the main Pi registers one confirmed Agent Team plan, manually advances Coder execution, independent Reviewer decisions, same-task fix attempts, optional read-only experts/optimizer, final verification, and explicit human acceptance. Also use for /agent-loop, multi-round implementation, or context-aware resumable team work."
+description: "Pi 上用 Agent Team 编排多个子代理时使用：先确认计划，再派工执行、独立审查、同任务修复，最后人工验收。也用于 /agent-loop、多轮实现、可恢复的团队协作。"
 ---
 
 # Pi Agent Loop
