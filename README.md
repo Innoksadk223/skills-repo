@@ -74,6 +74,7 @@ python3 ~/.agents/skills/user-profile/scripts/profile_store.py read
 | `skill-creator` | 创建新技能 | [clawhub.ai](https://clawhub.ai)（slug: `skill-creator`） |
 | `find-skills` | 发现/安装社区技能 | [vercel-labs/skills · find-skills](https://github.com/vercel-labs/skills/tree/main/skills/find-skills) · `npx skills add https://github.com/vercel-labs/skills --skill find-skills` |
 | `playwright-cli` | 浏览器自动化（Playwright CLI + Skills） | [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli) · `npx skills add microsoft/playwright-cli@playwright-cli` |
+| `browser-use` | 浏览器控制：会话跨命令持久，隔离／真实 Chrome／云端三种模式，CDP 直连可复用已登录状态 | [browser-use/browser-use](https://github.com/browser-use/browser-use) · `uv tool install browser-use` 后 `browser-use skill install`；接线说明见 [browser-harness install.md](https://github.com/browser-use/browser-harness/blob/main/install.md) |
 | `ponytail` | 反过度工程：最懒且能用的解 | [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) · `npx skills add https://github.com/DietrichGebert/ponytail --skill ponytail` |
 | `rtk` | CLI 输出压缩，降低 LLM token（工具，非 skill 包） | [rtk-ai/rtk](https://github.com/rtk-ai/rtk) · `brew install rtk` 后 `rtk init -g --agent hermes`（Claude/Codex 见上游） |
 | `ppt-agent` | PPT 全流程生成 | [Akxan/ppt-agent-skill](https://github.com/Akxan/ppt-agent-skill) |
