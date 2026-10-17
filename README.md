@@ -50,7 +50,7 @@
 ### 用户画像：数据与接入
 
 - 数据保存在 `~/.agents/user-profile/profile.md` 和 `changes.md`，不进入本仓库；初始无个人条目，两份文件各限 4000 个 Unicode 码点。
-- AI 按技能中的六类规则判断哪些内容值得保存；正式写入统一通过 `profile_store.py`，由脚本检查容量、版本并写入，历史按需读取。手工编辑可绕过写入入口，但读取仍会检查容量。
+- 日常读取、使用和收尾回顾见 [user-profile](skills/user-profile/SKILL.md)；准备维护或遇到异常时，按需读取其 [维护说明](skills/user-profile/references/maintenance.md)。正式写入统一通过 `profile_store.py`，首次建立或补缺使用获准的 `init`，更新使用带容量和版本检查的 `commit`；历史按需读取。
 - 不把无关背景带入回答；敏感信息先确认，凭证不存。数据保存在本机，读取后仍会进入所用模型的上下文。
 
 本机 PI-Desktop 的接入方式是在 `~/.pi/agent/AGENTS.md` 中要求：新对话先读取 `~/.agents/skills/user-profile/SKILL.md`，再运行：
