@@ -12,7 +12,7 @@
 |------|----------------|
 | [cleanup](skills/cleanup/SKILL.md) | 任务收尾或整理目录时，检查过程文件、旧备份和过期资料，按实际用途与恢复价值决定去留，最终产品和用户资料保留。 |
 | [capture-gotcha](skills/capture-gotcha/SKILL.md) | 开始项目、终端、浏览器或文件类任务时，先召回已确认的项目与全局经验；修复验证后再把可复用经验写回对应位置，未证实的只存候选。记忆各限 4000 码点，维护用 `inspect` 与 `replace` 显式进行。 |
-| [user-profile](skills/user-profile/SKILL.md) | 维护跨任务有效的用户特点与协作偏好，新对话或上下文丢失后读取；不记具体任务材料。 |
+| [user-profile](skills/user-profile/SKILL.md) | 维护跨任务有效的用户特点与协作偏好，新对话或上下文丢失后读取；「回顾画像」「总结画像」触发本次交流的整理写入；不记具体任务材料。 |
 | [pi-agent-loop](skills/pi-agent-loop/SKILL.md) | 需要用子代理或会话做多代理流程编排时使用：先定计划，再分派执行与独立审查，最后由人验收。 |
 | [image-prompt-designer](skills/image-prompt-designer/SKILL.md) | 把文字需求或成品图片整理成可直接使用的生图提示词，并可保存、复用视觉风格；不直接生成图片。 |
 | [uiux-prompt-designer](skills/uiux-prompt-designer/SKILL.md) | 把产品需求或界面图片整理成可复用的 UI/UX 提示词与风格配置；不直接实现或审查界面。 |
@@ -37,7 +37,7 @@
 - “按 capture-gotcha 读取已有经验。”从项目根目录执行 `recall`，脚本路径以实际安装位置为准。
 - “用 pi-agent-loop 推进这项任务。”先确认计划，再分配执行与独立审查。
 
-- “查看画像”“记住这个偏好”“纠正这条”“忘记这条”。具体记录边界见 `user-profile`。
+- “查看画像”“回顾画像”“总结画像”“记住这个偏好”“纠正这条”“忘记这条”。具体记录边界见 `user-profile`。
 
 ### 经验记忆：容量与维护
 
