@@ -11,7 +11,7 @@
 | 技能 | 用途与使用时机 |
 |------|----------------|
 | [cleanup](skills/cleanup/SKILL.md) | 任务收尾或整理目录时，检查过程文件、旧备份和过期资料，按实际用途与恢复价值决定去留，最终产品和用户资料保留。 |
-| [capture-gotcha](skills/capture-gotcha/SKILL.md) | 开始项目、终端、浏览器或文件类任务时，先召回已确认的项目与全局经验；修复验证后再把可复用经验写回对应位置，未证实的只存候选。记忆各限 4000 码点，维护用 `inspect` 与 `replace` 显式进行。 |
+| [capture-gotcha](skills/capture-gotcha/SKILL.md) | 开始项目、终端、浏览器或文件类任务时，先召回项目与全局经验；出错按关键词回查，修复后把可复用经验写回，项目优先、候选不参与召回。每条记录含关键词便于检索；记忆各限 4000 码点，维护用 `inspect`、`edit`、`drop`、`replace` 显式进行。 |
 | [user-profile](skills/user-profile/SKILL.md) | 维护跨任务有效的用户特点与协作偏好，新对话或上下文丢失后读取；「回顾画像」「总结画像」触发本次交流的整理写入；不记具体任务材料。 |
 | [pi-agent-loop](skills/pi-agent-loop/SKILL.md) | 需要用子代理或会话做多代理流程编排时使用：先定计划，再分派执行与独立审查，最后由人验收。 |
 | [image-prompt-designer](skills/image-prompt-designer/SKILL.md) | 把文字需求或成品图片整理成可直接使用的生图提示词，并可保存、复用视觉风格；不直接生成图片。 |
@@ -34,18 +34,19 @@
 直接描述目标，或点名技能，例如：
 
 - “用 cleanup 检查过程文件和旧备份。”历史文件与一次性制作工具先列清单确认删除；最终产品、正式测试和用户资料保留。
-- “按 capture-gotcha 读取已有经验。”从项目根目录执行 `recall`，脚本路径以实际安装位置为准。
+- “按 capture-gotcha 读取已有经验。”在项目任意子目录执行 `recall`，脚本向上探测项目根；脚本路径以实际安装位置为准。
 - “用 pi-agent-loop 推进这项任务。”先确认计划，再分配执行与独立审查。
 
 - “查看画像”“回顾画像”“总结画像”“记住这个偏好”“纠正这条”“忘记这条”。具体记录边界见 `user-profile`。
 
 ### 经验记忆：容量与维护
 
-- 数据分三份：全局 `~/.agents/gotchas.md`、项目 `<项目根>/.agents/gotchas.md`、候选 `<项目根>/.agents/gotchas-candidates.md`；候选不参与 `recall`。三份各限 4000 个 Unicode 码点。
-- 记什么、写到哪个范围由 AI 按技能规则判断；`add`、`promote`、`replace` 只保障容量、版本与写入安全，不核实事实、也不保证脱敏完备。
-- 读取用 `recall`（项目在先、全局在后，可选多个关键词，按命中词数排序；全不命中时列出可用标题）；查看用 `inspect --scope global|project|candidate`（只读，给出路径、字符数、是否超限、版本与正文，并标出 `ok`／`legacy`／`readable`／`partial`／`invalid`）。单份文件读不出只影响它自己；格式坏掉的个别记录会被跳过并逐条报出，不连坐同文件其余记录。已知限制（非 UTF-8 或无头行仍整份丢、锁文件常驻、promote 非事务等）见技能里的「已知限制」一节。
-- 精简、合并或删除记录前先说明具体方案并取得同意，再用 `replace --scope ... --from-file <修订稿> --expect <版本>` 整份提交；版本不符则拒绝写入。修复超限文件与把旧格式迁到新格式也只走 `replace`。
-- 每条记录是 `# Gotchas` 下的一条 `### 标题`，字段为 `适用`、`做法`、`验证`；字段值必须单行，标题写可迁移规则名而非某次事故名，`验证` 以 `YYYY-MM-DD` 开头并附最短证据。旧的五字段记录仍可读取，写入入口只接受新格式并要求先迁移。
+- 数据分三份：全局默认 `~/.agents/gotchas.md`（可用 `GOTCHA_HOME` 重定向）、项目 `<项目根>/.agents/gotchas.md`、候选 `<项目根>/.agents/gotchas-candidates.md`；候选不参与 `recall`。三份各限 4000 个 Unicode 码点。项目根从当前目录向上找最近的 `.agents/gotchas.md`（跳过全局记忆文件自身，避免项目与全局变成同一份），其次 Git 根，最后回退当前目录。
+- 记什么、写到哪个范围由 AI 按技能规则判断；`add`、`promote`、`edit`、`drop`、`replace` 只保障容量、版本与写入安全，不核实事实、也不保证脱敏完备。
+- 读取用 `recall`（项目在先、全局在后，可选多个关键词，按命中词数排序；全不命中时列出可用标题）；查看用 `inspect --scope global|project|candidate`（只读，给出路径、字符数、是否超限、版本、结构状态与正文，项目作用域附带探测到的项目根与来源，并标出 `ok`／`legacy`／`readable`／`partial`／`invalid`）。单份文件读不出只影响它自己；格式坏掉的个别记录会被跳过并逐条报出，不连坐同文件其余记录。容量口径、写入安全与已知限制见[维护说明](skills/capture-gotcha/references/maintenance.md)。
+- 写前先用关键词 `recall` 查重，已有同义记录用 `edit '<标题>' --scope ... --expect <版本>` 改；确认是新规则再 `add`。整份合并、重排、清空或迁移旧格式用 `replace --scope ... --from-file <修订稿> --expect <版本>`。每次改前先 `inspect` 取最新版本，版本不符会拒绝写入。候选确认后用 `promote '关键词' --scope project|global` 转正。
+- 每条记录是 `# Gotchas` 下的一条 `### 标题`，字段为 `适用`、`做法`、`关键词`；字段值必须单行，关键词写 2–5 个检索词便于召回。旧五字段与带「验证」的旧三字段仍可读取，不强制迁移；新增记录只接受新格式，迁移用 `edit --from-entry` 或 `replace`。
+- 精简、合并或删除记录前先说明具体方案并取得同意；失效规则用 `drop '<标题>' --scope ... --expect <版本>` 删掉、不留归档，需要时查 git 历史，不自动删除、不按年龄淘汰。写命令返回 `near_limit`，达到 85% 时先提合并方案。
 
 ### 用户画像：数据与接入
 
