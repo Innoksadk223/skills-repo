@@ -68,19 +68,18 @@ python3 ~/.agents/skills/user-profile/scripts/profile_store.py read
 
 | 技能或工具 | 用途 | 上游 / 安装 |
 |------------|------|-------------|
-| `anysearch` | 实时搜索、垂直搜索、批量搜索、URL 提取 | [anysearch-ai/anysearch-skill](https://github.com/anysearch-ai/anysearch-skill) · `npx skills add https://github.com/anysearch-ai/anysearch-skill --skill anysearch` |
-| `grill-me` | 深度质询方案/设计 | [mattpocock/skills · grill-me](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me) · `npx skills add https://github.com/mattpocock/skills --skill grill-me` |
-| `frontend-design` | 高质量前端页面/组件 | [anthropics/skills · frontend-design](https://github.com/anthropics/skills/tree/main/skills/frontend-design) · `npx skills add https://github.com/anthropics/skills --skill frontend-design` |
-| `hallmark` | 反 AI 味界面设计：新建页面、审计、重设计与设计提取 | [Nutlope/hallmark](https://github.com/Nutlope/hallmark) · `npx skills add nutlope/hallmark` |
-| `skill-creator` | 创建新技能 | [clawhub.ai](https://clawhub.ai)（slug: `skill-creator`） |
-| `find-skills` | 发现/安装社区技能 | [vercel-labs/skills · find-skills](https://github.com/vercel-labs/skills/tree/main/skills/find-skills) · `npx skills add https://github.com/vercel-labs/skills --skill find-skills` |
-| `playwright-cli` | 浏览器自动化（Playwright CLI + Skills） | [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli) · `npx skills add microsoft/playwright-cli@playwright-cli` |
-| `browser-use` | 浏览器控制：会话跨命令持久，隔离／真实 Chrome／云端三种模式，CDP 直连可复用已登录状态 | [browser-use/browser-use](https://github.com/browser-use/browser-use) · `uv tool install browser-use` 后 `browser-use skill install`；接线说明见 [browser-harness install.md](https://github.com/browser-use/browser-harness/blob/main/install.md) |
+| `anysearch` | 实时搜索、垂直搜索、批量搜索、URL 提取 | [anysearch-ai/anysearch-skill](https://github.com/anysearch-ai/anysearch-skill) · 技能市场搜 `anysearch`，或下载 [release zip](https://github.com/anysearch-ai/anysearch-skill/releases) 解压到技能目录，再按上游 README 跑一次入口自检 |
+| `grill-me`（执行体为 `grilling`） | 深度质询方案/设计，每轮用提问卡片推进 | [mattpocock/skills](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me) · `npx skills add https://github.com/mattpocock/skills --skill grill-me` |
+| `hallmark` | 反 AI 味界面设计；2.0 起只用于新建页面，改已有设计需点名 hallmark | [Nutlope/hallmark](https://github.com/Nutlope/hallmark) · `npx skills add nutlope/hallmark -g` |
+| `skill-creator` | 创建新技能 | [anthropics/skills · skill-creator](https://github.com/anthropics/skills/tree/main/skills/skill-creator) · `npx skills add https://github.com/anthropics/skills --skill skill-creator` |
+| `playwright-cli` | 浏览器自动化（Playwright CLI + Skills） | [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli) · `npm install -g @playwright/cli@latest` 后 `npx skills add microsoft/playwright-cli@playwright-cli` |
 | `ponytail` | 反过度工程：最懒且能用的解 | [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) · `npx skills add https://github.com/DietrichGebert/ponytail --skill ponytail` |
 | `rtk` | CLI 输出压缩，降低 LLM token（工具，非 skill 包） | [rtk-ai/rtk](https://github.com/rtk-ai/rtk) · `brew install rtk` 后 `rtk init -g --agent hermes`（Claude/Codex 见上游） |
-| `ppt-agent` | PPT 全流程生成 | [Akxan/ppt-agent-skill](https://github.com/Akxan/ppt-agent-skill) |
-| `taste-skill` | 反模板化前端审美 | [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill) |
-| `ui-ux-pro-max` | UI/UX 设计参考 | [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) |
+| `ppt-agent` | PPT 全流程生成 | [Akxan/ppt-agent-skill](https://github.com/Akxan/ppt-agent-skill) · `npx skills add Akxan/ppt-agent-skill` |
+| `design-taste-frontend`（仓库名 `taste-skill`） | 反模板化前端审美，v2 从 247 个画廊站点抽签给方向，配真浏览器检查脚本 | [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill) · `npx skills add https://github.com/Leonxlnx/taste-skill --skill taste-skill` |
+| `ui-ux-pro-max` | UI/UX 设计参考；上游一次装 7 个技能（另含 banner-design、brand、design、design-system、slides、ui-styling） | [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) |
+| `agent-reach` | 15 个平台的只读采集（小红书/推特/B站/Reddit/LinkedIn 等），自带工具拿不到正文时补缺口 | [Panniantong/Agent-Reach](https://github.com/Panniantong/Agent-Reach) · 让 Agent 读 [install.md](https://raw.githubusercontent.com/Panniantong/Agent-Reach/main/docs/install.md) 后执行 |
+| `archify` | 架构、流程、状态图，产出可交互的独立 HTML | [tt-a1i/archify](https://github.com/tt-a1i/archify) · `npx skills add tt-a1i/archify -g` |
 
 ## 目录结构
 

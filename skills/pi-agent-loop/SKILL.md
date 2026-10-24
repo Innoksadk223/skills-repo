@@ -49,7 +49,7 @@ PLAN -> USER_GATE -> run/parallel READY task
 4. FIX_REQUIRED 的 `fix_prompt` 原样交回原 task；下一次 run 是新 attempt，不创建修复 task，不释放 ownership。
 5. 所有必需 task VERIFIED 后，按计划显式运行需要的 read-only ExpertRound。Optimizer 若无候选，记录摘要后进入 FINAL；若候选会改变已验证交付物，Leader评估价值并通过 plan amendment 注册新 optimization task，再回执行/审查循环。
 6. Reviewer 独立 FINAL_VERIFY。`FINAL_VERIFY: VERIFIED` 只代表 Agent 证据完整。
-7. Leader提交完成标准、证据、限制和手工入口，等待用户 HUMAN_ACCEPT；仅 ACCEPTED 才交付。
+7. Leader提交完成标准、证据、限制和手工入口，等待用户 HUMAN_ACCEPT；仅 ACCEPTED 才交付。验收后调一次 `close {team}`：成员会话硬终止（`STOPPED`、名册与 Session UUID 保留）、逐成员移出页面，无其他团队活动时关闭 Dashboard（页面自关，浏览器不允许则显示「已结束」）；其他团队仍在跑时保留页面并说明原因。
 
 runtime 永不自动派下一节点。Leader也不自判 PASS，不改写 Reviewer 的 fix_prompt。
 
