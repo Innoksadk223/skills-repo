@@ -39,29 +39,6 @@
 
 - “查看画像”“回顾画像”“总结画像”“记住这个偏好”“纠正这条”“忘记这条”。具体记录边界见 `user-profile`。
 
-### 经验记忆：容量与维护
-
-- 数据分三份：全局默认 `~/.agents/gotchas.md`（可用 `GOTCHA_HOME` 重定向）、项目 `<项目根>/.agents/gotchas.md`、候选 `<项目根>/.agents/gotchas-candidates.md`；候选不参与 `recall`。三份各限 4000 个 Unicode 码点。项目根从当前目录向上找最近的 `.agents/gotchas.md`（跳过全局记忆文件自身，避免项目与全局变成同一份），其次 Git 根，最后回退当前目录。
-- 记什么、写到哪个范围由 AI 按技能规则判断；`add`、`promote`、`edit`、`drop`、`replace` 只保障容量、版本与写入安全，不核实事实、也不保证脱敏完备。
-- 读取用 `recall`（项目在先、全局在后，可选多个关键词，按命中词数排序；全不命中时列出可用标题）；查看用 `inspect --scope global|project|candidate`（只读，给出路径、字符数、是否超限、版本、结构状态与正文，项目作用域附带探测到的项目根与来源，并标出 `ok`／`legacy`／`readable`／`partial`／`invalid`）。单份文件读不出只影响它自己；格式坏掉的个别记录会被跳过并逐条报出，不连坐同文件其余记录。容量口径、写入安全与已知限制见[维护说明](skills/capture-gotcha/references/maintenance.md)。
-- 写前先用关键词 `recall` 查重，已有同义记录用 `edit '<标题>' --scope ... --expect <版本>` 改；确认是新规则再 `add`。整份合并、重排、清空或迁移旧格式用 `replace --scope ... --from-file <修订稿> --expect <版本>`。每次改前先 `inspect` 取最新版本，版本不符会拒绝写入。候选确认后用 `promote '关键词' --scope project|global` 转正。
-- 每条记录是 `# Gotchas` 下的一条 `### 标题`，字段为 `适用`、`做法`、`关键词`；字段值必须单行，关键词写 2–5 个检索词便于召回。旧五字段与带「验证」的旧三字段仍可读取，不强制迁移；新增记录只接受新格式，迁移用 `edit --from-entry` 或 `replace`。
-- 精简、合并或删除记录前先说明具体方案并取得同意；失效规则用 `drop '<标题>' --scope ... --expect <版本>` 删掉、不留归档，需要时查 git 历史，不自动删除、不按年龄淘汰。写命令返回 `near_limit`，达到 85% 时先提合并方案。
-
-### 用户画像：数据与接入
-
-- 数据保存在 `~/.agents/user-profile/profile.md` 和 `changes.md`，不进入本仓库；初始无个人条目，两份文件各限 4000 个 Unicode 码点。
-- 日常读取、使用和收尾回顾见 [user-profile](skills/user-profile/SKILL.md)；准备维护或遇到异常时，按需读取其 [维护说明](skills/user-profile/references/maintenance.md)。正式写入统一通过 `profile_store.py`，首次建立或补缺使用获准的 `init`，更新使用带容量和版本检查的 `commit`；历史按需读取。
-- 不把无关背景带入回答；敏感信息先确认，凭证不存。数据保存在本机，读取后仍会进入所用模型的上下文。
-
-本机 PI-Desktop 的接入方式是在 `~/.pi/agent/AGENTS.md` 中要求：新对话先读取 `~/.agents/skills/user-profile/SKILL.md`，再运行：
-
-```bash
-python3 ~/.agents/skills/user-profile/scripts/profile_store.py read
-```
-
-这是指令式加载，不是强制注入。上述路径对应本机安装位置，其他环境需核对实际路径和规则入口，不自动照搬或修改。
-
 ## 外部推荐（自用清单）
 
 以下技能与工具**不在本仓库**，需从上游安装。AI 应先说明用途、提供上游与安装地址，取得用户明确同意后再执行；不得主动安装。
