@@ -12,7 +12,7 @@
 |------|----------------|
 | [cleanup](skills/cleanup/SKILL.md) | 任务收尾或整理目录时，检查过程文件、旧备份和过期资料，按实际用途与恢复价值决定去留，最终产品和用户资料保留。 |
 | [capture-gotcha](skills/capture-gotcha/SKILL.md) | 开始项目、终端、浏览器或文件类任务时，先召回项目与全局经验；出错按关键词回查，修复后把可复用经验写回，项目优先、候选不参与召回。每条记录含关键词便于检索；记忆各限 4000 码点，维护用 `inspect`、`edit`、`drop`、`replace` 显式进行。 |
-| [user-profile](skills/user-profile/SKILL.md) | 维护跨任务有效的用户特点与协作偏好，新对话或上下文丢失后读取；「回顾画像」「总结画像」触发本次交流的整理写入；不记具体任务材料。 |
+| [user-profile](skills/user-profile/SKILL.md) | 维护跨任务有效的用户特点与协作偏好，新对话或上下文丢失后读取；「回顾画像」「总结画像」触发本次交流的整理写入，先列候选供用户选定；不记具体任务材料。 |
 | [pi-agent-loop](skills/pi-agent-loop/SKILL.md) | 需要用子代理或会话做多代理流程编排时使用：先定计划，再分派执行与独立审查，最后由人验收。 |
 | [image-prompt-designer](skills/image-prompt-designer/SKILL.md) | 把文字需求或成品图片整理成可直接使用的生图提示词，并可保存、复用视觉风格；不直接生成图片。 |
 | [uiux-prompt-designer](skills/uiux-prompt-designer/SKILL.md) | 把产品需求或界面图片整理成可复用的 UI/UX 提示词与风格配置；不直接实现或审查界面。 |
