@@ -15,6 +15,6 @@
 
 ## 经验与清理
 
-- 涉及项目、终端、浏览器、MCP 或文件操作时，任务开始先从项目根目录运行 `python3 ~/.agents/skills/capture-gotcha/scripts/add_gotcha.py recall`，读取项目记忆后再读取全局记忆；安装位置不同时使用已确认的实际路径。
-- 遇到错误先按关键词 recall；修复验证后，项目特有经验记入项目，跨项目经验记入全局。未验证的经验只写项目候选，不参与 recall。具体规则见本机 `~/.agents/skills/capture-gotcha/SKILL.md`。
+- 项目与通用经验的读写统一用 magic-context：`ctx_search` 按关键词或语义召回，`ctx_memory` 写入（分类 PROJECT_RULES／ARCHITECTURE／CONSTRAINTS／CONFIG_VALUES／NAMING）。换到无关项目仍成立的事实写成通用表述，让提升机制标为 ecosystem／universe。
+- 遇到错误先 `ctx_search` 回查；修复验证后把可复用经验写入 `ctx_memory`，未验证的只作候选。
 - 收尾、中断或重试时遵循 [cleanup](skills/cleanup/SKILL.md)：检查过程产物及相关历史遗留，包括旧备份和冗余副本；按用途与恢复价值判断，不确定则保留。历史文件与一次性制作工具先列清单确认，保护最终产品、可复用测试和用户资料。
