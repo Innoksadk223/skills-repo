@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded Markdown storage for user-profile. Python 3.9+, macOS/Linux."""
+"""Bounded Markdown storage for user-model. Python 3.9+, macOS/Linux."""
 import argparse
 from contextlib import contextmanager
 import fcntl
@@ -14,9 +14,9 @@ import tempfile
 
 LIMIT = 4000
 NAMES = ("profile.md", "changes.md")
-DEFAULT_ROOT = Path.home() / ".agents" / "user-profile"
-HEADERS = {"profile.md": "# 用户画像\n", "changes.md": "# 画像变更\n"}
-STAGING_PREFIX = ".user-profile-"
+DEFAULT_ROOT = Path.home() / ".agents" / "user-model"
+HEADERS = {"profile.md": "# 用户模型\n", "changes.md": "# 模型变更\n"}
+STAGING_PREFIX = ".user-model-"
 
 
 class StoreError(Exception):
@@ -173,7 +173,7 @@ def commit(root, proposed, expected):
 def self_test(scratch):
     """One CLI-level check using only fabricated data under the supplied scratch root."""
     checks = []
-    with tempfile.TemporaryDirectory(prefix="user-profile-test-", dir=str(scratch)) as folder:
+    with tempfile.TemporaryDirectory(prefix="user-model-test-", dir=str(scratch)) as folder:
         base = Path(folder)
         root = base / "data"
         script = str(Path(__file__).resolve())
@@ -213,14 +213,14 @@ def self_test(scratch):
         initial = report("read")
         assert "profile" in initial and "changes" not in initial
         assert "changes" in report("read", "--history")
-        checks.append("默认仅显示画像；历史按需显示")
+        checks.append("默认仅显示模型；历史按需显示")
 
         text = ("中é🙂 \r\n" * 667)[:3999] + "\n"
         exact = text.encode("utf-8")
         assert len(text) == LIMIT and len(exact) > LIMIT
         small = "# 虚构内容\n".encode("utf-8")
         for profile, changes, label in (
-                (exact, small, "画像 4000 可写"),
+                (exact, small, "模型 4000 可写"),
                 (small, exact, "历史 4000 可写"),
                 (exact, exact, "两份各 4000 可同时写入")):
             version = report("read")["version"]
@@ -233,7 +233,7 @@ def self_test(scratch):
 
         version = report("read")["version"]
         expect_rejected(exact + b"x", small, version, "profile.md: 4001 > 4000")
-        checks.append("画像 4001 拒绝；两份原文件不变")
+        checks.append("模型 4001 拒绝；两份原文件不变")
         expect_rejected(small, exact + b"x", version, "changes.md: 4001 > 4000")
         checks.append("历史 4001 拒绝；两份原文件不变")
         expect_rejected(b"\xff", small, version, "utf-8")
@@ -245,7 +245,7 @@ def self_test(scratch):
         version = report("read")["version"]
         submit(small, small, version)
         expect_rejected(exact, small, version, "STALE_VERSION")
-        checks.append("画像变化后旧版本拒绝覆盖")
+        checks.append("模型变化后旧版本拒绝覆盖")
 
         before = snapshot(root)
         metadata = {name: (root / name).stat() for name in NAMES}
@@ -354,9 +354,9 @@ def self_test(scratch):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-dir", type=Path, default=DEFAULT_ROOT,
-                        help="默认 ~/.agents/user-profile；替代位置须明确授权，不用于绕过容量")
+                        help="默认 ~/.agents/user-model；替代位置须明确授权，不用于绕过容量")
     commands = parser.add_subparsers(dest="command", required=True)
-    reader = commands.add_parser("read", help="检查容量并读取画像")
+    reader = commands.add_parser("read", help="检查容量并读取模型")
     reader.add_argument("--history", action="store_true", help="同时显示历史，供维护使用")
     commands.add_parser("check", help="仅输出容量、状态及版本，无正文")
     commands.add_parser("init", help="仅在获准后补齐缺失文件，不覆盖已有数据")
