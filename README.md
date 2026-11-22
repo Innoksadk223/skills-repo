@@ -41,7 +41,7 @@
 | 技能或工具 | 用途 | 上游 / 安装 |
 |------------|------|-------------|
 | `anysearch` | 实时搜索、垂直搜索、批量搜索、URL 提取 | [anysearch-ai/anysearch-skill](https://github.com/anysearch-ai/anysearch-skill) · 技能市场搜 `anysearch`，或下载 [release zip](https://github.com/anysearch-ai/anysearch-skill/releases) 解压到技能目录，再按上游 README 跑一次入口自检 |
-| `grill-me`（执行体为 `grilling`） | 深度质询方案/设计，每轮用提问卡片推进 | [mattpocock/skills](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me) · `npx skills add https://github.com/mattpocock/skills --skill grill-me` |
+| `grilling` | 深度质询方案/设计，按决策树逐轮用提问卡片推进（单独装这一个即可，无需装入口壳 `grill-me`） | [mattpocock/skills · grilling](https://github.com/mattpocock/skills/tree/main/skills/productivity/grilling) · `npx skills add https://github.com/mattpocock/skills --skill grilling` |
 | `hallmark` | 反 AI 味界面设计；2.0 起只用于新建页面，改已有设计需点名 hallmark | [Nutlope/hallmark](https://github.com/Nutlope/hallmark) · `npx skills add nutlope/hallmark -g` |
 | `skill-creator` | 创建新技能 | [anthropics/skills · skill-creator](https://github.com/anthropics/skills/tree/main/skills/skill-creator) · `npx skills add https://github.com/anthropics/skills --skill skill-creator` |
 | `playwright-cli` | 浏览器自动化（Playwright CLI + Skills） | [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli) · `npm install -g @playwright/cli@latest` 后 `npx skills add microsoft/playwright-cli@playwright-cli` |
