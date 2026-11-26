@@ -11,7 +11,7 @@
 | 技能 | 用途与使用时机 |
 |------|----------------|
 | [cleanup](skills/cleanup/SKILL.md) | 产生临时文件或启动临时服务时在收尾、中断或重试前清理，无临时产物则跳过；按用途分直接删、验收后删、只列清单三档，只扫本轮产物位置或指定路径，旧备份等用户验收后才删，最终产品和用户资料保留。 |
-| [user-model](skills/user-model/SKILL.md) | 维护跨任务有效的用户模型：把用户长期稳定的偏好、习惯、反感、认知基础与协作方式汇总成一份小模型，用来决定怎么解释、怎么推进、怎么交付；新对话或上下文丢失后先读取，「回顾模型」「总结模型」触发本次交流的整理写入，先列候选供用户选定；不记具体任务材料。 |
+| [user-model](skills/user-model/SKILL.md) | 纯 Markdown 零脚本维护单份精选用户画像（`USER.md`，1500 字提醒合并 / 2000 字上限）：只留当前有效陈述句、不设变更日志；新对话或上下文压缩后读取，支持「回顾模型」「总结模型」手动提炼及明确纠正/长期表态触发，始终先列候选经用户选定再写入；不记具体任务材料。 |
 | [image-prompt-designer](skills/image-prompt-designer/SKILL.md) | 把文字需求或成品图片整理成可直接使用的生图提示词，并可保存、复用视觉风格；不直接生成图片。 |
 | [uiux-prompt-designer](skills/uiux-prompt-designer/SKILL.md) | 把产品需求或界面图片整理成可复用的 UI/UX 提示词与风格配置；不直接实现或审查界面。 |
 | [plain-output](skills/plain-output/SKILL.md) | 写中文回复或文档时主动遵循的表达规范：每句话带来新信息、判断落在依据上、用日常白话讲清事情；减少程度堆叠、注水、名词化、行话黑话和防御性含糊，属于写作规范，不是润色流程。 |
@@ -42,7 +42,7 @@
 |------------|------|-------------|
 | `anysearch` | 实时搜索、垂直搜索、批量搜索、URL 提取 | [anysearch-ai/anysearch-skill](https://github.com/anysearch-ai/anysearch-skill) · 技能市场搜 `anysearch`，或下载 [release zip](https://github.com/anysearch-ai/anysearch-skill/releases) 解压到技能目录，再按上游 README 跑一次入口自检 |
 | `grilling` | 深度质询方案/设计，按决策树逐轮用提问卡片推进（单独装这一个即可，无需装入口壳 `grill-me`） | [mattpocock/skills · grilling](https://github.com/mattpocock/skills/tree/main/skills/productivity/grilling) · `npx skills add https://github.com/mattpocock/skills --skill grilling` |
-| `hallmark` | 反 AI 味界面设计；2.0 起只用于新建页面，改已有设计需点名 hallmark | [Nutlope/hallmark](https://github.com/Nutlope/hallmark) · `npx skills add nutlope/hallmark -g` |
+| `impeccable` | 反 AI 味前端设计工具包（24 个设计/审查/精修指令 + 62 条确定性反 AI 味检测规则，支持实时预览迭代） | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) · `npx impeccable install`（安装后在 Agent 内运行 `/impeccable init`） |
 | `skill-creator` | 创建新技能 | [anthropics/skills · skill-creator](https://github.com/anthropics/skills/tree/main/skills/skill-creator) · `npx skills add https://github.com/anthropics/skills --skill skill-creator` |
 | `playwright-cli` | 浏览器自动化（Playwright CLI + Skills） | [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli) · `npm install -g @playwright/cli@latest` 后 `npx skills add microsoft/playwright-cli@playwright-cli` |
 | `ponytail` | 反过度工程：最懒且能用的解 | [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) · `npx skills add https://github.com/DietrichGebert/ponytail --skill ponytail` |
