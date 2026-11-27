@@ -13,7 +13,7 @@
 | [cleanup](skills/cleanup/SKILL.md) | 产生临时文件或启动临时服务时在收尾、中断或重试前清理，无临时产物则跳过；按用途分直接删、验收后删、只列清单三档，只扫本轮产物位置或指定路径，旧备份等用户验收后才删，最终产品和用户资料保留。 |
 | [user-model](skills/user-model/SKILL.md) | 纯 Markdown 零脚本维护单份精选用户画像（`USER.md`，1500 字提醒合并 / 2000 字上限）：只留当前有效陈述句、不设变更日志；新对话或上下文压缩后读取，支持「回顾模型」「总结模型」手动提炼及明确纠正/长期表态触发，始终先列候选经用户选定再写入；不记具体任务材料。 |
 | [image-prompt-designer](skills/image-prompt-designer/SKILL.md) | 把文字需求或成品图片整理成可直接使用的生图提示词，并可保存、复用视觉风格；不直接生成图片。 |
-| [uiux-prompt-designer](skills/uiux-prompt-designer/SKILL.md) | 把产品需求或界面图片整理成可复用的 UI/UX 提示词与风格配置；不直接实现或审查界面。 |
+| [uiux-prompt-designer](skills/uiux-prompt-designer/SKILL.md) | 通过逐模块确认设计规则或识图提取规则，生成给 AI 设计与实现 UI 的通用提示词；不直接实现或审查界面。 |
 | [plain-output](skills/plain-output/SKILL.md) | 写中文回复或文档时主动遵循的表达规范：每句话带来新信息、判断落在依据上、用日常白话讲清事情；减少程度堆叠、注水、名词化、行话黑话和防御性含糊，属于写作规范，不是润色流程。 |
 
 ## 安装与更新
